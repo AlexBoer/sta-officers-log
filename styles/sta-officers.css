@@ -47,20 +47,34 @@
 
 /* Completed Arc wrapper (boxes all arc log rows together) */
 .sta-callbacks-arc-group {
-    border: thin solid white;
-    border-radius: 8px;
-    margin: 0.3rem;
-    padding: 0.3rem;
+  border: thin solid white;
+  border-radius: 8px;
+  margin: 0.3rem;
+  padding: 0.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  background: rgba(0, 0, 0, 0.35);
 }
 
 /* Title row for a collapsed Arc group (shown when all logs are hidden) */
 .sta-callbacks-arc-title {
-  display: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin: 0;
+  padding: 0.25rem 0.45rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  font-size: var(--font-size-12);
+  font-weight: 600;
+  min-height: 28px;
 }
 
 .sta-callbacks-arc-group > li.row.entry {
   margin: 0;
+  padding-top: 0.25rem;
 }
 
 /* Collapse hides all log rows and shows only the arc title row */

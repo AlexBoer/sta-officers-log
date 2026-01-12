@@ -25,7 +25,7 @@ async function _syncLogImgToValue(actor, log, valueId) {
   if (!vId) {
     if (STA_DEFAULT_ICON && log.img !== STA_DEFAULT_ICON) {
       try {
-        await log.update({ img: STA_DEFAULT_ICON });
+        await log.update({ img: STA_DEFAULT_ICON }, { renderSheet: false });
       } catch (_) {
         // ignore
       }
@@ -39,11 +39,23 @@ async function _syncLogImgToValue(actor, log, valueId) {
 
   if (desiredImg && log.img !== desiredImg) {
     try {
-      await log.update({ img: desiredImg });
+      await log.update({ img: desiredImg }, { renderSheet: false });
     } catch (_) {
       // ignore
     }
   }
+}
+
+const flagPath = (key) => `flags.${MODULE_ID}.${key}`;
+
+async function setFlagWithoutRender(log, key, value) {
+  if (!log || typeof log.update !== "function") return;
+  await log.update({ [flagPath(key)]: value }, { renderSheet: false });
+}
+
+async function unsetFlagWithoutRender(log, key) {
+  if (!log || typeof log.update !== "function") return;
+  await log.update({ [flagPath(key)]: undefined }, { renderSheet: false });
 }
 
 export async function promptLinkLogToChain({ actor, log }) {
@@ -147,11 +159,11 @@ export async function promptLinkLogToChain({ actor, log }) {
   }
 
   if (!fromLogId) {
-    await log.unsetFlag?.(MODULE_ID, "callbackLink");
+    await unsetFlagWithoutRender(log, "callbackLink");
 
     // Mark an explicit override so milestone-derived edges don't keep it in a chain.
     try {
-      await log.setFlag?.(MODULE_ID, "callbackLinkDisabled", true);
+      await setFlagWithoutRender(log, "callbackLinkDisabled", true);
     } catch (_) {
       // ignore
     }
@@ -161,12 +173,12 @@ export async function promptLinkLogToChain({ actor, log }) {
   } else {
     // Clear explicit override when setting a link.
     try {
-      await log.unsetFlag?.(MODULE_ID, "callbackLinkDisabled");
+      await unsetFlagWithoutRender(log, "callbackLinkDisabled");
     } catch (_) {
       // ignore
     }
 
-    await log.setFlag(MODULE_ID, "callbackLink", { fromLogId, valueId });
+    await setFlagWithoutRender(log, "callbackLink", { fromLogId, valueId });
 
     // Align the log's icon to the selected value (or restore STA default).
     await _syncLogImgToValue(actor, log, valueId);
@@ -436,8 +448,8 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
     // Persist the primary value selection (even if not linked).
     try {
-      if (!valueId) await log.unsetFlag?.(MODULE_ID, "primaryValueId");
-      else await log.setFlag?.(MODULE_ID, "primaryValueId", valueId);
+      if (!valueId) await unsetFlagWithoutRender(log, "primaryValueId");
+      else await setFlagWithoutRender(log, "primaryValueId", valueId);
     } catch (_) {
       // ignore
     }
@@ -452,7 +464,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         );
         arcToggle.checked = false;
         try {
-          await log.unsetFlag?.(MODULE_ID, "arcInfo");
+          await unsetFlagWithoutRender(log, "arcInfo");
         } catch (_) {
           // ignore
         }
@@ -499,7 +511,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
           chainLogIds = [];
         }
 
-        await log.setFlag(MODULE_ID, "arcInfo", {
+        await setFlagWithoutRender(log, "arcInfo", {
           isArc: true,
           steps,
           chainLogIds,
@@ -509,26 +521,26 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     } else {
       // Unmark arc completion
       try {
-        await log.unsetFlag?.(MODULE_ID, "arcInfo");
+        await unsetFlagWithoutRender(log, "arcInfo");
       } catch (_) {
         // ignore
       }
     }
 
     if (!fromLogId) {
-      await log.unsetFlag?.(MODULE_ID, "callbackLink");
+      await unsetFlagWithoutRender(log, "callbackLink");
       try {
-        await log.setFlag?.(MODULE_ID, "callbackLinkDisabled", true);
+        await setFlagWithoutRender(log, "callbackLinkDisabled", true);
       } catch (_) {
         // ignore
       }
     } else {
       try {
-        await log.unsetFlag?.(MODULE_ID, "callbackLinkDisabled");
+        await unsetFlagWithoutRender(log, "callbackLinkDisabled");
       } catch (_) {
         // ignore
       }
-      await log.setFlag?.(MODULE_ID, "callbackLink", { fromLogId, valueId });
+      await setFlagWithoutRender(log, "callbackLink", { fromLogId, valueId });
     }
 
     await _syncLogImgToValue(actor, log, valueId);

@@ -13,11 +13,10 @@
     "scripts/main.js"
   ],
   "socket": true,
-  "styles": [
-    {
-      "src": "styles/sta-officers.css"
-    }
-  ],
+"styles": [
+  { "src": "styles/sta-officers.css" },
+  { "src": "styles/sta-style-enhance.css" }
+],
   "relationships": {
     "systems": [
       {

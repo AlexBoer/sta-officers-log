@@ -85,7 +85,7 @@ export function rerenderOpenStaSheetsForActorId(actorId) {
 }
 
 export function getItemFromApp(app) {
-  return app?.item ?? app?.document ?? app?.object ?? null;
+  return app?.item ?? null;
 }
 
 export function getActorFromAppOrItem(app, item) {
