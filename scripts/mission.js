@@ -212,27 +212,83 @@ async function _tryDecrementStaMomentum() {
     if (!Number.isFinite(cur)) return false;
     const next = Math.max(0, cur - 1);
 
-    const rerenderStaTracker = () => {
+    const rerenderStaTracker = async () => {
       try {
-        const windows = Object.values(ui?.windows ?? {});
+        // Foundry v13+ tracker windows live in the ApplicationV2 registry.
+        // In some environments, `instanceof STATracker` can fail (module realms/bundling),
+        // so prefer matching by constructor name.
         const Tracker = globalThis?.STATracker;
 
-        for (const app of windows) {
-          if (!app) continue;
-          const isTracker =
-            (Tracker && app instanceof Tracker) ||
-            app?.constructor?.name === "STATracker";
-          if (!isTracker) continue;
+        const inst = globalThis?.foundry?.applications?.instances;
+        const apps = [];
+        if (inst && typeof inst.values === "function") {
+          for (const app of inst.values()) apps.push(app);
+        } else if (inst && typeof inst === "object") {
+          for (const app of Object.values(inst)) apps.push(app);
+        }
+
+        const uniq = Array.from(new Set(apps)).filter(Boolean);
+
+        const forceRefreshApp = async (app) => {
+          // Some tracker implementations cache derived state and need an explicit refresh.
+          try {
+            if (typeof app?.refresh === "function") {
+              await app.refresh();
+              return true;
+            }
+          } catch (_) {
+            // ignore
+          }
+
+          // Foundry Application (legacy): render(force)
+          // Foundry ApplicationV2: render({force: true})
+          try {
+            if (typeof app?.render === "function") {
+              await app.render({ force: true });
+              return true;
+            }
+          } catch (_) {
+            // ignore
+          }
 
           try {
-            app.render?.(true);
-          } catch (_) {
-            try {
-              app.render?.();
-            } catch (_) {
-              // ignore
+            if (typeof app?.render === "function") {
+              await app.render(true);
+              return true;
             }
+          } catch (_) {
+            // ignore
           }
+
+          try {
+            if (typeof app?.render === "function") {
+              await app.render();
+              return true;
+            }
+          } catch (_) {
+            // ignore
+          }
+
+          // Last resort: some apps still expose the legacy private render.
+          try {
+            if (typeof app?._render === "function") {
+              await app._render(true);
+              return true;
+            }
+          } catch (_) {
+            // ignore
+          }
+
+          return false;
+        };
+
+        for (const app of uniq) {
+          const ctorName = String(app?.constructor?.name ?? "");
+          const isTracker =
+            ctorName === "STATracker" || (Tracker && app instanceof Tracker);
+          if (!isTracker) continue;
+
+          await forceRefreshApp(app);
         }
       } catch (_) {
         // ignore
@@ -243,12 +299,16 @@ async function _tryDecrementStaMomentum() {
     try {
       await game.settings.set("sta", "momentum", next);
       rerenderStaTracker();
+      setTimeout(() => rerenderStaTracker(), 50);
+      setTimeout(() => rerenderStaTracker(), 250);
       return true;
     } catch (_) {
       // Some system versions store this as a string; try again.
       try {
         await game.settings.set("sta", "momentum", String(next));
         rerenderStaTracker();
+        setTimeout(() => rerenderStaTracker(), 50);
+        setTimeout(() => rerenderStaTracker(), 250);
         return true;
       } catch (_) {
         // Fall back to updating the Setting document directly.
@@ -267,6 +327,8 @@ async function _tryDecrementStaMomentum() {
     }
 
     rerenderStaTracker();
+    setTimeout(() => rerenderStaTracker(), 50);
+    setTimeout(() => rerenderStaTracker(), 250);
 
     return true;
   } catch (_) {
@@ -302,9 +364,7 @@ export async function newScene() {
   await Promise.allSettled(updates);
 
   if (!momentumOk) {
-    ui.notifications.warn(
-      t("sta-officers-log.notifications.momentumNotFound")
-    );
+    ui.notifications.warn(t("sta-officers-log.notifications.momentumNotFound"));
   }
   ui.notifications.info(t("sta-officers-log.notifications.newSceneDone"));
 }

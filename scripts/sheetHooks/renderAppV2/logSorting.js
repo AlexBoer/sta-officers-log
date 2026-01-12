@@ -37,11 +37,11 @@ function _setArcCollapsed(actorId, arcId, collapsed) {
   else set.delete(gId);
 }
 
-function _unwrapArcGroups(sectionEl) {
-  const section = sectionEl;
-  if (!section?.querySelectorAll) return;
+function _unwrapArcGroups(containerEl) {
+  const container = containerEl;
+  if (!container?.querySelectorAll) return;
   const wrappers = Array.from(
-    section.querySelectorAll(":scope > .sta-callbacks-arc-group")
+    container.querySelectorAll(":scope > .sta-callbacks-arc-group")
   );
   for (const wrapper of wrappers) {
     try {
@@ -52,7 +52,7 @@ function _unwrapArcGroups(sectionEl) {
           child.remove();
           continue;
         }
-        section.insertBefore(child, wrapper);
+        container.insertBefore(child, wrapper);
       }
       wrapper.remove();
     } catch (_) {
@@ -329,13 +329,67 @@ export function applyMissionLogSorting(root, actor, mode) {
   const section = root?.querySelector?.("div.section.milestones");
   if (!section) return;
 
-  // If we wrapped logs previously, unwrap them before any reordering.
-  _unwrapArcGroups(section);
+  const activeEl =
+    typeof document === "undefined" ? null : document.activeElement;
+  if (
+    activeEl instanceof HTMLElement &&
+    activeEl.closest?.("li.row.entry[data-item-type='log']") &&
+    section.contains?.(activeEl)
+  ) {
+    // Let the user finish typing before we reshuffle the log rows.
+    return;
+  }
 
   const logEntryEls = Array.from(
     section.querySelectorAll('li.row.entry[data-item-type="log"]')
   );
   if (!logEntryEls.length) return;
+
+  // The STA sheet renders both the Character Log and Milestones under the same
+  // "milestones" section. Logs must stay between the Character Log header row
+  // and the Milestones/Arcs title.
+  const logTitleEl = section.querySelector(
+    ":scope > div.title.sta-values-title-with-button"
+  );
+  const logHeaderEl = section.querySelector(
+    ":scope > div.title.sta-values-title-with-button + div.header.row.item"
+  );
+
+  // Find the first title *after* the log header/title (this is the start of the
+  // Milestones / Arcs area). We intentionally do not rely on localized text.
+  let milestoneTitleEl = null;
+  const walkStart = logHeaderEl ?? logTitleEl ?? null;
+  if (walkStart) {
+    let node = walkStart.nextElementSibling;
+    while (node) {
+      if (node.matches?.("div.title") && node !== logTitleEl) {
+        milestoneTitleEl = node;
+        break;
+      }
+      node = node.nextElementSibling;
+    }
+  }
+
+  const milestoneHeaderEl = milestoneTitleEl
+    ? milestoneTitleEl.nextElementSibling?.matches?.("div.header.row.item")
+      ? milestoneTitleEl.nextElementSibling
+      : null
+    : null;
+
+  const firstMilestoneEntryEl = section.querySelector(
+    'li.row.entry[data-item-type="milestone"]'
+  );
+
+  const insertionParent =
+    milestoneTitleEl?.parentElement ??
+    milestoneHeaderEl?.parentElement ??
+    firstMilestoneEntryEl?.parentElement ??
+    logHeaderEl?.parentElement ??
+    logTitleEl?.parentElement ??
+    section;
+
+  // If we wrapped logs previously, unwrap them before any reordering.
+  _unwrapArcGroups(insertionParent);
 
   const logItems = logEntryEls
     .map((el) => {
@@ -515,21 +569,13 @@ export function applyMissionLogSorting(root, actor, mode) {
         if (t > maxTime) maxTime = t;
       }
 
-      const valueIdForLabel = arcInfo?.valueId
-        ? String(arcInfo.valueId)
-        : arcValueId
-        ? String(arcValueId)
-        : "";
-
-      const valueNameLabel = valueIdForLabel
-        ? String(actor.items.get(valueIdForLabel)?.name ?? "")
-        : "";
+      const arcLabel = String(arcInfo?.arcLabel ?? "").trim();
 
       arcBlocks.push({
         arcId: String(log.id),
         ids: presentChain,
         maxTime,
-        valueNameLabel,
+        arcLabel,
       });
     }
 
@@ -544,11 +590,10 @@ export function applyMissionLogSorting(root, actor, mode) {
         (b.maxTime ?? Number.MAX_SAFE_INTEGER)
       );
     });
-    arcWrapGroups = arcBlocks.map((b, idx) => ({
+    arcWrapGroups = arcBlocks.map((b) => ({
       arcId: b.arcId,
-      arcLabel: `Arc ${idx + 1}${
-        b.valueNameLabel ? ` (${b.valueNameLabel})` : ""
-      }`,
+      // Store only the base label; numbering is applied at render time.
+      arcLabel: String(b.arcLabel ?? ""),
       ids: b.ids,
     }));
 
@@ -652,37 +697,27 @@ export function applyMissionLogSorting(root, actor, mode) {
     orderedIds = items.map((i) => String(i.id));
   }
 
-  // Find the start of the Milestones section so we don't insert logs under it.
-  const milestoneCreate = section.querySelector(
-    'a.control.create[data-type="milestone"]'
-  );
-  const milestoneHeader =
-    milestoneCreate?.closest?.("div.header.row.item") ?? null;
-  const milestoneTitle =
-    milestoneHeader?.previousElementSibling?.classList?.contains("title")
-      ? milestoneHeader.previousElementSibling
-      : null;
-
-  // Players without sufficient permissions may not have the milestone "create" control.
-  // Fall back to the first milestone entry/header if needed.
-  const firstMilestoneEntry = section.querySelector(
-    'li.row.entry[data-item-type="milestone"]'
-  );
+  // Insert logs above the Milestones / Arcs area, if present.
+  // Fallback to the first milestone entry.
   const insertBeforeEl =
-    milestoneTitle ?? milestoneHeader ?? firstMilestoneEntry;
+    milestoneTitleEl ?? milestoneHeaderEl ?? firstMilestoneEntryEl ?? null;
 
   if (insertBeforeEl) {
     for (const id of orderedIds) {
       const el = byElId.get(id);
       if (!el) continue;
-      section.insertBefore(el, insertBeforeEl);
+      insertionParent.insertBefore(el, insertBeforeEl);
     }
   } else {
-    // If there is no milestone area at all, just reorder by appending logs.
     for (const id of orderedIds) {
       const el = byElId.get(id);
       if (!el) continue;
-      section.appendChild(el);
+      // No milestone area; keep logs below the log header when possible.
+      if (logHeaderEl && logHeaderEl.parentElement === insertionParent) {
+        insertionParent.insertBefore(el, logHeaderEl.nextSibling);
+      } else {
+        insertionParent.appendChild(el);
+      }
     }
   }
 
@@ -731,9 +766,23 @@ export function applyMissionLogSorting(root, actor, mode) {
 
       for (let arcIndex = 0; arcIndex < arcGroups.length; arcIndex += 1) {
         const { arcId, startId, ids } = arcGroups[arcIndex];
-        const arcLabelFull = String(
-          arcGroups[arcIndex]?.arcLabel ?? `Arc ${arcIndex + 1}`
-        );
+        const arcLabelBase = String(arcGroups[arcIndex]?.arcLabel ?? "").trim();
+        // Back-compat: if older data already stored a full label like "Arc 1 (...)",
+        // use it as-is. Otherwise, render a stable "Arc N" + optional "(Title)".
+        const arcLabelFull = arcLabelBase.startsWith("Arc ")
+          ? arcLabelBase
+          : arcLabelBase
+          ? `Arc ${arcIndex + 1} (${arcLabelBase})`
+          : `Arc ${arcIndex + 1}`;
+        const collapseIconHtml = '<i class="fa-solid fa-chevron-down"></i>';
+
+        const onToggle = (ev) => {
+          ev?.preventDefault?.();
+          ev?.stopPropagation?.();
+          const next = !_isArcCollapsed(actorId, arcId);
+          _setArcCollapsed(actorId, arcId, next);
+          applyCollapsedState(wrapper, arcId);
+        };
 
         const startEl = byElId.get(String(startId));
         if (!startEl) continue;
@@ -743,7 +792,7 @@ export function applyMissionLogSorting(root, actor, mode) {
         wrapper.className = "sta-callbacks-arc-group";
         wrapper.dataset.staArcId = arcId;
         wrapper.dataset.staArcLabel = arcLabelFull;
-        section.insertBefore(wrapper, startEl);
+        insertionParent.insertBefore(wrapper, startEl);
 
         // Add a title row for the collapsed state (when all logs are hidden).
         const titleRow = document.createElement("div");
@@ -752,6 +801,94 @@ export function applyMissionLogSorting(root, actor, mode) {
         titleRow.dataset.staArcLabel = arcLabelFull;
         wrapper.appendChild(titleRow);
 
+        // Always make the title row act as the collapse/expand control.
+        titleRow.addEventListener("click", onToggle);
+        titleRow.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter" || ev.key === " ") onToggle(ev);
+        });
+        titleRow.setAttribute("role", "button");
+        titleRow.tabIndex = 0;
+
+        const titleBtn = document.createElement("span");
+        titleBtn.className = "sta-arc-collapse-btn";
+        titleBtn.title = `${arcLabelFull} (collapse/expand)`;
+        titleBtn.setAttribute("aria-label", titleBtn.title);
+        titleBtn.setAttribute("role", "button");
+        titleBtn.tabIndex = 0;
+        titleBtn.innerHTML = `${collapseIconHtml}<span class="sta-arc-collapse-label">${arcLabelFull}</span>`;
+        titleBtn.addEventListener("click", onToggle);
+        titleBtn.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter" || ev.key === " ") onToggle(ev);
+        });
+        titleRow.appendChild(titleBtn);
+
+        // Edit arc title (stored on the arc-end log item).
+        try {
+          const editBtn = document.createElement("span");
+          editBtn.className = "sta-arc-title-edit";
+          editBtn.title = "Edit arc title";
+          editBtn.setAttribute("aria-label", editBtn.title);
+          editBtn.setAttribute("role", "button");
+          editBtn.tabIndex = 0;
+          editBtn.innerHTML = '<i class="fas fa-pen"></i>';
+
+          const onEdit = async (ev) => {
+            ev?.preventDefault?.();
+            ev?.stopPropagation?.();
+
+            const DialogV2 = globalThis.foundry?.applications?.api?.DialogV2;
+            if (!DialogV2?.input) return;
+
+            const arcEndLog = actor?.items?.get?.(String(arcId)) ?? null;
+            if (!arcEndLog || arcEndLog.type !== "log") return;
+            if (arcEndLog.isOwner !== true && game?.user?.isGM !== true) return;
+            const arcInfo = arcEndLog.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+            if (arcInfo?.isArc !== true) return;
+
+            const current = String(arcInfo?.arcLabel ?? "");
+            const safe = foundry.utils.escapeHTML(String(current));
+
+            const content = `
+              <form>
+                <div class="form-group">
+                  <label>Arc title</label>
+                  <input type="text" name="arcTitle" value="${safe}" />
+                  <p class="hint">Shown as “Arc N (title)”. Leave blank for “Arc N”.</p>
+                </div>
+              </form>
+            `;
+
+            const result = await DialogV2.input({
+              window: { title: "Edit Arc Title" },
+              modal: false,
+              rejectClose: false,
+              content,
+              ok: { label: "Save" },
+              cancel: { label: "Cancel" },
+            });
+
+            if (!result) return;
+            const next = String(result.arcTitle ?? "").trim();
+
+            const update = {};
+            // Use empty string as a deliberate "no title" sentinel.
+            update[`flags.${MODULE_ID}.arcInfo.arcLabel`] = next;
+            await arcEndLog.update(update, {
+              render: false,
+              renderSheet: false,
+            });
+          };
+
+          editBtn.addEventListener("click", onEdit);
+          editBtn.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter" || ev.key === " ") void onEdit(ev);
+          });
+
+          titleRow.appendChild(editBtn);
+        } catch (_) {
+          // ignore
+        }
+
         for (const id of ids) {
           const el = byElId.get(String(id));
           if (!el) continue;
@@ -759,70 +896,8 @@ export function applyMissionLogSorting(root, actor, mode) {
           wrapper.appendChild(el);
         }
 
-        // Move/add the collapse control to the "Callback?" (toggle) column, like the original.
-        // This column is an <a>, so we must NOT inject another <a> inside it.
-        // Instead we use a <span role="button">.
-        try {
-          const existing =
-            startEl.querySelectorAll?.(".sta-arc-collapse-btn") ?? [];
-          for (const node of Array.from(existing)) node.remove();
-        } catch (_) {
-          // ignore
-        }
-
-        const toggleHost =
-          startEl?.querySelector?.(":scope > a.value-used.control.toggle") ??
-          startEl?.querySelector?.(":scope > .value-used.control.toggle") ??
-          startEl?.querySelector?.(":scope > .value-used") ??
-          null;
-
-        if (toggleHost) {
-          const btn = document.createElement("span");
-          btn.className = "sta-arc-collapse-btn";
-          btn.title = `${arcLabelFull} (collapse/expand)`;
-          btn.setAttribute("aria-label", btn.title);
-          btn.setAttribute("role", "button");
-          btn.tabIndex = 0;
-          btn.innerHTML = `<i class="fa-solid fa-chevron-down"></i><span class="sta-arc-collapse-label">${arcLabelFull}</span>`;
-
-          const onToggle = (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
-            const next = !_isArcCollapsed(actorId, arcId);
-            _setArcCollapsed(actorId, arcId, next);
-            applyCollapsedState(wrapper, arcId);
-          };
-
-          btn.addEventListener("click", onToggle);
-          btn.addEventListener("keydown", (ev) => {
-            if (ev.key === "Enter" || ev.key === " ") onToggle(ev);
-          });
-
-          toggleHost.prepend(btn);
-
-          // Mirror control in the arc title row (visible only when collapsed).
-          const titleBtn = document.createElement("span");
-          titleBtn.className = "sta-arc-collapse-btn";
-          titleBtn.title = btn.title;
-          titleBtn.setAttribute("aria-label", btn.title);
-          titleBtn.setAttribute("role", "button");
-          titleBtn.tabIndex = 0;
-          titleBtn.innerHTML = btn.innerHTML;
-
-          titleBtn.addEventListener("click", onToggle);
-          titleBtn.addEventListener("keydown", (ev) => {
-            if (ev.key === "Enter" || ev.key === " ") onToggle(ev);
-          });
-
-          // Make the entire title row clickable as well.
-          titleRow.addEventListener("click", onToggle);
-          titleRow.addEventListener("keydown", (ev) => {
-            if (ev.key === "Enter" || ev.key === " ") onToggle(ev);
-          });
-          titleRow.setAttribute("role", "button");
-          titleRow.tabIndex = 0;
-          titleRow.appendChild(titleBtn);
-        }
+        // We intentionally do NOT inject another collapse control into each log row.
+        // The title row is always visible and acts as the control.
 
         applyCollapsedState(wrapper, arcId);
       }

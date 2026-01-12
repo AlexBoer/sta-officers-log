@@ -102,3 +102,10 @@ display: none;
 padding: 2px 2px 0px 2px;
 outline: 1px solid #1e5180;
 }
+
+.note .editor-content {
+    border: white 1px solid;
+    border-radius: 2%;
+    padding: 5px;
+    margin: 5px;
+}

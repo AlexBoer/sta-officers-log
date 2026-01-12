@@ -2,13 +2,14 @@ import { MODULE_ID } from "../../constants.js";
 import { STA_DEFAULT_ICON } from "../../values.js";
 import { isLogUsed } from "../../mission.js";
 import { isCallbackTargetCompatibleWithValue } from "../../callbackEligibility.js";
+import { t } from "../../i18n.js";
 import {
   computeBestChainEndingAt,
   getCallbackLogEdgesForValue,
 } from "../../arcChains.js";
 import {
   canCurrentUserChangeActor,
-  rerenderOpenStaSheetsForActorId,
+  refreshMissionLogSortingForActorId,
 } from "./sheetUtils.js";
 import {
   getCompletedArcEndLogIds,
@@ -25,7 +26,10 @@ async function _syncLogImgToValue(actor, log, valueId) {
   if (!vId) {
     if (STA_DEFAULT_ICON && log.img !== STA_DEFAULT_ICON) {
       try {
-        await log.update({ img: STA_DEFAULT_ICON }, { renderSheet: false });
+        await log.update(
+          { img: STA_DEFAULT_ICON },
+          { render: false, renderSheet: false }
+        );
       } catch (_) {
         // ignore
       }
@@ -39,7 +43,10 @@ async function _syncLogImgToValue(actor, log, valueId) {
 
   if (desiredImg && log.img !== desiredImg) {
     try {
-      await log.update({ img: desiredImg }, { renderSheet: false });
+      await log.update(
+        { img: desiredImg },
+        { render: false, renderSheet: false }
+      );
     } catch (_) {
       // ignore
     }
@@ -50,12 +57,20 @@ const flagPath = (key) => `flags.${MODULE_ID}.${key}`;
 
 async function setFlagWithoutRender(log, key, value) {
   if (!log || typeof log.update !== "function") return;
-  await log.update({ [flagPath(key)]: value }, { renderSheet: false });
+  await log.update(
+    { [flagPath(key)]: value },
+    { render: false, renderSheet: false }
+  );
 }
 
 async function unsetFlagWithoutRender(log, key) {
   if (!log || typeof log.update !== "function") return;
-  await log.update({ [flagPath(key)]: undefined }, { renderSheet: false });
+  // Foundry does not reliably delete properties when setting `undefined`.
+  // Use `null` to unset flags.
+  await log.update(
+    { [flagPath(key)]: null },
+    { render: false, renderSheet: false }
+  );
 }
 
 export async function promptLinkLogToChain({ actor, log }) {
@@ -212,7 +227,8 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     null;
   if (!sheetRoot) return;
 
-  if (sheetRoot.querySelector(":scope > .sta-log-link-controls")) return;
+  // We insert into the sheet's <form> when present, so don't require direct-child.
+  if (sheetRoot.querySelector(".sta-log-link-controls")) return;
 
   const logs = Array.from(actor.items ?? [])
     .filter((i) => i?.type === "log")
@@ -275,6 +291,16 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   // Prefer the explicit Primary Value selection.
   const selectedValueId = persistedPrimary || existingValue;
 
+  let _baselineFromLogId = String(selectedFromLogId);
+  let _baselineValueId = String(selectedValueId);
+  let _baselineIsArcEnd = Boolean(isArcEnd);
+  let _baselineArcSteps = Number.isFinite(Number(initialArcSteps))
+    ? Number(initialArcSteps)
+    : 1;
+  let _baselineArcValueId = String(
+    existingArcValueId || existingValue || selectedValueId || ""
+  );
+
   const completedArcEndLogIds = getCompletedArcEndLogIds(actor);
 
   const isEligibleFromLogId = (targetLogId, currentValueId) => {
@@ -284,7 +310,8 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
     // Prevent linking to logs that have already been used for a callback.
     // Keep the current selection available so existing data isn't broken.
-    if (tId !== String(selectedFromLogId)) {
+    // Keep the *saved* selection available so existing data isn't broken.
+    if (tId !== String(_baselineFromLogId)) {
       const usedTarget = actor.items.get(tId);
       if (usedTarget?.type === "log" && isLogUsed(usedTarget)) return false;
     }
@@ -308,11 +335,14 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     for (const l of logs) {
       const id = String(l.id);
       const eligible = isEligibleFromLogId(id, vId);
-      if (!eligible && id !== String(selectedFromLogId)) continue;
+      if (!eligible && id !== String(_baselineFromLogId)) continue;
 
       const sel = id === String(selectedFromLogId) ? " selected" : "";
 
-      const disabled = eligible ? "" : " disabled";
+      // Never disable the currently-saved selection, otherwise the browser
+      // may drop it on initial render (which can then get persisted).
+      const isBaseline = id === String(_baselineFromLogId);
+      const disabled = eligible || isBaseline ? "" : " disabled";
       const suffix = eligible
         ? ""
         : isLogUsed(l)
@@ -334,6 +364,12 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   const wrapper = document.createElement("div");
   wrapper.className = "sta-log-link-controls";
   wrapper.innerHTML = `
+    <input type="hidden" data-sta-callbacks-field="callbackLinkValueId" value="${escapeHTML(
+      String(selectedValueId)
+    )}" />
+    <input type="hidden" data-sta-callbacks-field="arcValueId" value="${escapeHTML(
+      String(existingArcValueId || existingValue || selectedValueId || "")
+    )}" />
     <div class="column">
       <div class="title">Calls back to:</div>
       <select data-sta-callbacks-field="fromLogId">
@@ -359,26 +395,29 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
     <div class="column">
       <div class="title">Arc</div>
-      <label style="display:flex;align-items:center;gap:0.35rem;">
-        <input type="checkbox" data-sta-callbacks-field="isArcEnd" ${
-          isArcEnd ? "checked" : ""
-        } />
-        <span>Mark as arc end</span>
-      </label>
+      <div class="sta-arc-fields">
+        <label class="sta-arc-toggle">
+          <input type="checkbox" data-sta-callbacks-field="isArcEnd" ${
+            isArcEnd ? "checked" : ""
+          } />
+          <span>${escapeHTML(t("sta-officers-log.logSheet.arcComplete"))}</span>
+        </label>
 
-      <label style="display:flex;align-items:center;gap:0.35rem;margin-top:0.25rem;">
-        <span style="opacity:0.85;">Steps</span>
-        <input type="number" data-sta-callbacks-field="arcSteps" min="1" step="1" value="${escapeHTML(
-          String(initialArcSteps)
-        )}" style="width:64px;" />
-      </label>
+        <label class="sta-arc-steps">
+          <span class="sta-arc-label">Steps</span>
+          <input type="number" data-sta-callbacks-field="arcSteps" min="1" step="1" value="${escapeHTML(
+            String(initialArcSteps)
+          )}" />
+        </label>
+      </div>
     </div>
   `;
 
-  const firstRow = sheetRoot.querySelector(":scope > .row");
-  const insertBeforeEl = firstRow?.nextElementSibling ?? null;
-  if (insertBeforeEl) sheetRoot.insertBefore(wrapper, insertBeforeEl);
-  else sheetRoot.prepend(wrapper);
+  const formRoot = sheetRoot.querySelector("form") ?? sheetRoot;
+  const firstRowInForm = formRoot.querySelector(":scope > .row");
+  const insertBeforeInForm = firstRowInForm?.nextElementSibling ?? null;
+  if (insertBeforeInForm) formRoot.insertBefore(wrapper, insertBeforeInForm);
+  else formRoot.prepend(wrapper);
 
   const fromSelect = wrapper.querySelector(
     'select[data-sta-callbacks-field="fromLogId"]'
@@ -392,10 +431,18 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   const arcStepsInput = wrapper.querySelector(
     'input[data-sta-callbacks-field="arcSteps"]'
   );
+  const callbackLinkValueIdInput = wrapper.querySelector(
+    'input[data-sta-callbacks-field="callbackLinkValueId"]'
+  );
+  const arcValueIdInput = wrapper.querySelector(
+    'input[data-sta-callbacks-field="arcValueId"]'
+  );
   if (!(fromSelect instanceof HTMLSelectElement)) return;
   if (!(valueSelect instanceof HTMLSelectElement)) return;
   if (!(arcToggle instanceof HTMLInputElement)) return;
   if (!(arcStepsInput instanceof HTMLInputElement)) return;
+  if (!(callbackLinkValueIdInput instanceof HTMLInputElement)) return;
+  if (!(arcValueIdInput instanceof HTMLInputElement)) return;
 
   if (wrapper.dataset.staBound === "1") return;
   wrapper.dataset.staBound = "1";
@@ -413,7 +460,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     else fromSelect.value = "";
   };
 
-  const apply = async () => {
+  const syncFormFields = () => {
     let fromLogId = String(fromSelect.value ?? "");
     const valueId = String(valueSelect.value ?? "");
     const wantsArcEnd = arcToggle.checked === true;
@@ -435,7 +482,9 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     }
 
     // Enforce: cannot call back to a log that is already used.
-    if (fromLogId) {
+    // BUT: allow the currently-saved selection (grandfathered) so opening a log
+    // cannot auto-clear its existing callback link.
+    if (fromLogId && String(fromLogId) !== String(_baselineFromLogId)) {
       const target = actor.items.get(String(fromLogId));
       if (target?.type === "log" && isLogUsed(target)) {
         ui.notifications?.warn?.(
@@ -446,117 +495,193 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       }
     }
 
-    // Persist the primary value selection (even if not linked).
-    try {
-      if (!valueId) await unsetFlagWithoutRender(log, "primaryValueId");
-      else await setFlagWithoutRender(log, "primaryValueId", valueId);
-    } catch (_) {
-      // ignore
-    }
+    // Keep callbackLink.valueId in sync with Primary Value.
+    callbackLinkValueIdInput.value = valueId;
 
-    // Arc end toggle: allow manual completion marking even if logs are edited later.
-    // Requires a stable Primary Value so arc/chain rules remain consistent.
+    // Arc end toggle: requires a stable Primary Value.
     if (wantsArcEnd) {
-      const arcValueId = valueId || existingArcValueId || existingValue;
+      const arcValueId = valueId || _baselineArcValueId;
       if (!arcValueId) {
         ui.notifications?.warn?.(
           "Select a Primary Value before marking an Arc end."
         );
         arcToggle.checked = false;
-        try {
-          await unsetFlagWithoutRender(log, "arcInfo");
-        } catch (_) {
-          // ignore
-        }
       } else {
-        const steps = parseSteps();
-
-        // Disallow reusing nodes already consumed by OTHER arcs.
-        const disallowNodeIds = new Set();
-        try {
-          const actorLogs = Array.from(actor.items ?? []).filter(
-            (i) => i?.type === "log"
-          );
-          for (const other of actorLogs) {
-            if (String(other.id) === String(log.id)) continue;
-            const otherArc = other.getFlag?.(MODULE_ID, "arcInfo") ?? null;
-            if (otherArc?.isArc !== true) continue;
-            const otherChain = Array.isArray(otherArc.chainLogIds)
-              ? otherArc.chainLogIds
-              : [];
-            for (const id of otherChain) {
-              if (id) disallowNodeIds.add(String(id));
-            }
-          }
-        } catch (_) {
-          // ignore
-        }
-
-        let chainLogIds = [];
-        try {
-          const { incoming } = getCallbackLogEdgesForValue(
-            actor,
-            String(arcValueId)
-          );
-          const computed = computeBestChainEndingAt({
-            incoming,
-            endLogId: String(log.id),
-            disallowNodeIds,
-          });
-          const full = Array.isArray(computed?.chainLogIds)
-            ? computed.chainLogIds.map((x) => String(x)).filter(Boolean)
-            : [];
-          chainLogIds = full.length > steps ? full.slice(-steps) : full;
-        } catch (_) {
-          chainLogIds = [];
-        }
-
-        await setFlagWithoutRender(log, "arcInfo", {
-          isArc: true,
-          steps,
-          chainLogIds,
-          valueId: String(arcValueId),
-        });
+        arcValueIdInput.value = String(arcValueId);
+        arcStepsInput.value = String(parseSteps());
       }
     } else {
-      // Unmark arc completion
-      try {
-        await unsetFlagWithoutRender(log, "arcInfo");
-      } catch (_) {
-        // ignore
-      }
+      // Still keep a reasonable valueId in the hidden field, but arcInfo.isArc will submit false.
+      arcValueIdInput.value = String(_baselineArcValueId || valueId || "");
     }
-
-    if (!fromLogId) {
-      await unsetFlagWithoutRender(log, "callbackLink");
-      try {
-        await setFlagWithoutRender(log, "callbackLinkDisabled", true);
-      } catch (_) {
-        // ignore
-      }
-    } else {
-      try {
-        await unsetFlagWithoutRender(log, "callbackLinkDisabled");
-      } catch (_) {
-        // ignore
-      }
-      await setFlagWithoutRender(log, "callbackLink", { fromLogId, valueId });
-    }
-
-    await _syncLogImgToValue(actor, log, valueId);
-
-    rerenderOpenStaSheetsForActorId(actor.id);
   };
 
-  fromSelect.addEventListener("change", () => void apply());
-  valueSelect.addEventListener("change", () => {
-    refreshFromOptions();
-    void apply();
+  let _saveTimer = null;
+  let _saveInFlight = false;
+
+  const scheduleSave = () => {
+    if (_saveTimer) clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(() => void persistNow(), 150);
+  };
+
+  const persistNow = async () => {
+    if (_saveInFlight) return;
+    _saveInFlight = true;
+
+    // Ensure hidden fields represent the current UI.
+    syncFormFields();
+
+    let fromLogId = String(fromSelect.value ?? "");
+    const valueId = String(valueSelect.value ?? "");
+    const wantsArcEnd = arcToggle.checked === true;
+    const stepsRaw = Number(arcStepsInput.value ?? 0);
+    const steps =
+      Number.isFinite(stepsRaw) && stepsRaw > 0 ? Math.floor(stepsRaw) : 1;
+    const arcValueId = String(arcValueIdInput.value ?? "");
+
+    if (wantsArcEnd && !arcValueId) {
+      ui.notifications?.warn?.(
+        "Select a Primary Value before marking an Arc end."
+      );
+      return;
+    }
+
+    const update = {};
+
+    // Primary Value
+    update[`flags.${MODULE_ID}.primaryValueId`] = valueId ? valueId : null;
+
+    // Calls-back-to link
+    if (!fromLogId) {
+      update[`flags.${MODULE_ID}.callbackLink`] = null;
+      update[`flags.${MODULE_ID}.callbackLinkDisabled`] = true;
+    } else {
+      update[`flags.${MODULE_ID}.callbackLinkDisabled`] = null;
+      update[`flags.${MODULE_ID}.callbackLink`] = {
+        fromLogId: String(fromLogId),
+        valueId: String(valueId),
+      };
+    }
+
+    // Arc info
+    if (!wantsArcEnd) {
+      update[`flags.${MODULE_ID}.arcInfo`] = null;
+    } else {
+      // Preserve existing arc title. The title is edited via the Arc title-bar
+      // edit button (character sheet), so don't overwrite it from the Log sheet.
+      let arcLabel = "";
+      try {
+        const curArcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+        arcLabel = String(curArcInfo?.arcLabel ?? "");
+      } catch (_) {
+        arcLabel = "";
+      }
+
+      // If no title exists yet (new arc end), default to the current Value name.
+      // This is persisted once and won't change if the Value is renamed later.
+      if (!arcLabel.trim() && arcValueId) {
+        try {
+          const v = actor.items.get(String(arcValueId));
+          const name = v?.type === "value" ? String(v.name ?? "") : "";
+          if (name) arcLabel = name;
+        } catch (_) {
+          // ignore
+        }
+      }
+
+      const arcInfo = {
+        isArc: true,
+        steps,
+        valueId: String(arcValueId),
+      };
+      arcInfo.arcLabel = String(arcLabel ?? "");
+      update[`flags.${MODULE_ID}.arcInfo`] = arcInfo;
+    }
+
+    // Sync icon to Primary Value (or default)
+    try {
+      const valueItem = valueId ? actor.items.get(valueId) : null;
+      const desiredImg =
+        valueItem?.type === "value" && valueItem?.img
+          ? String(valueItem.img)
+          : STA_DEFAULT_ICON;
+      if (desiredImg && String(log.img ?? "") !== String(desiredImg)) {
+        update.img = desiredImg;
+      }
+    } catch (_) {
+      // ignore
+    }
+
+    try {
+      await log.update(update, { render: false, renderSheet: false });
+
+      // Update baseline to the newly-saved state.
+      _baselineFromLogId = String(fromLogId);
+      _baselineValueId = String(valueId);
+      _baselineIsArcEnd = Boolean(wantsArcEnd);
+      _baselineArcSteps = steps;
+      _baselineArcValueId = String(arcValueId || valueId || "");
+
+      // Ensure character sheets refresh their log sorting/indentation.
+      try {
+        refreshMissionLogSortingForActorId(actor.id);
+      } catch (_) {
+        // ignore
+      }
+    } catch (err) {
+      console.warn(`${MODULE_ID} | failed saving log link controls`, err);
+      ui.notifications?.error?.("Failed to save log link data.");
+    } finally {
+      _saveInFlight = false;
+    }
+  };
+
+  fromSelect.addEventListener("change", (ev) => {
+    try {
+      ev?.stopPropagation?.();
+    } catch (_) {
+      // ignore
+    }
+    syncFormFields();
+    scheduleSave();
   });
 
-  arcToggle.addEventListener("change", () => void apply());
-  arcStepsInput.addEventListener("change", () => void apply());
+  valueSelect.addEventListener("change", (ev) => {
+    try {
+      ev?.stopPropagation?.();
+    } catch (_) {
+      // ignore
+    }
+    refreshFromOptions();
+    syncFormFields();
+    scheduleSave();
+  });
+
+  arcToggle.addEventListener("change", (ev) => {
+    try {
+      ev?.stopPropagation?.();
+    } catch (_) {
+      // ignore
+    }
+    syncFormFields();
+    scheduleSave();
+  });
+
+  arcStepsInput.addEventListener("change", (ev) => {
+    try {
+      ev?.stopPropagation?.();
+    } catch (_) {
+      // ignore
+    }
+    syncFormFields();
+    scheduleSave();
+  });
 
   // Ensure the fromLog options reflect the current primary value on initial render.
   refreshFromOptions();
+
+  // Ensure hidden fields are initialized to match current UI.
+  syncFormFields();
+
+  // No auto-save on open; only save after user changes a field.
 }

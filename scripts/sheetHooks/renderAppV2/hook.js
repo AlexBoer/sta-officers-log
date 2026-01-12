@@ -8,6 +8,7 @@ import {
 } from "../../valueChallenged.js";
 import {
   labelValuesOnActor,
+  STA_DEFAULT_ICON,
   getValueIconPathForValueId,
 } from "../../values.js";
 import {
@@ -19,6 +20,11 @@ import {
   spendDetermination,
   promptCallbackForActorAsGM,
 } from "../../callbackFlow.js";
+
+import {
+  computeBestChainEndingAt,
+  getCallbackLogEdgesForValue,
+} from "../../arcChains.js";
 
 import { ATTRIBUTE_KEYS, DISCIPLINE_KEYS } from "../../callbackFlow/dialogs.js";
 
@@ -32,6 +38,7 @@ import {
   getUserIdForCharacterActor,
   openCreatedItemSheetAfterMilestone,
   rerenderOpenStaSheetsForActorId as refreshOpenSheet,
+  refreshMissionLogSortingForActorId,
 } from "./sheetUtils.js";
 import {
   filterMilestoneAssociatedLogOptions,
@@ -47,13 +54,17 @@ import {
 import { areSheetEnhancementsEnabled } from "../../clientSettings.js";
 
 let _staCallbacksHelperMilestoneUpdateHookInstalled = false;
+const _staNormalizingLogIds = new Set();
+const _staLogMetaDetailsOpenByLogId = new Map(); // logId -> boolean
 
-function installLogMetaCollapsible(root) {
+function installLogMetaCollapsible(root, logItem) {
   const itemSheet =
     root?.querySelector?.('.item-sheet[data-application-part="itemsheet"]') ||
     root?.querySelector?.(".item-sheet") ||
     null;
   if (!itemSheet) return;
+
+  const logId = logItem?.id ? String(logItem.id) : "";
 
   // Avoid double-wrapping on partial rerenders.
   if (itemSheet.querySelector(":scope .sta-callbacks-log-meta")) return;
@@ -105,7 +116,19 @@ function installLogMetaCollapsible(root) {
 
   const details = document.createElement("details");
   details.className = "sta-callbacks-log-meta";
-  details.open = false;
+  // Preserve open/closed state across rerenders.
+  if (logId) {
+    details.open = _staLogMetaDetailsOpenByLogId.get(logId) === true;
+    details.addEventListener("toggle", () => {
+      try {
+        _staLogMetaDetailsOpenByLogId.set(logId, details.open === true);
+      } catch (_) {
+        // ignore
+      }
+    });
+  } else {
+    details.open = false;
+  }
 
   const summary = document.createElement("summary");
   summary.className = "sta-callbacks-log-meta-summary";
@@ -226,7 +249,9 @@ export function installRenderApplicationV2Hook() {
         const actor = item?.parent; // find out who the character actor is who has the milestone.
         if (!actor?.id) return;
         void syncCallbackLinksFromMilestone(actor, item);
-        refreshOpenSheet(actor.id);
+        // Avoid full character-sheet rerenders (they flash/steal focus). We only
+        // need to refresh the log ordering/arc wrappers.
+        refreshMissionLogSortingForActorId(actor.id);
       } catch (_) {
         // ignore
       }
@@ -334,22 +359,379 @@ export function installRenderApplicationV2Hook() {
 
         if (!areSheetEnhancementsEnabled()) return;
 
+        // If a Milestone item is being edited in its own sheet, keep that sheet in front.
+        // This mirrors the Log-sheet behavior, but only refocuses when the user is
+        // actively interacting with the Milestone sheet (so we don't steal focus).
+        if (item?.type === "milestone") {
+          const sheet = item?.sheet;
+          const isOpen = sheet?.rendered === true || sheet?._state > 0;
+          if (isOpen) {
+            const refocus = () => {
+              try {
+                const activeEl =
+                  typeof document === "undefined"
+                    ? null
+                    : document.activeElement;
+
+                const el = sheet?.element ?? sheet?._element ?? null;
+                const rootEl =
+                  el instanceof HTMLElement
+                    ? el
+                    : Array.isArray(el) && el[0] instanceof HTMLElement
+                    ? el[0]
+                    : el?.[0] instanceof HTMLElement
+                    ? el[0]
+                    : typeof el?.get === "function" &&
+                      el.get(0) instanceof HTMLElement
+                    ? el.get(0)
+                    : null;
+
+                if (
+                  !(
+                    activeEl instanceof HTMLElement &&
+                    rootEl instanceof HTMLElement &&
+                    rootEl.contains(activeEl)
+                  )
+                ) {
+                  return;
+                }
+
+                if (typeof sheet.bringToFront === "function")
+                  sheet.bringToFront();
+                else if (typeof sheet.bringToTop === "function")
+                  sheet.bringToTop();
+              } catch (_) {
+                // ignore
+              }
+            };
+
+            setTimeout(refocus, 25);
+            setTimeout(refocus, 125);
+          }
+        }
+
         // If a Log item is being edited in its own sheet, keep that sheet in front.
         // Some sheet rerenders (including the character sheet) can steal focus.
         if (item?.type === "log") {
+          const actor = item?.parent ?? null;
           const sheet = item?.sheet;
           const isOpen = sheet?.rendered === true || sheet?._state > 0;
           if (isOpen) {
             // Defer to allow any actor/character-sheet rerenders to finish first.
-            setTimeout(() => {
+            // Do a second attempt a bit later in case another window is raised.
+            const refocus = () => {
               try {
+                // Only refocus if the user is actively interacting with THIS Log sheet.
+                // Otherwise this can steal focus from other item sheets (e.g. Milestones)
+                // when log sorting updates occur.
+                const activeEl =
+                  typeof document === "undefined"
+                    ? null
+                    : document.activeElement;
+
+                const el = sheet?.element ?? sheet?._element ?? null;
+                const rootEl =
+                  el instanceof HTMLElement
+                    ? el
+                    : Array.isArray(el) && el[0] instanceof HTMLElement
+                    ? el[0]
+                    : el?.[0] instanceof HTMLElement
+                    ? el[0]
+                    : typeof el?.get === "function" &&
+                      el.get(0) instanceof HTMLElement
+                    ? el.get(0)
+                    : null;
+
+                if (
+                  !(
+                    activeEl instanceof HTMLElement &&
+                    rootEl instanceof HTMLElement &&
+                    rootEl.contains(activeEl)
+                  )
+                ) {
+                  return;
+                }
+
                 // Foundry v12+: bringToTop was renamed to bringToFront.
-                sheet.bringToFront?.();
+                // Calling bringToTop in v13 triggers a deprecation warning, so only
+                // use it as a fallback for older versions.
+                if (typeof sheet.bringToFront === "function")
+                  sheet.bringToFront();
+                else if (typeof sheet.bringToTop === "function")
+                  sheet.bringToTop();
               } catch (_) {
                 // ignore
               }
-            }, 25);
+            };
+            setTimeout(refocus, 25);
+            setTimeout(refocus, 125);
           }
+
+          // If the Log's chain-related data changed, refresh open character sheets
+          // (without stealing focus) AFTER the save/update is complete.
+          const hasChainFlagChange = (() => {
+            try {
+              const base = `flags.${MODULE_ID}.`;
+              return (
+                foundry.utils.getProperty(changes, `${base}callbackLink`) !==
+                  undefined ||
+                foundry.utils.getProperty(
+                  changes,
+                  `${base}callbackLink.fromLogId`
+                ) !== undefined ||
+                foundry.utils.getProperty(
+                  changes,
+                  `${base}callbackLink.valueId`
+                ) !== undefined ||
+                foundry.utils.getProperty(changes, `${base}primaryValueId`) !==
+                  undefined ||
+                foundry.utils.getProperty(changes, `${base}arcInfo`) !==
+                  undefined ||
+                foundry.utils.getProperty(
+                  changes,
+                  `${base}callbackLinkDisabled`
+                ) !== undefined
+              );
+            } catch (_) {
+              return false;
+            }
+          })();
+
+          if (actor?.type === "character" && actor?.id && hasChainFlagChange) {
+            // Normalize flags for consistent chain behavior.
+            const logId = item?.id ? String(item.id) : "";
+            if (logId && !_staNormalizingLogIds.has(logId)) {
+              _staNormalizingLogIds.add(logId);
+              void (async () => {
+                try {
+                  const primaryValueId = String(
+                    item.getFlag?.(MODULE_ID, "primaryValueId") ?? ""
+                  );
+                  const link =
+                    item.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+                  const fromLogId = String(link?.fromLogId ?? "");
+                  const linkValueId = String(link?.valueId ?? "");
+
+                  const update = {};
+
+                  const callbackLinkTouched = (() => {
+                    try {
+                      const base = `flags.${MODULE_ID}.`;
+                      return (
+                        foundry.utils.getProperty(
+                          changes,
+                          `${base}callbackLink`
+                        ) !== undefined ||
+                        foundry.utils.getProperty(
+                          changes,
+                          `${base}callbackLink.fromLogId`
+                        ) !== undefined ||
+                        foundry.utils.getProperty(
+                          changes,
+                          `${base}callbackLink.valueId`
+                        ) !== undefined
+                      );
+                    } catch (_) {
+                      return false;
+                    }
+                  })();
+
+                  const primaryValueTouched = (() => {
+                    try {
+                      return (
+                        foundry.utils.getProperty(
+                          changes,
+                          `flags.${MODULE_ID}.primaryValueId`
+                        ) !== undefined
+                      );
+                    } catch (_) {
+                      return false;
+                    }
+                  })();
+
+                  const arcInfoTouched = (() => {
+                    try {
+                      const base = `flags.${MODULE_ID}.`;
+                      return (
+                        foundry.utils.getProperty(changes, `${base}arcInfo`) !==
+                          undefined ||
+                        foundry.utils.getProperty(
+                          changes,
+                          `${base}arcInfo.isArc`
+                        ) !== undefined ||
+                        foundry.utils.getProperty(
+                          changes,
+                          `${base}arcInfo.steps`
+                        ) !== undefined ||
+                        foundry.utils.getProperty(
+                          changes,
+                          `${base}arcInfo.valueId`
+                        ) !== undefined
+                      );
+                    } catch (_) {
+                      return false;
+                    }
+                  })();
+
+                  // Only treat callbackLinkDisabled as an explicit override when the user actually
+                  // edited the callbackLink field.
+                  if (callbackLinkTouched) {
+                    if (!fromLogId) {
+                      // User selected "No link". Clear callbackLink and mark as explicitly disabled
+                      // so milestone-derived links don't reassert it.
+                      update[`flags.${MODULE_ID}.callbackLink`] = null;
+                      update[`flags.${MODULE_ID}.callbackLinkDisabled`] = true;
+                    } else {
+                      // User selected a real callback link.
+                      update[`flags.${MODULE_ID}.callbackLinkDisabled`] = null;
+                      // Keep callbackLink.valueId aligned with Primary Value.
+                      if (primaryValueId && linkValueId !== primaryValueId) {
+                        update[`flags.${MODULE_ID}.callbackLink.valueId`] =
+                          primaryValueId;
+                      }
+                    }
+                  }
+
+                  // Sync log icon to Primary Value (or default) after save.
+                  if (primaryValueTouched) {
+                    try {
+                      const valueItem = primaryValueId
+                        ? actor.items.get(primaryValueId)
+                        : null;
+                      const desiredImg =
+                        valueItem?.type === "value" && valueItem?.img
+                          ? String(valueItem.img)
+                          : STA_DEFAULT_ICON;
+                      if (
+                        desiredImg &&
+                        String(item.img ?? "") !== String(desiredImg)
+                      ) {
+                        update.img = desiredImg;
+                      }
+                    } catch (_) {
+                      // ignore
+                    }
+                  }
+
+                  // Normalize arc completion metadata (chainLogIds) after save.
+                  if (arcInfoTouched) {
+                    try {
+                      const arcInfo =
+                        item.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+                      const isArc = arcInfo?.isArc === true;
+
+                      if (!isArc) {
+                        // If the sheet wrote an arcInfo object with isArc=false, clear it out.
+                        update[`flags.${MODULE_ID}.arcInfo`] = null;
+                      } else {
+                        const rawSteps = Number(arcInfo?.steps ?? 0);
+                        const steps =
+                          Number.isFinite(rawSteps) && rawSteps > 0
+                            ? Math.floor(rawSteps)
+                            : 1;
+
+                        const arcValueId = String(
+                          arcInfo?.valueId ??
+                            primaryValueId ??
+                            linkValueId ??
+                            ""
+                        );
+
+                        if (!arcValueId) {
+                          // Invalid arc state: drop arc completion.
+                          update[`flags.${MODULE_ID}.arcInfo`] = null;
+                        } else {
+                          // Disallow reusing nodes already consumed by OTHER arcs.
+                          const disallowNodeIds = new Set();
+                          try {
+                            const actorLogs = Array.from(
+                              actor.items ?? []
+                            ).filter((i) => i?.type === "log");
+                            for (const other of actorLogs) {
+                              if (String(other.id) === String(item.id))
+                                continue;
+                              const otherArc =
+                                other.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+                              if (otherArc?.isArc !== true) continue;
+                              const otherChain = Array.isArray(
+                                otherArc.chainLogIds
+                              )
+                                ? otherArc.chainLogIds
+                                : [];
+                              for (const id of otherChain) {
+                                if (id) disallowNodeIds.add(String(id));
+                              }
+                            }
+                          } catch (_) {
+                            // ignore
+                          }
+
+                          let chainLogIds = [];
+                          try {
+                            const { incoming } = getCallbackLogEdgesForValue(
+                              actor,
+                              arcValueId
+                            );
+                            const computed = computeBestChainEndingAt({
+                              incoming,
+                              endLogId: String(item.id),
+                              disallowNodeIds,
+                            });
+                            const full = Array.isArray(computed?.chainLogIds)
+                              ? computed.chainLogIds
+                                  .map((x) => String(x))
+                                  .filter(Boolean)
+                              : [];
+                            chainLogIds =
+                              full.length > steps ? full.slice(-steps) : full;
+                          } catch (_) {
+                            chainLogIds = [];
+                          }
+
+                          update[`flags.${MODULE_ID}.arcInfo`] = {
+                            ...(arcInfo && typeof arcInfo === "object"
+                              ? arcInfo
+                              : {}),
+                            isArc: true,
+                            steps,
+                            valueId: arcValueId,
+                            chainLogIds,
+                            // Persisted, user-editable arc title. Do NOT derive it from the
+                            // Value name so renaming a Value doesn't rename arcs.
+                            arcLabel:
+                              arcInfo && typeof arcInfo === "object"
+                                ? String(arcInfo.arcLabel ?? "")
+                                : "",
+                          };
+                        }
+                      }
+                    } catch (_) {
+                      // ignore
+                    }
+                  }
+
+                  if (Object.keys(update).length) {
+                    await item.update(update, { renderSheet: false });
+                  }
+                } catch (_) {
+                  // ignore
+                } finally {
+                  // Clear guard on next tick so other legitimate updates still work.
+                  setTimeout(() => _staNormalizingLogIds.delete(logId), 0);
+                }
+              })();
+            }
+
+            // Refresh character sheet sorting/indentation without focus stealing.
+            setTimeout(() => {
+              try {
+                refreshMissionLogSortingForActorId(actor.id);
+              } catch (_) {
+                // ignore
+              }
+            }, 0);
+          }
+
           return;
         }
 
@@ -366,7 +748,9 @@ export function installRenderApplicationV2Hook() {
 
         void syncCallbackLinksFromMilestone(actor, item);
 
-        refreshOpenSheet(actor.id);
+        // Avoid full character-sheet rerenders (they flash/steal focus). We only
+        // need to refresh the log ordering/arc wrappers.
+        refreshMissionLogSortingForActorId(actor.id);
       } catch (_) {
         // ignore
       }
@@ -415,7 +799,7 @@ export function installRenderApplicationV2Hook() {
         }
 
         // Log item sheet UX: show Name + Description first, collapse the rest.
-        installLogMetaCollapsible(root);
+        installLogMetaCollapsible(root, item);
       }
     } catch (_) {
       // ignore
@@ -767,13 +1151,8 @@ export function installRenderApplicationV2Hook() {
             );
           }
         } catch (err) {
-          console.error(
-            "sta-officers-log | Use Value approval failed",
-            err
-          );
-          ui.notifications?.error(
-            t("sta-officers-log.dialog.useValue.error")
-          );
+          console.error("sta-officers-log | Use Value approval failed", err);
+          ui.notifications?.error(t("sta-officers-log.dialog.useValue.error"));
         }
 
         app.render();
@@ -874,9 +1253,7 @@ export function installRenderApplicationV2Hook() {
 
             if (!chosenLogId || !valueId) {
               ui.notifications?.warn(
-                t(
-                  "sta-officers-log.dialog.chooseMilestoneBenefit.missingData"
-                )
+                t("sta-officers-log.dialog.chooseMilestoneBenefit.missingData")
               );
               return;
             }
@@ -946,9 +1323,7 @@ export function installRenderApplicationV2Hook() {
 
             if (!milestone) {
               ui.notifications?.error(
-                t(
-                  "sta-officers-log.dialog.chooseMilestoneBenefit.createFailed"
-                )
+                t("sta-officers-log.dialog.chooseMilestoneBenefit.createFailed")
               );
               return;
             }

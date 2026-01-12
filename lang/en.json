@@ -37,6 +37,9 @@
       "labelValues": "Label Values",
       "labelValuesTooltip": "Changes the icons of your Value items to indicate their order."
     },
+    "sceneControls": {
+      "title": "STA"
+    },
     "notifications": {
       "noValues": "No Value items found on this character.",
       "labeledValues": "Labeled {count} Value icon(s) on {actor}.",
@@ -50,7 +53,7 @@
       "allStressReset": "All Stress reset.",
       "allShipReadinessReset": "All ship shields/reserve power reset.",
       "momentumNotFound": "Could not find an STA Momentum setting to decrement.",
-      "newSceneDone": "New scene: Momentum -1; notable/major NPC stress refreshed.",
+      "newSceneDone": "New scene: Momentum -1. NPC Personal Threat refreshed.",
       "callbacksReset": "Callback usage reset for a new mission."
     },
     "values": {
@@ -64,6 +67,9 @@
       "chooseMilestoneTooltip": "Choose a milestone benefit.",
       "chooseArc": "Choose Arc",
       "chooseArcTooltip": "Choose an Arc benefit."
+    },
+    "logSheet": {
+      "arcComplete": "Arc Complete"
     },
     "dialog": {
       "useValueTest": {

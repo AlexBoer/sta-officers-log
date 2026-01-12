@@ -108,6 +108,20 @@
   opacity: 0.85;
 }
 
+.sta-callbacks-arc-title .sta-arc-title-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 22px;
+  opacity: 0.75;
+  cursor: pointer;
+}
+
+.sta-callbacks-arc-title .sta-arc-title-edit:hover {
+  opacity: 1;
+}
+
 /* Confirm-delete replacement should behave like the native delete control */
 .sta-confirm-delete {
   color: inherit;
@@ -446,6 +460,70 @@ div.section.milestones li.row.entry a.value-used.control.toggle {
   width: 100%;
 }
 
+/* Log sheet: Arc controls horizontal layout */
+.sta-officers-log .item-sheet .sta-log-link-controls .sta-arc-fields {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: nowrap;
+}
+
+/* Fallback selectors: some sheet wrappers may not include .sta-officers-log */
+.item-sheet .sta-log-link-controls .sta-arc-fields,
+.sta-log-link-controls .sta-arc-fields {
+  display: flex !important;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: nowrap;
+}
+
+.item-sheet .sta-log-link-controls .sta-arc-fields > label,
+.sta-log-link-controls .sta-arc-fields > label {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.sta-officers-log .item-sheet .sta-log-link-controls .sta-arc-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.item-sheet .sta-log-link-controls .sta-arc-toggle,
+.sta-log-link-controls .sta-arc-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.sta-officers-log .item-sheet .sta-log-link-controls .sta-arc-steps {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.item-sheet .sta-log-link-controls .sta-arc-steps,
+.sta-log-link-controls .sta-arc-steps {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.sta-officers-log .item-sheet .sta-log-link-controls .sta-arc-steps input {
+  width: 56px;
+}
+
+.sta-officers-log .item-sheet .sta-log-link-controls .sta-arc-label {
+  opacity: 0.85;
+}
+
 .sta-officers-log.focus-picker .sta-focus-picker-entry {
   /* Ensure the preview control sits beside the talent button */
   display: flex;
@@ -685,21 +763,6 @@ div.section.milestones li.row.entry .sta-arc-collapse-btn {
 
 div.section.milestones li.row.entry .sta-arc-collapse-btn:hover {
   opacity: 1;
-}
-
-div.section.milestones li.row.entry .sta-arc-collapse-label {
-  font-size: var(--font-size-12);
-  opacity: 0.85;
-  display: inline-block;
-  vertical-align: bottom;
-}
-
-/* Expanded: constrain/ellipsize so it doesn't collide with the log name */
-.sta-callbacks-arc-group:not(.is-collapsed) li.row.entry .sta-arc-collapse-label {
-  max-width: 30ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Collapsed: show the full label in the title row */
