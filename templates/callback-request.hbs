@@ -1,0 +1,75 @@
+<form class="sta-callbacks-form">
+  {{{bodyHtml}}}
+
+  <hr>
+
+  <div class="form-group">
+  <label>{{localize "sta-officers-log.callback.valueLabel"}}</label>
+  <select name="valueId">
+    <option value="">{{localize "sta-officers-log.callback.valuePlaceholder"}}</option>
+    {{#each values}}
+      <option value="{{this.id}}"{{#if this.selected}} selected{{/if}}{{#if this.disabled}} disabled{{/if}}>{{this.name}}</option>
+    {{/each}}
+  </select>
+</div>
+
+<div class="form-group">
+  <label>{{localize "sta-officers-log.callback.usageLabel"}}</label>
+  <div class="form-fields">
+    <label class="radio">
+      <input type="radio" name="valueState" value="positive" {{checked isPositiveDefault}}>
+      {{localize "sta-officers-log.callback.usage.positive"}}
+    </label>
+    <label class="radio">
+      <input type="radio" name="valueState" value="negative" {{checked isNegativeDefault}}>
+      {{localize "sta-officers-log.callback.usage.negative"}}
+    </label>
+    <label class="radio">
+      <input type="radio" name="valueState" value="challenged" {{checked isChallengedDefault}}>
+      {{localize "sta-officers-log.callback.usage.challenged"}}
+    </label>
+  </div>
+</div>
+
+
+  <div class="form-group">
+    <label>{{localize "sta-officers-log.callback.logLabel"}}</label>
+    <select name="logId" {{#unless hasLogs}}disabled{{/unless}}>
+      {{#if hasLogs}}
+        {{#each logs}}
+          <option value="{{this.id}}">{{{this.name}}}</option>
+        {{/each}}
+      {{else}}
+        <option value="">{{localize "sta-officers-log.callback.noUnusedLogsOption"}}</option>
+      {{/if}}
+    </select>
+
+    <p class="hint" data-callback-log-hint style="display:none">{{localize "sta-officers-log.callback.noMatchHint"}}</p>
+
+    {{#unless hasLogs}}
+      <p class="hint">{{localize "sta-officers-log.callback.noUnusedHint"}}</p>
+    {{/unless}}
+  </div>
+
+  <div class="form-group">
+    <ul class="sta-callbacks-invoked" data-hook="invokedList"></ul>
+  </div>
+
+<footer class="dialog-buttons sta-callbacks-buttons">
+  <button type="button"
+          class="dialog-button default"
+          data-action="yes"
+          {{#unless hasLogs}}disabled{{/unless}}>
+    <i class="fa-solid fa-check"></i>
+    {{localize "sta-officers-log.callback.make"}}
+  </button>
+
+  <button type="button"
+          class="dialog-button"
+          data-action="no">
+    {{localize "sta-officers-log.callback.skip"}}
+  </button>
+</footer>
+
+</form>
+

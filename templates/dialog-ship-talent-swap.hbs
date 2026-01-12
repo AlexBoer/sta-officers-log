@@ -1,0 +1,83 @@
+<form class="sta-ship-talent-swap" autocomplete="off">
+  <div data-sta-callbacks-dialog="choose-benefit"></div>
+
+  <div class="sta-ship-talent-swap-columns">
+    <section class="sta-ship-talent-swap-column">
+      <div class="sta-ship-talent-swap-column-header">
+        <h3>{{leftTitle}}</h3>
+        <p>{{removeHint}}</p>
+      </div>
+      <ol class="sta-ship-talent-swap-list">
+        {{#each shipTalents}}
+          <li>
+            <button
+              type="button"
+              class="sta-ship-talent-swap-item"
+              data-action="select-ship-talent"
+              data-ship-talent-id="{{id}}"
+              data-ship-talent-name="{{name}}"
+            >
+              <div class="sta-ship-talent-swap-item-main">
+                {{#if img}}
+                  <img src="{{img}}" alt="{{name}}" />
+                {{/if}}
+                <span>{{name}}</span>
+              </div>
+              <span class="sta-ship-talent-swap-item-type">{{typeLabel}}</span>
+            </button>
+          </li>
+        {{/each}}
+      </ol>
+    </section>
+
+    <section class="sta-ship-talent-swap-column sta-ship-talent-swap-picker">
+      <div class="sta-ship-talent-swap-column-header">
+        <h3>{{rightTitle}}</h3>
+        <p>{{addHint}}</p>
+      </div>
+      <div class="sta-ship-talent-custom">
+        <label for="sta-ship-talent-custom-input">
+          {{customLabel}}
+        </label>
+        <div class="sta-ship-talent-custom-controls">
+          <input
+            id="sta-ship-talent-custom-input"
+            name="customTalentName"
+            type="text"
+            placeholder="{{customPlaceholder}}"
+            autocomplete="off"
+          />
+          <button
+            type="button"
+            class="dialog-button"
+            data-action="choose-custom"
+          >
+            {{customButtonLabel}}
+          </button>
+        </div>
+      </div>
+      <div class="sta-ship-talent-picker-wrap">
+        {{{talentPickerMarkup}}}
+      </div>
+    </section>
+  </div>
+
+  <div class="sta-ship-talent-swap-summary">
+    <div>
+      <strong>{{removeLabel}}</strong>
+      <span data-selected-existing>{{selectedExistingLabel}}</span>
+    </div>
+    <div>
+      <strong>{{addLabel}}</strong>
+      <span data-selected-new>{{selectedNewLabel}}</span>
+    </div>
+  </div>
+
+  <footer class="form-footer">
+    <button type="button" class="dialog-button" data-action="confirm" disabled>
+      {{confirmLabel}}
+    </button>
+    <button type="button" class="dialog-button" data-action="back">{{backLabel}}</button>
+    <button type="button" class="dialog-button" data-action="cancel">{{cancelLabel}}</button>
+  </footer>
+</form>

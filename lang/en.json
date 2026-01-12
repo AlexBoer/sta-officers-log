@@ -1,0 +1,252 @@
+{
+  "sta-officers-log": {
+    "common": {
+      "gmOnly": "GM only."
+    },
+    "settings": {
+      "enableSheetEnhancements": {
+        "name": "Enable STA Officers Log Sheet Enhancements",
+        "hint": "If disabled, this module will not modify the STA character sheet UI on this client (no added buttons, sorting, link controls, or delete confirmations)."
+      },
+      "manualCallbackLogUpdates": {
+        "name": "Manual Callback Log Updates",
+        "hint": "If enabled, when you make a callback the module will still grant Determination and record its internal callback links, but will NOT change visible Log fields (used/valueStates) or Log icons. You can update your Logs manually."
+      },
+      "groupShip": {
+        "name": "Group Ship",
+        "hint": "Choose a Starship actor to be treated as the party's Group Ship (stored for later automation).",
+        "none": "— None —"
+      },
+      "playerAmbientAudioSelectionOnly": {
+        "name": "Player Ambient Audio Uses Selected Tokens",
+        "hint": "If enabled, non-GM users only hear ambient audio near tokens they currently have selected/controlled (matching GM behavior). If disabled, Foundry's default behavior applies (players hear audio near all owned tokens)."
+      },
+      "talentPickerCustomCompendium": {
+        "name": "Talent Picker: Extra Compendium",
+        "hint": "GM only. Optional compendium pack id to include in the Talent picker (e.g. sta.talents-homebrew). Leave blank to disable."
+      },
+      "focusPickerCustomCompendium": {
+        "name": "Focus Picker: Extra Compendium",
+        "hint": "GM only. Optional compendium pack id to include in the Focus picker (e.g. sta.focuses-homebrew). Leave blank to disable."
+      }
+    },
+    "tools": {
+      "sendPrompt": "STA: Send Callback Prompt",
+      "resetMission": "STA: New Mission",
+      "newScene": "STA: New Scene",
+      "labelValues": "Label Values",
+      "labelValuesTooltip": "Changes the icons of your Value items to indicate their order."
+    },
+    "notifications": {
+      "noValues": "No Value items found on this character.",
+      "labeledValues": "Labeled {count} Value icon(s) on {actor}.",
+      "reiconedArtifacts": "Updated {count} log/milestone icon(s) on {actor}.",
+      "invalidUser": "Invalid user.",
+      "userNoCharacter": "{user} has no assigned character.",
+      "allPlayersAlreadyInMission": "All non-GM users are already in the mission.",
+      "addedToMission": "{user} added to mission.",
+      "addedToMissionLogCreated": "{user} added to mission (log created).",
+      "allDeterminationReset": "All Determination reset.",
+      "allStressReset": "All Stress reset.",
+      "allShipReadinessReset": "All ship shields/reserve power reset.",
+      "momentumNotFound": "Could not find an STA Momentum setting to decrement.",
+      "newSceneDone": "New scene: Momentum -1; notable/major NPC stress refreshed.",
+      "callbacksReset": "Callback usage reset for a new mission."
+    },
+    "values": {
+      "useValue": "Use Value",
+      "useValueTooltip": "Use this Value."
+    },
+    "milestones": {
+      "chooseBenefit": "Choose Benefit",
+      "chooseBenefitTooltip": "Choose a milestone benefit.",
+      "chooseMilestone": "Choose Milestone",
+      "chooseMilestoneTooltip": "Choose a milestone benefit.",
+      "chooseArc": "Choose Arc",
+      "chooseArcTooltip": "Choose an Arc benefit."
+    },
+    "dialog": {
+      "useValueTest": {
+        "title": "Use Value: {value}",
+        "ok": "OK"
+      },
+      "useValue": {
+        "title": "Use Value: {value}",
+        "prompt": "How are you using {value}?",
+        "choose": "Choose",
+        "positiveTitle": "Positively",
+        "positiveDesc": "<strong>Use it to help you succeed.</strong><ul><li>Before rolling for a free critical success</li><li>After rolling to reroll any dice.</li></ul>",
+        "negativeTitle": "Negatively",
+        "negativeDesc": "<strong>Use it against yourself.</strong><ul><li>+1 Determination</li><li>Cause a Complication</li></ul>",
+        "challengeTitle": "Challenged",
+        "challengeDesc": "<strong>Change who you are.</strong><ul><li>+1 Determination</li><li>Value becomes Challenged.</li> <li>Rewrite the value at the end of the mission to remove the Challenged status.</li></ul>",
+        "cancel": "Cancel",
+        "approved": "Approved.",
+        "denied": "Denied.",
+        "error": "Could not request GM approval.",
+        "gmTitle": "Approve Value Use",
+        "gmHint": "Approving grants +1 Determination.",
+        "gmApprove": "Approve",
+        "gmDeny": "Deny"
+      },
+      "chooseMilestoneBenefit": {
+        "title": "Choose Milestone Benefit",
+        "chooseType": "Choose a benefit:",
+        "arcChooseType": "Choose an Arc benefit:",
+        "increaseAttribute": "Increase an Attribute (+1)",
+        "increaseDiscipline": "Increase a Discipline (+1)",
+        "addFocus": "Add a Focus",
+        "addTalent": "Add a Talent",
+        "giveToSupportingCharacter": "Give the benefit to a Supporting Character (manual)",
+        "changeShipStats": "Change your Ship stats (manual)",
+        "arcIncreaseAttribute": "Increase an Attribute (+1, max 12)",
+        "arcIncreaseDiscipline": "Increase a Discipline (+1, max 5)",
+        "arcAddValue": "Add a new Value",
+        "arcIncreaseShipSystem": "Increase a Ship System (+1, manual)",
+        "arcIncreaseShipDepartment": "Increase a Ship Department (+1, manual)",
+        "arcAddShipTalent": "Add a new Ship Talent (manual)",
+        "pickAttribute": "Attribute",
+        "pickDiscipline": "Discipline",
+        "arcPickShipSystem": "Ship System",
+        "arcPickShipDepartment": "Ship Department",
+        "nameLabel": "Name",
+        "namePlaceholder": "Enter a name",
+        "arcValueNameLabel": "Value name",
+        "arcValueNamePlaceholder": "Enter the new Value",
+        "max": "max",
+        "used": "used",
+        "alreadyImproved": "That has already been improved by a milestone.",
+        "confirm": "Confirm",
+        "back": "Back",
+        "manualConfirmHint": "This module will not automate this choice. Click Confirm after you have applied it manually.",
+        "supportingCharacterHelp": "You may give this milestone benefit to a Supporting Character instead of your main character.",
+        "supportingCharacterHelpBullet1": "Apply one of the normal milestone benefits to a Supporting Character: +1 Attribute, +1 Discipline, add a Focus, or add a Talent.",
+        "supportingCharacterHelpBullet2": "Make the change on the Supporting Character sheet manually.",
+        "shipHelp": "You may refit your ship as a milestone benefit.",
+        "shipHelpBullet1": "Increase 1 Ship System or Department and decrease another (as allowed by your table rules).",
+        "shipHelpBullet2": "Or replace one Ship Talent with a new Ship Talent (as allowed by your table rules).",
+        "arcShipSystemHelp": "Increase the selected Ship System by +1 on the ship sheet. This can only be chosen once per system.",
+        "arcShipDepartmentHelp": "Increase the selected Ship Department by +1 on the ship sheet. This can only be chosen once per department.",
+        "arcShipTalentHelp": "Add a new Ship Talent on the ship sheet.",
+        "alreadyMax": "That is already at the maximum.",
+        "pathMissing": "Could not find that stat on this character sheet.",
+        "missingData": "Missing pending milestone data.",
+        "createFailed": "Failed to create milestone.",
+        "arcNotImplemented": "Arc milestone benefit selection is not implemented yet.",
+        "ok": "OK",
+        "cancel": "Cancel"
+      },
+      "focusPicker": {
+        "createCustom": "Create Custom Focus",
+        "search": "Search",
+        "searchPlaceholder": "Type to filter focuses…",
+        "none": "No focuses found.",
+        "found": "Found: {count}"
+      },
+      "talentPicker": {
+        "createCustom": "Create Custom Talent",
+        "search": "Search",
+        "searchPlaceholder": "Type to filter talents…",
+        "eligibleOnly": "Only show talents I qualify for",
+        "previewTitle": "Talent Details",
+        "previewClose": "Close",
+        "none": "No talents found.",
+        "found": "Found: {count}"
+      },
+      "shipTalentSwap": {
+        "title": "Replace a Ship Talent",
+        "leftTitle": "Current Ship Talents",
+        "rightTitle": "Choose a New Talent",
+        "removeHint": "Select one of your ship's talents to remove.",
+        "addHint": "Pick a replacement talent from the talent picker.",
+        "removeLabel": "Removing",
+        "addLabel": "Adding",
+        "notChosen": "Not chosen yet.",
+        "confirm": "Confirm Swap",
+        "back": "Back",
+        "cancel": "Cancel",
+        "needSelection": "Choose a talent to remove and a new talent to add before confirming.",
+        "shipTalentLabel": "Ship Talent",
+        "talentLabel": "Talent",
+        "customLabel": "Custom Talent",
+        "customPlaceholder": "Describe the custom talent",
+        "customButton": "Choose Custom Talent",
+        "customNameRequired": "Enter a custom talent name before selecting it."
+      },
+      "addPlayer": {
+        "title": "Add Player to Current Mission",
+        "playerLabel": "Player",
+        "hint": "Players marked “already in mission” cannot be selected.",
+        "alreadyInMission": "already in mission",
+        "createLog": "Create mission log for this player",
+        "ok": "Add",
+        "cancel": "Cancel"
+      },
+      "newMission": {
+        "title": "Start New Mission",
+        "missionTitle": "Mission Title",
+        "missionTitlePlaceholder": "e.g. Journey to Alpha Centauri",
+        "noAssignedCharacter": "no assigned character",
+        "resetOptions": "Reset Options",
+        "resetCallbacks": "Reset Callbacks for all players",
+        "resetDetermination": "Reset Determination for all characters",
+        "resetStress": "Reset Stress for all characters",
+        "resetShipStats": "Reset ship stats (Shields / Reserve Power / Shaken)",
+        "createLogs": "Create new mission logs for selected participants",
+        "createLogsHint": "If unchecked, no new logs will be created and existing mission-log links will be kept.",
+        "participants": "Participants",
+        "participantsHint": "Select which players are participating. A mission Log will be added to each selected player’s assigned character.",
+        "noUsersHint": "No non-GM users found.",
+        "ok": "Submit",
+        "cancel": "Abort"
+      },
+      "pickPlayer": {
+        "title": "Send callback popup to…",
+        "playerLabel": "Player",
+        "usedHint": "Players marked “already used” cannot make another callback this mission.",
+        "send": "Send",
+        "cancel": "Cancel"
+      }
+    },
+    "callback": {
+      "title": "Making a callback",
+      "valueLabel": "Which Value are you using?",
+      "valuePlaceholder": "— Select a Value —",
+      "usageLabel": "How was it used?",
+      "usage": {
+        "positive": "Positive",
+        "negative": "Negative",
+        "challenged": "Challenged"
+      },
+      "logLabel": "Choose a Character Log",
+      "noUnusedLogsOption": "(No unused logs found)",
+      "noMatchHint": "No unused Logs match that Value.",
+      "noUnusedHint": "You don’t have any unused logs to spend.",
+      "make": "Make a Callback",
+      "skip": "Skip",
+      "noInvokedValues": "No invoked values recorded in this log.",
+      "bodyHtml": "<p><strong>Do you want to make a callback?</strong></p>\n<details><summary>Click here to read about Callbacks</summary><ul>\n<li>You can make a <strong>Callback</strong> to a previous mission when you use the same value as one used that mission.</li>\n<li>When you make a callback, gain a determination now and earn a milestone at the end of the mission.</li>\n<li>Each Log can be called back to only once.</li>\n</ul>\n<p><i>You must choose a mission in which you used the same value as the one used just now. You can check the details in your character sheet under the <strong>Development</strong> tab.</i></p>\n</details>",
+      "rewardHtml": "<h5>You made a callback!</h5>\n<ul>\n<li>+1 Determination has been added to your character sheet.</li>\n<li>A new Milestone has been added to your character sheet. Make sure to edit it and choose a milestone bonus at the end of the mission!</li>\n</ul>",
+      "rewardHtmlManual": "<h5>You made a callback!</h5>\n<ul>\n<li>+1 Determination has been added to your character sheet.</li>\n<li><strong>Note:</strong> Your settings are configured for <em>manual</em> Log updates. This module saved its internal callback link info, but it did not change any visible Log fields (used/valueStates) or Log icons.</li>\n</ul>"
+    },
+    "warnings": {
+      "selectValueFirst": "Select a value first.",
+      "selectLogFirst": "Select a log first.",
+      "noActivePlayers": "No active non-GM players connected.",
+      "userNotConnected": "That user is not connected.",
+      "alreadyUsedThisMission": "{user} already made a callback this mission.",
+      "allActivePlayersUsed": "All active players have already made a callback this mission.",
+      "noEligibleLogs": "{user} has no eligible logs to callback to."
+    },
+    "confirmDelete": {
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "title": "Delete",
+      "body": "Are you sure you want to delete this item?"
+    },
+    "errors": {
+      "socketNotAvailable": "SocketLib socket not available. Is the module initialized on GM and player?",
+      "socketLibRequired": "STA Officers Log requires the SocketLib module. Please install and activate it."
+    }
+  }
+}

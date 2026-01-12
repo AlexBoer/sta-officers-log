@@ -1,0 +1,808 @@
+.sta-callbacks .sta-callbacks-loglist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 280px;
+  overflow: auto;
+  padding-right: 0.25rem;
+}
+
+.sta-callbacks details.sta-callbacks-log {
+  display: block;
+  width: 100%;
+  margin: 0;
+}
+
+.sta-callbacks details.sta-callbacks-log ul {
+  margin: 0.25rem 0 0 1.25rem;
+}
+
+/* Log item sheet: collapse metadata so Name/Description are first */
+.sta-callbacks-log-meta {
+  margin-top: 0.5rem;
+}
+
+.sta-callbacks-log-meta-summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.sta-callbacks-invoked {
+  max-height: 220px;
+  overflow: auto;
+  margin-top: 0.25rem;
+}
+
+/* Force the dialog-style button row layout inside your ApplicationV2 */
+.sta-officers-log .sta-callbacks-buttons.dialog-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  width: 100%;
+
+  /* Foundry often adds vertical margins/padding; keep it neat */
+  margin-top: 0.75rem;
+  padding: 0;
+}
+
+/* Completed Arc wrapper (boxes all arc log rows together) */
+.sta-callbacks-arc-group {
+    border: thin solid white;
+    border-radius: 8px;
+    margin: 0.3rem;
+    padding: 0.3rem;
+}
+
+/* Title row for a collapsed Arc group (shown when all logs are hidden) */
+.sta-callbacks-arc-title {
+  display: none;
+  margin: 0;
+}
+
+.sta-callbacks-arc-group > li.row.entry {
+  margin: 0;
+}
+
+/* Collapse hides all log rows and shows only the arc title row */
+.sta-callbacks-arc-group.is-collapsed > li.row.entry {
+  display: none;
+}
+
+.sta-callbacks-arc-group.is-collapsed > .sta-callbacks-arc-title {
+  display: flex;
+  align-items: center;
+}
+
+/* Match the collapse button styling used inside rows */
+.sta-callbacks-arc-title .sta-arc-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  height: 22px;
+  margin-right: 0.2rem;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+.sta-callbacks-arc-title .sta-arc-collapse-btn:hover {
+  opacity: 1;
+}
+
+.sta-callbacks-arc-title .sta-arc-collapse-label {
+  font-size: var(--font-size-12);
+  opacity: 0.85;
+}
+
+/* Confirm-delete replacement should behave like the native delete control */
+.sta-confirm-delete {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+/* Confirm-delete DialogV2: keep it compact */
+.sta-confirm-delete-dialog {
+  width: min(520px, 92vw);
+}
+
+.sta-confirm-delete-dialog p {
+  margin: 0.5em 0;
+}
+
+.sta-confirm-delete-dialog hr {
+  margin: 0.75em 0;
+}
+
+/* Make dialog buttons equal width and full height */
+.sta-officers-log .sta-callbacks-buttons .dialog-button,
+.sta-officers-log .sta-benefit-buttons .dialog-button {
+  flex: 1 1 0;
+  width: 0;              /* important: prevents one button from sizing to its text */
+  min-height: 36px;      /* matches Foundry-ish button height */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;          /* spacing between icon and text */
+}
+
+.sta-officers-log .sta-benefit-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+
+.sta-values-title-with-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sta-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sta-label-values-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.25rem;
+  cursor: pointer;
+}
+
+.sta-log-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.25rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sta-new-milestone-arc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.35rem;
+  cursor: pointer;
+}
+
+.sta-callbacks-callback-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 25px;
+}
+
+.sta-log-sort-btn[aria-disabled="true"] {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.sta-use-value-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.25rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sta-choose-milestone-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.25rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Keep injected text actions inside the STA sheet columns */
+div.section.values li.row.entry a.value-used.control.toggle,
+div.section.milestones li.row.entry a.value-used.control.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.sta-inline-sheet-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: fit-content;
+  max-width: none;
+  padding: 0.1rem 0.45rem;
+  border: thin solid white;
+  box-shadow: inset 0 0 0 1px var(--color-border-light-primary);
+  border-radius: 10px;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+.sta-inline-sheet-btn.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* New Milestone/Arc dialog: visually indicate a locked/disabled tab header */
+.sta-officers-log .sta-new-milestone-arc nav.tabs .item.disabled,
+.sta-officers-log .sta-new-milestone-arc nav.tabs .item[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Focus picker: searchable compendium list */
+.sta-officers-log.focus-picker .sta-focus-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-top-actions {
+  display: flex;
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-eligible {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--color-fg-muted);
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-eligible input {
+  width: auto;
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-top-actions .dialog-button {
+  width: 100%;
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--color-border-light-primary);
+  border-radius: 8px;
+  padding: 0.25rem;
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-group-img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-item {
+  margin: 0;
+  padding: 0;
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-choice.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+/* Mirror the focus-picker styles inside the ship talent swap dialog where we inject the picker markup */
+.sta-ship-talent-swap .sta-focus-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sta-ship-talent-swap .sta-focus-picker-top-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.sta-ship-talent-swap .sta-focus-picker-eligible {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--color-fg-muted);
+}
+
+.sta-ship-talent-swap .sta-focus-picker-eligible input {
+  width: auto;
+}
+
+.sta-ship-talent-swap .sta-focus-picker-top-actions .dialog-button {
+  width: 100%;
+}
+
+.sta-ship-talent-swap .sta-focus-picker-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--color-border-light-primary);
+  border-radius: 8px;
+  padding: 0.25rem;
+}
+
+.sta-ship-talent-swap .sta-focus-picker-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.sta-ship-talent-swap .sta-focus-picker-group-img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.sta-ship-talent-swap .sta-focus-picker-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sta-ship-talent-swap .sta-focus-picker-choice {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+
+.sta-ship-talent-swap .sta-focus-picker-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sta-ship-talent-swap .sta-focus-picker-img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.sta-ship-talent-swap .sta-focus-picker-preview {
+  border: none;
+  background: none;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.sta-ship-talent-swap .sta-focus-picker-preview:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+
+/* Log sheet: inline callback link controls */
+.sta-officers-log .item-sheet .sta-log-link-controls {
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  margin: 0.35rem 0 0.5rem 0;
+}
+
+.sta-officers-log .item-sheet .sta-log-link-controls select {
+  width: 100%;
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-entry {
+  /* Ensure the preview control sits beside the talent button */
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-choice {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-preview {
+  border: none;
+  background: none;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: var(--color-fg-muted);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.sta-officers-log.focus-picker .sta-focus-picker-preview:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sta-ship-talent-swap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sta-ship-talent-swap-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.sta-ship-talent-swap-column {
+  border-radius: 10px;
+  border: 1px solid var(--color-border-light-primary);
+  background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.08),
+      rgba(255, 255, 255, 0)
+    ),
+    var(--color-bg-main);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 360px;
+}
+
+.sta-ship-talent-swap-column-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sta-ship-talent-swap-column-header h3 {
+  margin: 0;
+  font-size: var(--font-size-16);
+}
+
+.sta-ship-talent-swap-column-header p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-fg-muted);
+}
+
+.sta-ship-talent-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.sta-ship-talent-custom label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+}
+
+.sta-ship-talent-custom-controls {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.sta-ship-talent-custom-controls input {
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-light-primary);
+  background: var(--color-bg-secondary);
+  color: inherit;
+}
+
+.sta-ship-talent-custom-controls button.is-selected {
+  background: rgba(221, 210, 135, 0.2);
+}
+
+.sta-ship-talent-swap-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.sta-ship-talent-swap-item {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  padding: 0.35rem 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+}
+
+.sta-ship-talent-swap-item:hover {
+  border-color: var(--color-border-light-primary);
+  transform: translateY(-1px);
+}
+
+.sta-ship-talent-swap-item.is-active {
+  border-color: transparent;
+  background: rgba(221, 210, 135, 0.15);
+  box-shadow: inset 0 0 0 1px rgba(221, 210, 135, 0.8);
+}
+
+.sta-ship-talent-swap-item-main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.sta-ship-talent-swap-item-main img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border-radius: 999px;
+}
+
+.sta-ship-talent-swap-item-type {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  white-space: nowrap;
+  color: var(--color-fg-muted);
+}
+
+.sta-ship-talent-swap-picker .sta-focus-picker {
+  flex: 1;
+  max-height: 100%;
+}
+
+.sta-ship-talent-swap-picker .sta-focus-picker-choice.is-selected {
+  border-color: transparent;
+  background: rgba(17, 138, 255, 0.15);
+  box-shadow: inset 0 0 0 1px rgba(17, 138, 255, 0.8);
+}
+
+.sta-ship-talent-swap-picker .sta-focus-picker .form-footer {
+  display: none;
+}
+
+.sta-ship-talent-swap-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.9rem;
+}
+
+.sta-ship-talent-swap-summary strong {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-fg-muted);
+  margin-bottom: 0.15rem;
+}
+
+/* Chain-sort: visually nest subsequent logs in a callback chain */
+.sta-callbacks-chain-child {
+  padding-left: 20px;
+}
+
+/* Chain-sort: completed Arc visualization (box + collapse)
+div.section.milestones li.row.entry.sta-callbacks-arc-start,
+div.section.milestones li.row.entry.sta-callbacks-arc-middle,
+div.section.milestones li.row.entry.sta-callbacks-arc-end {
+  border-left: 2px solid var(--color-border-light-primary);
+  border-right: 2px solid var(--color-border-light-primary);
+  background: var(--color-bg-option, transparent);
+  padding-left: 6px;
+} */
+
+div.section.milestones li.row.entry.sta-callbacks-arc-start {
+  border-top: 2px solid var(--color-border-light-primary);
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  margin-top: 0.25rem;
+}
+
+div.section.milestones li.row.entry.sta-callbacks-arc-end {
+  border-bottom: 2px solid var(--color-border-light-primary);
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  margin-bottom: 0.25rem;
+}
+
+div.section.milestones li.row.entry.sta-callbacks-arc-collapsed {
+  border-bottom: 2px solid var(--color-border-light-primary);
+  border-radius: 8px;
+}
+
+div.section.milestones li.row.entry .sta-arc-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  height: 22px;
+  margin-right: 0.2rem;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+div.section.milestones li.row.entry .sta-arc-collapse-btn:hover {
+  opacity: 1;
+}
+
+div.section.milestones li.row.entry .sta-arc-collapse-label {
+  font-size: var(--font-size-12);
+  opacity: 0.85;
+  display: inline-block;
+  vertical-align: bottom;
+}
+
+/* Expanded: constrain/ellipsize so it doesn't collide with the log name */
+.sta-callbacks-arc-group:not(.is-collapsed) li.row.entry .sta-arc-collapse-label {
+  max-width: 30ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Collapsed: show the full label in the title row */
+.sta-callbacks-arc-group.is-collapsed .sta-callbacks-arc-title .sta-arc-collapse-label {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+/* Prevent long log names from running under the Arc label / controls */
+div.section.milestones li.row.entry[data-item-type="log"] .item-name,
+div.section.milestones li.row.entry[data-item-type="log"] .item-name h4,
+div.section.milestones li.row.entry[data-item-type="log"] .item-name a {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Benefit selection dialogs: stack buttons vertically (DialogV2 / Foundry v13) */
+.window-app.choose-benefit .window-content footer.form-footer,
+.window-app.choose-benefit .window-content .form-footer,
+.choose-benefit footer.form-footer,
+.choose-benefit .form-footer {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 0.35rem !important;
+}
+
+.window-app.choose-benefit .window-content .dialog-button,
+.choose-benefit .dialog-button {
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+/* Robust fallback: when we inject our own footer wrapper */
+.sta-callbacks-vertical-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.sta-callbacks-vertical-footer .dialog-button {
+  width: 100%;
+}
+
+/* DialogV2 disabled buttons: make the disabled state obvious */
+.sta-officers-log .dialog-button:disabled,
+.sta-officers-log .dialog-button.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Use Value window: three option cards */
+.use-value .sta-use-value {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.use-value .sta-use-value-prompt {
+  margin: 0;
+}
+
+.use-value .sta-use-value-grid {
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.use-value .sta-use-value-card {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  border: 2px solid var(--color-border-light-primary);
+  border-radius: 8px;
+  padding: 0.75rem;
+  min-height: 240px;
+}
+
+.use-value .sta-use-value-card-title {
+  margin: 0;
+  text-align: center;
+}
+
+.use-value .sta-use-value-card-body {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.use-value .sta-use-value-card-desc {
+  font-size: var(--font-size-14);
+  line-height: 1.3;
+}
+
+.use-value .sta-use-value-footer {
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.use-value .sta-use-value-footer .dialog-button {
+  flex: 1 1 0;
+  width: 0;
+  font-size: var(--font-size-14);
+  line-height: 1.2;
+  color: var(--color-text-light-primary);
+}
+
+
+
+

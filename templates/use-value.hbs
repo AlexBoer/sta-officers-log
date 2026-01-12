@@ -1,0 +1,22 @@
+<div class="sta-use-value" data-sta-callbacks-use-value>
+
+  <div class="sta-use-value-grid">
+    {{#each options as |opt|}}
+      <section class="sta-use-value-card" data-action="{{opt.action}}">
+        <header class="sta-use-value-card-header">
+          <h3 class="sta-use-value-card-title">{{opt.title}}</h3>
+        </header>
+
+        <div class="sta-use-value-card-body">
+          <div class="sta-use-value-card-desc">{{{opt.description}}}</div>
+        </div>
+      </section>
+    {{/each}}
+  </div>
+
+  <footer class="form-footer sta-use-value-footer">
+    {{#each options as |opt|}}
+      <button type="button" class="dialog-button" data-action="{{opt.action}}" {{#if opt.disabled}}disabled aria-disabled="true"{{/if}}>{{#if opt.buttonLabel}}{{opt.buttonLabel}}{{else}}{{../chooseLabel}}{{/if}}</button>
+    {{/each}}
+  </footer>
+</div>

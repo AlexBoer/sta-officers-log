@@ -1,0 +1,65 @@
+<form class="sta-focus-picker" autocomplete="off">
+  <div data-sta-callbacks-dialog="choose-benefit"></div>
+
+  <div class="sta-focus-picker-top-actions">
+    <button
+      type="button"
+      class="dialog-button"
+      data-action="custom"
+    >{{createCustomLabel}}</button>
+  </div>
+
+  <div class="form-group">
+    <label>{{searchLabel}}</label>
+    <div class="form-fields">
+      <input
+        type="text"
+        name="q"
+        placeholder="{{searchPlaceholder}}"
+        autocomplete="off"
+      />
+    </div>
+    <p class="hint" data-hook="foundCount"></p>
+  </div>
+
+  {{#if groups.length}}
+    <div class="sta-focus-picker-groups">
+      {{#each groups}}
+        <section class="sta-focus-picker-group" data-group="{{key}}">
+          <div class="sta-focus-picker-group-header">
+            {{#if img}}
+              <img class="sta-focus-picker-group-img" src="{{img}}" alt="" />
+            {{/if}}
+            <span class="sta-focus-picker-group-name">{{label}}</span>
+          </div>
+
+          <ol class="sta-focus-picker-list">
+            {{#each items}}
+              <li class="sta-focus-picker-item" data-name="{{lcName}}">
+                <button
+                  type="button"
+                  class="sta-focus-picker-choice"
+                  data-action="choose"
+                  data-name="{{name}}"
+                  data-img="{{img}}"
+                  data-uuid="{{uuid}}"
+                >
+                  {{#if img}}
+                    <img class="sta-focus-picker-img" src="{{img}}" alt="" />
+                  {{/if}}
+                  <span class="sta-focus-picker-name">{{name}}</span>
+                </button>
+              </li>
+            {{/each}}
+          </ol>
+        </section>
+      {{/each}}
+    </div>
+  {{else}}
+    <p><em>{{emptyLabel}}</em></p>
+  {{/if}}
+
+  <footer class="form-footer">
+    <button type="button" class="dialog-button" data-action="cancel">Cancel</button>
+  </footer>
+</form>
