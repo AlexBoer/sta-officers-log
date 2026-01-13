@@ -1618,9 +1618,8 @@ export function installRenderApplicationV2Hook() {
           return {
             title: "Delete Log?",
             contentHtml: `
-              <p><strong>Deleting a log can break chain/arc links on this sheet.</strong></p>
-              <p>Logs are referenced by their internal ID. If you delete this log, that ID is gone permanently.</p>
-              <p>Dragging a log back later typically creates a <em>new</em> Item with a <em>new</em> ID, so existing chains/arcs may remain broken.</p>
+              <p><strong>Deleting a log can break arc chains</strong></p>
+              <p>You will need to recreate the chain manually by setting the correct callbacks.</p>
               <hr />
               <p>Delete <strong>${String(name)}</strong> anyway?</p>
             `.trim(),
