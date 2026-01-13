@@ -2,10 +2,7 @@ import { MODULE_ID } from "./constants.js";
 import { t } from "./i18n.js";
 
 export const CLIENT_SHEET_ENHANCEMENTS_SETTING = "enableSheetEnhancements";
-export const CLIENT_MANUAL_CALLBACK_LOG_UPDATES_SETTING =
-  "manualCallbackLogUpdates";
-
-export const USER_MANUAL_CALLBACK_LOG_UPDATES_FLAG = "manualCallbackLogUpdates";
+export const CLIENT_SHOW_LOG_USED_TOGGLE_SETTING = "showLogUsedToggle";
 
 export function registerClientSettings() {
   game.settings.register(MODULE_ID, CLIENT_SHEET_ENHANCEMENTS_SETTING, {
@@ -38,29 +35,29 @@ export function registerClientSettings() {
     },
   });
 
-  game.settings.register(
-    MODULE_ID,
-    CLIENT_MANUAL_CALLBACK_LOG_UPDATES_SETTING,
-    {
-      name: t("sta-officers-log.settings.manualCallbackLogUpdates.name"),
-      hint: t("sta-officers-log.settings.manualCallbackLogUpdates.hint"),
-      scope: "client",
-      config: true,
-      type: Boolean,
-      default: false,
-      onChange: async (value) => {
-        try {
-          await game.user?.setFlag?.(
-            MODULE_ID,
-            USER_MANUAL_CALLBACK_LOG_UPDATES_FLAG,
-            Boolean(value)
-          );
-        } catch (_) {
-          // ignore
+  game.settings.register(MODULE_ID, CLIENT_SHOW_LOG_USED_TOGGLE_SETTING, {
+    name: t("sta-officers-log.settings.showLogUsedToggle.name"),
+    hint: t("sta-officers-log.settings.showLogUsedToggle.hint"),
+    scope: "client",
+    config: true,
+    type: Boolean,
+    default: false,
+    onChange: () => {
+      try {
+        // Force existing STA character sheets to redraw so the CSS toggle applies immediately.
+        for (const app of Object.values(ui?.windows ?? {})) {
+          try {
+            if (app?.id?.startsWith?.("STACharacterSheet2e"))
+              app.render?.(true);
+          } catch (_) {
+            // ignore
+          }
         }
-      },
-    }
-  );
+      } catch (_) {
+        // ignore
+      }
+    },
+  });
 }
 
 /**
@@ -77,16 +74,10 @@ export function areSheetEnhancementsEnabled() {
   }
 }
 
-/**
- * True if the given user's preference is to handle callback log changes manually.
- * This is stored as a User flag so the GM can read it.
- */
-export function isUserManualCallbackLogUpdatesEnabled(userId) {
+export function shouldShowLogUsedToggle() {
   try {
-    const id = userId ? String(userId) : "";
-    const user = id ? game.users?.get?.(id) : game.user;
-    return (
-      user?.getFlag?.(MODULE_ID, USER_MANUAL_CALLBACK_LOG_UPDATES_FLAG) === true
+    return Boolean(
+      game.settings.get(MODULE_ID, CLIENT_SHOW_LOG_USED_TOGGLE_SETTING)
     );
   } catch (_) {
     return false;

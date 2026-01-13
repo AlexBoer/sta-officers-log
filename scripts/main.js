@@ -30,7 +30,6 @@ import {
 import {
   installCreateChatMessageHook,
   installRenderApplicationV2Hook,
-  installSceneControlButtonsHook,
 } from "./sheetHooks.js";
 import { registerClientSettings } from "./clientSettings.js";
 
@@ -69,11 +68,6 @@ function safeInstallUiHooks() {
     installRenderApplicationV2Hook();
   } catch (err) {
     console.error(`${MODULE_ID} | failed to install render hook`, err);
-  }
-  try {
-    installSceneControlButtonsHook();
-  } catch (err) {
-    console.error(`${MODULE_ID} | failed to install scene controls hook`, err);
   }
 }
 
@@ -122,12 +116,8 @@ function safeRegisterClientSettings() {
 function safeRegisterAmbientAudioSettings() {
   try {
     game.settings.register(MODULE_ID, AMBIENT_AUDIO_SELECTION_ONLY_SETTING, {
-      name: t(
-        "sta-officers-log.settings.playerAmbientAudioSelectionOnly.name"
-      ),
-      hint: t(
-        "sta-officers-log.settings.playerAmbientAudioSelectionOnly.hint"
-      ),
+      name: t("sta-officers-log.settings.playerAmbientAudioSelectionOnly.name"),
+      hint: t("sta-officers-log.settings.playerAmbientAudioSelectionOnly.hint"),
       scope: "world",
       config: true,
       type: Boolean,

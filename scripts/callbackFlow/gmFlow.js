@@ -8,7 +8,6 @@ import {
   isLogUsed,
   setUsedCallbackThisMission,
 } from "../mission.js";
-import { isUserManualCallbackLogUpdatesEnabled } from "../clientSettings.js";
 import { isValueChallenged } from "../valueChallenged.js";
 import {
   escapeHTML,
@@ -49,7 +48,9 @@ function buildValuesPayload(actor) {
 
   return values.map((v) => ({
     id: v.id,
-    name: escapeHTML(v.name ?? ""),
+    // NOTE: the callback-request template uses normal Handlebars escaping for this field.
+    // Do not pre-escape here or it will render as "&amp;" etc.
+    name: v.name ?? "",
     disabled: isValueChallenged(v),
   }));
 }
@@ -85,8 +86,28 @@ async function orchestrateCallbackPrompt({
 
   const missionLogId = getMissionLogByUser()?.[targetUser.id] ?? null;
 
+  // Derive "already-targeted" logs from the actual callbackLink graph so we
+  // don't rely on system.used / flags being perfectly up-to-date.
+  const callbackTargetIds = new Set();
+  try {
+    for (const log of actor.items ?? []) {
+      if (log?.type !== "log") continue;
+      if (log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true) continue;
+
+      const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
+      const fromLogId = String(link?.fromLogId ?? "");
+      if (fromLogId) callbackTargetIds.add(fromLogId);
+    }
+  } catch (_) {
+    // ignore
+  }
+
   const unusedLogs = actor.items.filter(
-    (i) => i.type === "log" && !isLogUsed(i) && i.id !== missionLogId
+    (i) =>
+      i.type === "log" &&
+      !isLogUsed(i) &&
+      i.id !== missionLogId &&
+      !callbackTargetIds.has(String(i.id))
   );
 
   if (!unusedLogs.length) {
@@ -121,11 +142,7 @@ async function orchestrateCallbackPrompt({
   `;
 
   const rewardHtml = `
-    ${
-      isUserManualCallbackLogUpdatesEnabled(targetUser.id)
-        ? t("sta-officers-log.callback.rewardHtmlManual")
-        : t("sta-officers-log.callback.rewardHtml")
-    }
+    ${t("sta-officers-log.callback.rewardHtml")}
   `;
 
   const requestId = foundry.utils.randomID();
@@ -212,6 +229,41 @@ async function orchestrateCallbackPrompt({
     return;
   }
 
+  const currentId = getCurrentMissionLogIdForUser(targetUser.id);
+  const currentLog = currentId ? actorDoc.items.get(currentId) : null;
+
+  // Final gate: re-check whether chosenLog is already a callback target.
+  // This catches race/stale prompt cases where another update occurs after the
+  // prompt is shown but before the user clicks "Yes".
+  try {
+    const chosenId = String(chosenLog?.id ?? "");
+    const incomingChildren = Array.from(actorDoc.items ?? []).filter((it) => {
+      if (it?.type !== "log") return false;
+      if (it.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true)
+        return false;
+      const link = it.getFlag?.(MODULE_ID, "callbackLink") ?? {};
+      return String(link?.fromLogId ?? "") === chosenId;
+    });
+
+    const allowed =
+      incomingChildren.length === 0 ||
+      (incomingChildren.length === 1 &&
+        currentLog?.id &&
+        String(incomingChildren[0]?.id ?? "") === String(currentLog.id));
+
+    if (!allowed) {
+      ui.notifications?.warn?.(
+        "Callback rejected: that log is already a callback target. Choose another log."
+      );
+      return;
+    }
+  } catch (_) {
+    ui.notifications?.warn?.(
+      "Callback rejected: unable to validate callback target uniqueness."
+    );
+    return;
+  }
+
   try {
     const completedArcEndLogIds2 = getCompletedArcEndLogIds(actorDoc);
     const isArcEnd = completedArcEndLogIds2.has(String(chosenLog.id));
@@ -245,11 +297,6 @@ async function orchestrateCallbackPrompt({
   if (!["positive", "negative", "challenged"].includes(valueState)) return;
 
   const valueImg = chosenValue?.img ? String(chosenValue.img) : "";
-
-  const manualLogUpdates = isUserManualCallbackLogUpdatesEnabled(targetUser.id);
-
-  const currentId = getCurrentMissionLogIdForUser(targetUser.id);
-  const currentLog = currentId ? actorDoc.items.get(currentId) : null;
 
   await _gainDetermination(actorDoc);
   await setUsedCallbackThisMission(targetUser.id, true);
@@ -295,22 +342,15 @@ async function orchestrateCallbackPrompt({
     });
   }
 
-  if (manualLogUpdates) {
-    await Promise.allSettled([
-      persistInternalCurrentLogFlags(),
-      chosenLog.setFlag?.(MODULE_ID, "logUsed", true),
-    ]);
-  } else {
-    await markLogUsed(chosenLog);
+  await markLogUsed(chosenLog);
 
-    if (currentLog) {
-      await currentLog.update({
-        [`system.valueStates.${valueId}`]: valueState,
-      });
-    }
-
-    await persistInternalCurrentLogFlags();
+  if (currentLog) {
+    await currentLog.update({
+      [`system.valueStates.${valueId}`]: valueState,
+    });
   }
+
+  await persistInternalCurrentLogFlags();
 
   try {
     const existingPrimary = String(
@@ -323,9 +363,19 @@ async function orchestrateCallbackPrompt({
     // ignore
   }
 
-  if (!manualLogUpdates && valueImg) {
+  if (valueImg) {
     const updates = [];
-    updates.push(chosenLog.update({ img: valueImg }));
+    // Do not overwrite the icon of an arc-ending log.
+    // Arc-ending logs are stable “chapter markers” and should keep their icon,
+    // even if a later callback uses a different value.
+    try {
+      const arcInfo = chosenLog.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+      const isArcEnd = arcInfo?.isArc === true;
+      if (!isArcEnd) updates.push(chosenLog.update({ img: valueImg }));
+    } catch (_) {
+      // If flag access fails, fall back to previous behavior.
+      updates.push(chosenLog.update({ img: valueImg }));
+    }
     if (currentLog) updates.push(currentLog.update({ img: valueImg }));
     await Promise.allSettled(updates);
   }
@@ -344,12 +394,20 @@ async function orchestrateCallbackPrompt({
 
   if (suppressRewardErrors) {
     try {
-      await moduleSocket.executeAsUser("showCallbackReward", targetUser.id, rewardPayload);
+      await moduleSocket.executeAsUser(
+        "showCallbackReward",
+        targetUser.id,
+        rewardPayload
+      );
     } catch (_) {
       // ignore
     }
   } else {
-    await moduleSocket.executeAsUser("showCallbackReward", targetUser.id, rewardPayload);
+    await moduleSocket.executeAsUser(
+      "showCallbackReward",
+      targetUser.id,
+      rewardPayload
+    );
   }
 }
 
@@ -507,9 +565,7 @@ export async function openGMFlow() {
       window: { title: t("sta-officers-log.dialog.pickPlayer.title") },
       content: `
         <div class="form-group">
-          <label>${t(
-            "sta-officers-log.dialog.pickPlayer.playerLabel"
-          )}</label>
+          <label>${t("sta-officers-log.dialog.pickPlayer.playerLabel")}</label>
           <select name="userId">
             ${optionsAvailable}
             ${optionsUsed}

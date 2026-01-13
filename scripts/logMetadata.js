@@ -31,31 +31,6 @@ export function getCompletedArcEndLogIds(actor, logItemsById = null) {
     // ignore
   }
 
-  // Also consider completed Arc milestones as Arc boundaries (for manual edits and chain rules).
-  try {
-    const milestones = Array.from(actor?.items ?? []).filter(
-      (i) => i?.type === "milestone"
-    );
-
-    for (const ms of milestones) {
-      try {
-        if (ms.system?.arc?.isArc !== true) continue;
-        const steps = Number(ms.system?.arc?.steps ?? 0);
-        if (!Number.isFinite(steps) || steps <= 0) continue;
-        const childIds = getMilestoneChildLogIds(ms);
-        if (childIds.length !== steps) continue;
-        const endId = childIds.length
-          ? String(childIds[childIds.length - 1])
-          : "";
-        if (endId) ends.add(endId);
-      } catch (_) {
-        // ignore
-      }
-    }
-  } catch (_) {
-    // ignore
-  }
-
   return ends;
 }
 

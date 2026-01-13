@@ -1,5 +1,6 @@
 import { MODULE_ID, VALUE_ICON_COUNT, valueIconPath } from "./constants.js";
 import { t, tf } from "./i18n.js";
+import { syncAllMilestoneIconsOnActor } from "./milestoneIcons.js";
 
 export const STA_DEFAULT_ICON =
   "systems/sta/assets/icons/VoyagerCombadgeIcon.png";
@@ -19,17 +20,46 @@ export function getValueItems(actor) {
   return values;
 }
 
-export function getValueIconPathForValueId(actor, valueId) {
-  // Map a valueId to V1..V8 based on the actor's sorted Value order
-  const values = getValueItems(actor)
+const _valueIconMapCache = new WeakMap();
+
+function _getValueIconMapForActor(actor) {
+  if (!actor?.items) return null;
+
+  const values = getValueItems(actor);
+
+  // Keep signature creation cheap: Values are typically a small set (V1..V8).
+  // We only need to rebuild the sorted mapping when ids/sort order changes.
+  const signature = values
+    .map((v) => `${String(v.id)}:${Number(v.sort ?? 0)}`)
+    .join("|");
+
+  const cached = _valueIconMapCache.get(actor);
+  if (cached?.signature === signature) return cached.mapById;
+
+  const sorted = values
     .slice()
     .sort((a, b) => Number(a.sort ?? 0) - Number(b.sort ?? 0));
 
-  const idx = values.findIndex((v) => v.id === valueId);
-  if (idx === -1) return null;
+  const mapById = new Map();
+  for (let idx = 0; idx < sorted.length; idx++) {
+    const v = sorted[idx];
+    const n = Math.min(idx + 1, VALUE_ICON_COUNT);
+    mapById.set(String(v.id), valueIconPath(n));
+  }
 
-  const n = Math.min(idx + 1, VALUE_ICON_COUNT);
-  return valueIconPath(n);
+  _valueIconMapCache.set(actor, { signature, mapById });
+  return mapById;
+}
+
+export function getValueIconPathForValueId(actor, valueId) {
+  // Map a valueId to V1..V8 based on the actor's sorted Value order.
+  const id = valueId ? String(valueId) : "";
+  if (!id) return null;
+
+  const mapById = _getValueIconMapForActor(actor);
+  if (!mapById) return null;
+
+  return mapById.get(id) ?? null;
 }
 
 export async function labelValuesOnActor(actor) {
@@ -72,20 +102,18 @@ export async function labelValuesOnActor(actor) {
     await actor.updateEmbeddedDocuments("Item", logUpdates);
   }
 
+  // Keep Milestone icons aligned with their associated/source logs.
+  // This matters after value relabeling since logs may have updated icons.
+  try {
+    await syncAllMilestoneIconsOnActor(actor);
+  } catch (_) {
+    // ignore
+  }
+
   ui.notifications.info(
     tf("sta-officers-log.notifications.labeledValues", {
       count: updates.length,
       actor: actor.name,
     })
   );
-}
-
-export function testValueIconPath(actor, valueId) {
-  const path = getValueIconPathForValueId(actor, valueId);
-  console.log(
-    "sta-officers-log | value icon path",
-    valueId,
-    path ?? "(not set)"
-  );
-  return path;
 }

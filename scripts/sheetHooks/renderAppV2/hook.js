@@ -21,11 +21,6 @@ import {
   promptCallbackForActorAsGM,
 } from "../../callbackFlow.js";
 
-import {
-  computeBestChainEndingAt,
-  getCallbackLogEdgesForValue,
-} from "../../arcChains.js";
-
 import { ATTRIBUTE_KEYS, DISCIPLINE_KEYS } from "../../callbackFlow/dialogs.js";
 
 import { openNewMilestoneArcDialog } from "./newMilestoneArcDialog.js";
@@ -40,10 +35,8 @@ import {
   rerenderOpenStaSheetsForActorId as refreshOpenSheet,
   refreshMissionLogSortingForActorId,
 } from "./sheetUtils.js";
-import {
-  filterMilestoneAssociatedLogOptions,
-  syncCallbackLinksFromMilestone,
-} from "./milestoneLinks.js";
+import { filterMilestoneAssociatedLogOptions } from "./milestoneLinks.js";
+import { syncMilestoneImgFromLog } from "../../milestoneIcons.js";
 import { installInlineLogChainLinkControls } from "./logLinkControls.js";
 import { installConfirmDeleteControls } from "./confirmDelete.js";
 import {
@@ -51,11 +44,469 @@ import {
   getMissionLogSortModeForActor,
   setMissionLogSortModeForActor,
 } from "./logSorting.js";
-import { areSheetEnhancementsEnabled } from "../../clientSettings.js";
+import {
+  areSheetEnhancementsEnabled,
+  shouldShowLogUsedToggle,
+} from "../../clientSettings.js";
 
 let _staCallbacksHelperMilestoneUpdateHookInstalled = false;
 const _staNormalizingLogIds = new Set();
+const _staNormalizingActorIds = new Set();
 const _staLogMetaDetailsOpenByLogId = new Map(); // logId -> boolean
+
+function installOfficersLogButtonsInStaTracker(app, root) {
+  try {
+    if (!(root instanceof HTMLElement)) return;
+    if (!game.user?.isGM) return;
+    if (!game.staCallbacksHelper) return;
+
+    // Detect the STA system tracker.
+    const ctorName = String(app?.constructor?.name ?? "");
+    const looksLikeTracker =
+      ctorName === "STATracker" ||
+      !!root.querySelector?.(".tracker-container") ||
+      !!root.querySelector?.("#sta-roll-task-button") ||
+      !!root.querySelector?.("#sta-momentum-tracker");
+
+    if (!looksLikeTracker) return;
+
+    // Avoid duplicates across rerenders.
+    if (root.querySelector?.(".sta-officers-log-group")) return;
+
+    // Insert next to the existing roll buttons column.
+    const row =
+      root.querySelector?.(".tracker-container .row") ??
+      root.querySelector?.(".row") ??
+      null;
+    if (!row) return;
+
+    const iconContainer = row.querySelector?.(":scope > .icon-container");
+    if (!iconContainer) return;
+
+    // Wrap the existing STA tracker buttons and our module buttons into a 2-column layout.
+    let columns = iconContainer.querySelector?.(
+      ":scope > .sta-tracker-button-columns"
+    );
+    let systemGroup = iconContainer.querySelector?.(
+      ":scope > .sta-tracker-button-columns > .sta-tracker-button-group.sta-tracker-system-buttons"
+    );
+
+    if (!columns || !systemGroup) {
+      columns = document.createElement("div");
+      columns.className = "sta-tracker-button-columns";
+
+      systemGroup = document.createElement("div");
+      systemGroup.className =
+        "sta-tracker-button-group sta-tracker-system-buttons";
+
+      // Move existing buttons into the system group.
+      const children = Array.from(iconContainer.children);
+      for (const child of children) systemGroup.appendChild(child);
+
+      // Replace iconContainer contents with the columns wrapper.
+      iconContainer.innerHTML = "";
+      columns.appendChild(systemGroup);
+      iconContainer.appendChild(columns);
+    }
+
+    const makeButton = ({ id, cls, title, icon, onClick }) => {
+      const btn = document.createElement("div");
+      btn.id = id;
+      btn.className = `button ${cls}`;
+      btn.title = title;
+      btn.dataset.action = "staOfficersLog";
+
+      const i = document.createElement("i");
+      // Use fixed-width icons so the column aligns cleanly with the STA buttons.
+      i.className = `${icon} fa-fw`;
+      btn.appendChild(i);
+
+      btn.addEventListener("click", (event) => {
+        try {
+          event?.preventDefault?.();
+          event?.stopPropagation?.();
+        } catch (_) {
+          // ignore
+        }
+
+        try {
+          onClick?.();
+        } catch (err) {
+          console.error(`${MODULE_ID} | tracker button failed`, err);
+        }
+      });
+
+      return btn;
+    };
+
+    const divider = document.createElement("div");
+    divider.className = "sta-tracker-button-divider sta-officers-log-divider";
+
+    const officersGroup = document.createElement("div");
+    officersGroup.className = "sta-tracker-button-group sta-officers-log-group";
+    officersGroup.dataset.module = MODULE_ID;
+
+    // Mirror the Scene Controls actions.
+    officersGroup.appendChild(
+      makeButton({
+        id: "sta-officers-log-open-button",
+        cls: "sta-officers-log-open",
+        title: t("sta-officers-log.tools.sendPrompt"),
+        icon: "fa-solid fa-reply",
+        onClick: () => game.staCallbacksHelper.open(),
+      })
+    );
+
+    officersGroup.appendChild(
+      makeButton({
+        id: "sta-officers-log-reset-button",
+        cls: "sta-officers-log-reset",
+        title: t("sta-officers-log.tools.resetMission"),
+        icon: "fa-solid fa-book",
+        onClick: () => game.staCallbacksHelper.promptNewMissionAndReset(),
+      })
+    );
+
+    officersGroup.appendChild(
+      makeButton({
+        id: "sta-officers-log-new-scene-button",
+        cls: "sta-officers-log-new-scene",
+        title: t("sta-officers-log.tools.newScene"),
+        icon: "fa-solid fa-clapperboard",
+        onClick: () => game.staCallbacksHelper.newScene(),
+      })
+    );
+
+    columns.appendChild(divider);
+    columns.appendChild(officersGroup);
+  } catch (_) {
+    // ignore
+  }
+}
+
+function installCallbackSourceButtons(root, actor) {
+  try {
+    if (!(root instanceof HTMLElement)) return;
+    if (!actor?.items) return;
+
+    const shouldAllowUsedToggle =
+      String(root?.dataset?.staShowLogUsedToggle ?? "0") === "1";
+
+    const logRows = root.querySelectorAll(
+      'div.section.milestones li.row.entry[data-item-type="log"]'
+    );
+
+    const getCreatedKey = (log) => {
+      const createdRaw =
+        log?._stats?.createdTime ?? log?._source?._stats?.createdTime ?? null;
+      const created = Number(createdRaw);
+      const createdKey = Number.isFinite(created)
+        ? created
+        : Number.MAX_SAFE_INTEGER;
+
+      const sortRaw = Number(log?.sort ?? 0);
+      const sortKey = Number.isFinite(sortRaw) ? sortRaw : 0;
+
+      const idKey = String(log?.id ?? "");
+      return { createdKey, sortKey, idKey };
+    };
+
+    const compareKeys = (a, b) => {
+      if (a.createdKey !== b.createdKey) return a.createdKey - b.createdKey;
+      if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
+      return String(a.idKey).localeCompare(String(b.idKey));
+    };
+
+    const findSourceLogForTargetId = (targetId) => {
+      const tId = targetId ? String(targetId) : "";
+      if (!tId) return null;
+
+      const children = [];
+      for (const it of actor.items ?? []) {
+        if (it?.type !== "log") continue;
+        if (it.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true) continue;
+        const link = it.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+        const fromLogId = String(link?.fromLogId ?? "");
+        if (fromLogId && fromLogId === tId) children.push(it);
+      }
+
+      if (!children.length) return null;
+      if (children.length === 1) return children[0];
+
+      const ordered = children
+        .slice()
+        .sort((a, b) => compareKeys(getCreatedKey(a), getCreatedKey(b)));
+      return ordered[0] ?? null;
+    };
+
+    const flashRow = (rowEl) => {
+      if (!(rowEl instanceof HTMLElement)) return;
+      try {
+        rowEl.classList.remove("sta-callbacks-source-flash");
+        // Force a reflow so the animation can restart.
+        void rowEl.offsetWidth;
+        rowEl.classList.add("sta-callbacks-source-flash");
+        setTimeout(() => {
+          try {
+            rowEl.classList.remove("sta-callbacks-source-flash");
+          } catch (_) {
+            // ignore
+          }
+        }, 1100);
+      } catch (_) {
+        // ignore
+      }
+    };
+
+    for (const row of Array.from(logRows)) {
+      if (!(row instanceof HTMLElement)) continue;
+
+      const toggleAnchor = row.querySelector("a.value-used.control.toggle");
+      if (!(toggleAnchor instanceof HTMLElement)) continue;
+
+      // If the native Used toggle is hidden, prevent accidental toggle clicks.
+      // Keep injected buttons clickable.
+      if (
+        !shouldAllowUsedToggle &&
+        toggleAnchor.dataset.staNoUsedToggleBound !== "1"
+      ) {
+        toggleAnchor.dataset.staNoUsedToggleBound = "1";
+        toggleAnchor.addEventListener(
+          "click",
+          (ev) => {
+            try {
+              const target = ev?.target instanceof Element ? ev.target : null;
+              const isAllowed = Boolean(
+                target?.closest?.(".sta-inline-sheet-btn, .sta-show-source-btn")
+              );
+              if (isAllowed) return;
+              ev.preventDefault();
+              ev.stopPropagation();
+              ev.stopImmediatePropagation?.();
+            } catch (_) {
+              // ignore
+            }
+          },
+          true
+        );
+      }
+
+      if (toggleAnchor.querySelector(":scope > .sta-show-source-btn")) continue;
+
+      const btn = document.createElement("a");
+      btn.className = "sta-show-source-btn";
+      btn.title = "Show log that called back to this log";
+      btn.setAttribute("aria-label", "Show source log");
+      btn.innerHTML = '<i class="fa-solid fa-arrow-down-wide-short"></i>';
+
+      btn.addEventListener("click", (ev) => {
+        try {
+          ev.preventDefault();
+          ev.stopPropagation();
+          ev.stopImmediatePropagation?.();
+        } catch (_) {
+          // ignore
+        }
+
+        const targetLogId = row?.dataset?.itemId
+          ? String(row.dataset.itemId)
+          : "";
+        const sourceLog = findSourceLogForTargetId(targetLogId);
+        const sourceId = sourceLog?.id ? String(sourceLog.id) : "";
+        if (!sourceId) {
+          ui.notifications?.warn?.("No incoming callback found for this log.");
+          return;
+        }
+
+        const selector =
+          'div.section.milestones li.row.entry[data-item-type="log"][data-item-id="' +
+          sourceId +
+          '"]';
+        const sourceRow = root.querySelector(selector);
+        if (!(sourceRow instanceof HTMLElement)) {
+          ui.notifications?.warn?.("Source log is not visible on this sheet.");
+          return;
+        }
+
+        try {
+          sourceRow.scrollIntoView({ behavior: "smooth", block: "center" });
+        } catch (_) {
+          // ignore
+        }
+
+        flashRow(sourceRow);
+      });
+
+      toggleAnchor.appendChild(btn);
+    }
+  } catch (_) {
+    // ignore
+  }
+}
+
+async function enforceUniqueFromLogIdTargets(actor, { editedLogId } = {}) {
+  try {
+    if (!actor?.items) return { loserLogIds: [] };
+
+    const logs = Array.from(actor.items ?? []).filter((i) => i?.type === "log");
+    if (!logs.length) return { loserLogIds: [] };
+
+    const byFromLogId = new Map(); // fromLogId -> childLog[]
+
+    for (const log of logs) {
+      try {
+        if (log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true) continue;
+        const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+        const fromLogId = String(link?.fromLogId ?? "");
+        if (!fromLogId) continue;
+
+        const bucket = byFromLogId.get(fromLogId) ?? [];
+        bucket.push(log);
+        byFromLogId.set(fromLogId, bucket);
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    const getCreatedKey = (log) => {
+      const createdRaw =
+        log?._stats?.createdTime ?? log?._source?._stats?.createdTime ?? null;
+      const created = Number(createdRaw);
+      const createdKey = Number.isFinite(created)
+        ? created
+        : Number.MAX_SAFE_INTEGER;
+
+      const sortRaw = Number(log?.sort ?? 0);
+      const sortKey = Number.isFinite(sortRaw) ? sortRaw : 0;
+
+      const idKey = String(log?.id ?? "");
+      return { createdKey, sortKey, idKey };
+    };
+
+    const compareKeys = (a, b) => {
+      if (a.createdKey !== b.createdKey) return a.createdKey - b.createdKey;
+      if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
+      return String(a.idKey).localeCompare(String(b.idKey));
+    };
+
+    const loserLogIds = [];
+    const loserToFromLogId = new Map(); // childLogId -> fromLogId
+
+    for (const [fromLogId, children] of byFromLogId.entries()) {
+      if (!Array.isArray(children) || children.length <= 1) continue;
+
+      const ordered = children
+        .slice()
+        .sort((a, b) => compareKeys(getCreatedKey(a), getCreatedKey(b)));
+
+      const losers = ordered.slice(1);
+      if (!losers.length) continue;
+
+      for (const losingLog of losers) {
+        const losingId = losingLog?.id ? String(losingLog.id) : "";
+        if (!losingId) continue;
+        loserLogIds.push(losingId);
+        loserToFromLogId.set(losingId, String(fromLogId));
+
+        try {
+          await losingLog.update(
+            {
+              [`flags.${MODULE_ID}.callbackLink.fromLogId`]: null,
+              [`flags.${MODULE_ID}.callbackLink.valueId`]: null,
+            },
+            { renderSheet: false }
+          );
+        } catch (err) {
+          console.warn(
+            `${MODULE_ID} | failed enforcing unique callback target for ${losingId} -> ${String(
+              fromLogId
+            )}`,
+            err
+          );
+        }
+      }
+    }
+
+    // Optional UX: if the currently edited log lost a collision, warn.
+    if (editedLogId && loserLogIds.includes(String(editedLogId))) {
+      try {
+        const collidedFromLogId = String(
+          loserToFromLogId.get(String(editedLogId)) ?? ""
+        );
+
+        const fromName = (() => {
+          try {
+            const target = collidedFromLogId
+              ? actor.items.get(collidedFromLogId)
+              : null;
+            const name =
+              target?.type === "log" ? String(target.name ?? "") : "";
+            return name.trim();
+          } catch (_) {
+            return "";
+          }
+        })();
+
+        const targetLabel = fromName || collidedFromLogId || "that log";
+        ui.notifications?.warn?.(
+          `Callback target already used (${targetLabel}); link cleared.`
+        );
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    return { loserLogIds };
+  } catch (_) {
+    return { loserLogIds: [] };
+  }
+}
+
+async function syncCallbackTargetUsedFlags(actor) {
+  try {
+    if (!actor?.items) return;
+
+    const logs = Array.from(actor.items ?? []).filter((i) => i?.type === "log");
+    if (!logs.length) return;
+
+    const targetIds = new Set();
+    for (const child of logs) {
+      try {
+        if (child.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true)
+          continue;
+        const link = child.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+        const fromLogId = String(link?.fromLogId ?? "");
+        if (fromLogId) targetIds.add(fromLogId);
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    const updates = [];
+    for (const log of logs) {
+      const id = log?.id ? String(log.id) : "";
+      if (!id) continue;
+
+      const desired = targetIds.has(id);
+      const current = Boolean(log?.system?.used);
+
+      // Only write when we need to flip state.
+      if (desired && !current) {
+        updates.push(
+          log.update({ "system.used": true }, { renderSheet: false })
+        );
+      } else if (!desired && current) {
+        updates.push(
+          log.update({ "system.used": false }, { renderSheet: false })
+        );
+      }
+    }
+
+    if (updates.length) await Promise.allSettled(updates);
+  } catch (_) {
+    // ignore
+  }
+}
 
 function installLogMetaCollapsible(root, logItem) {
   const itemSheet =
@@ -134,6 +585,94 @@ function installLogMetaCollapsible(root, logItem) {
   summary.className = "sta-callbacks-log-meta-summary";
   summary.textContent = "Edit Log Data";
   details.appendChild(summary);
+
+  // Manual callback milestone association (no sorting behavior, just metadata).
+  try {
+    const actor = logItem?.parent ?? logItem?.actor ?? null;
+    if (actor?.items && actor.type === "character") {
+      const milestones = Array.from(actor.items ?? [])
+        .filter((i) => i?.type === "milestone")
+        .sort((a, b) =>
+          String(a.name ?? "").localeCompare(String(b.name ?? ""))
+        );
+
+      const existingLink = logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+      const existingMilestoneId = existingLink?.milestoneId
+        ? String(existingLink.milestoneId)
+        : "";
+
+      const row = document.createElement("div");
+      row.className = "row";
+
+      const label = document.createElement("label");
+      label.textContent = "Callback Milestone";
+
+      const select = document.createElement("select");
+      select.dataset.staCallbacksField = "callbackLinkMilestoneId";
+      select.title =
+        "Associate a Milestone/Arc with this log's callbackLink metadata";
+
+      const none = document.createElement("option");
+      none.value = "";
+      none.textContent = "— None —";
+      select.appendChild(none);
+
+      for (const ms of milestones) {
+        const opt = document.createElement("option");
+        opt.value = String(ms.id);
+        opt.textContent = String(ms.name ?? "").trim() || String(ms.id);
+        select.appendChild(opt);
+      }
+
+      if (existingMilestoneId) select.value = existingMilestoneId;
+
+      const onChange = async (ev) => {
+        ev?.preventDefault?.();
+        ev?.stopPropagation?.();
+
+        const selectedId = String(select.value ?? "");
+        try {
+          const current = logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+          const next = {
+            ...(current && typeof current === "object" ? current : {}),
+          };
+
+          if (selectedId) next.milestoneId = selectedId;
+          else delete next.milestoneId;
+
+          await logItem.update(
+            { [`flags.${MODULE_ID}.callbackLink`]: next },
+            { renderSheet: false }
+          );
+
+          // If the user associates a Milestone/Arc with this log, keep the milestone icon
+          // aligned with this log's icon (value icon).
+          try {
+            if (selectedId) {
+              const ms = actor.items.get(String(selectedId)) ?? null;
+              if (ms?.type === "milestone") {
+                await syncMilestoneImgFromLog(ms, logItem, {
+                  setSourceFlag: true,
+                });
+              }
+            }
+          } catch (_) {
+            // ignore
+          }
+        } catch (_) {
+          // ignore
+        }
+      };
+
+      select.addEventListener("change", onChange);
+
+      row.appendChild(label);
+      row.appendChild(select);
+      details.appendChild(row);
+    }
+  } catch (_) {
+    // ignore
+  }
 
   try {
     itemSheet.insertBefore(details, descNote.nextSibling);
@@ -248,7 +787,6 @@ export function installRenderApplicationV2Hook() {
         if (item?.type !== "milestone") return; //we hook on the creation of all items but then only continue for milestones.
         const actor = item?.parent; // find out who the character actor is who has the milestone.
         if (!actor?.id) return;
-        void syncCallbackLinksFromMilestone(actor, item);
         // Avoid full character-sheet rerenders (they flash/steal focus). We only
         // need to refresh the log ordering/arc wrappers.
         refreshMissionLogSortingForActorId(actor.id);
@@ -497,6 +1035,26 @@ export function installRenderApplicationV2Hook() {
             }
           })();
 
+          const hasCallbackTargetDedupChange = (() => {
+            try {
+              const base = `flags.${MODULE_ID}.`;
+              return (
+                foundry.utils.getProperty(changes, `${base}callbackLink`) !==
+                  undefined ||
+                foundry.utils.getProperty(
+                  changes,
+                  `${base}callbackLink.fromLogId`
+                ) !== undefined ||
+                foundry.utils.getProperty(
+                  changes,
+                  `${base}callbackLinkDisabled`
+                ) !== undefined
+              );
+            } catch (_) {
+              return false;
+            }
+          })();
+
           if (actor?.type === "character" && actor?.id && hasChainFlagChange) {
             // Normalize flags for consistent chain behavior.
             const logId = item?.id ? String(item.id) : "";
@@ -504,6 +1062,31 @@ export function installRenderApplicationV2Hook() {
               _staNormalizingLogIds.add(logId);
               void (async () => {
                 try {
+                  // Enforce: each callback target (fromLogId) can only be used once.
+                  // Trigger only when callbackLink-related fields change.
+                  if (
+                    hasCallbackTargetDedupChange &&
+                    !_staNormalizingActorIds.has(String(actor.id))
+                  ) {
+                    _staNormalizingActorIds.add(String(actor.id));
+                    try {
+                      await enforceUniqueFromLogIdTargets(actor, {
+                        editedLogId: logId,
+                      });
+
+                      // Keep system.used in sync with whether a log is a callback target.
+                      await syncCallbackTargetUsedFlags(actor);
+                    } catch (_) {
+                      // ignore
+                    } finally {
+                      // Clear guard on next tick to prevent loops.
+                      setTimeout(
+                        () => _staNormalizingActorIds.delete(String(actor.id)),
+                        0
+                      );
+                    }
+                  }
+
                   const primaryValueId = String(
                     item.getFlag?.(MODULE_ID, "primaryValueId") ?? ""
                   );
@@ -573,6 +1156,11 @@ export function installRenderApplicationV2Hook() {
                     }
                   })();
 
+                  const arcInfo = item.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+                  const isArc = arcInfo?.isArc === true;
+                  const shouldNormalizeArc =
+                    arcInfoTouched || (callbackLinkTouched && isArc);
+
                   // Only treat callbackLinkDisabled as an explicit override when the user actually
                   // edited the callbackLink field.
                   if (callbackLinkTouched) {
@@ -614,12 +1202,8 @@ export function installRenderApplicationV2Hook() {
                   }
 
                   // Normalize arc completion metadata (chainLogIds) after save.
-                  if (arcInfoTouched) {
+                  if (shouldNormalizeArc) {
                     try {
-                      const arcInfo =
-                        item.getFlag?.(MODULE_ID, "arcInfo") ?? null;
-                      const isArc = arcInfo?.isArc === true;
-
                       if (!isArc) {
                         // If the sheet wrote an arcInfo object with isArc=false, clear it out.
                         update[`flags.${MODULE_ID}.arcInfo`] = null;
@@ -641,6 +1225,56 @@ export function installRenderApplicationV2Hook() {
                           // Invalid arc state: drop arc completion.
                           update[`flags.${MODULE_ID}.arcInfo`] = null;
                         } else {
+                          const computeChainLogIdsByParentWalk = (
+                            actorDoc,
+                            endLogId,
+                            maxSteps,
+                            disallowNodeIds
+                          ) => {
+                            try {
+                              const steps = Number(maxSteps);
+                              if (!Number.isFinite(steps) || steps <= 0)
+                                return [];
+                              const actorItems = actorDoc?.items ?? null;
+                              if (!actorItems?.get) return [];
+
+                              const result = [];
+                              const seen = new Set();
+                              let cur = endLogId ? String(endLogId) : "";
+
+                              while (cur && result.length < steps) {
+                                const id = String(cur);
+                                if (seen.has(id)) break;
+                                seen.add(id);
+
+                                const curItem = actorItems.get(id);
+                                if (!curItem || curItem.type !== "log") break;
+
+                                result.push(id);
+
+                                const parentRaw =
+                                  curItem.getFlag?.(MODULE_ID, "callbackLink")
+                                    ?.fromLogId ?? "";
+                                const parentId = parentRaw
+                                  ? String(parentRaw)
+                                  : "";
+                                if (!parentId) break;
+
+                                if (disallowNodeIds?.has?.(parentId)) break;
+
+                                const parentItem = actorItems.get(parentId);
+                                if (!parentItem || parentItem.type !== "log")
+                                  break;
+
+                                cur = parentId;
+                              }
+
+                              return result.reverse();
+                            } catch (_) {
+                              return [];
+                            }
+                          };
+
                           // Disallow reusing nodes already consumed by OTHER arcs.
                           const disallowNodeIds = new Set();
                           try {
@@ -668,27 +1302,17 @@ export function installRenderApplicationV2Hook() {
 
                           let chainLogIds = [];
                           try {
-                            const { incoming } = getCallbackLogEdgesForValue(
+                            chainLogIds = computeChainLogIdsByParentWalk(
                               actor,
-                              arcValueId
+                              String(item.id),
+                              steps,
+                              disallowNodeIds
                             );
-                            const computed = computeBestChainEndingAt({
-                              incoming,
-                              endLogId: String(item.id),
-                              disallowNodeIds,
-                            });
-                            const full = Array.isArray(computed?.chainLogIds)
-                              ? computed.chainLogIds
-                                  .map((x) => String(x))
-                                  .filter(Boolean)
-                              : [];
-                            chainLogIds =
-                              full.length > steps ? full.slice(-steps) : full;
                           } catch (_) {
                             chainLogIds = [];
                           }
 
-                          update[`flags.${MODULE_ID}.arcInfo`] = {
+                          const nextArcInfo = {
                             ...(arcInfo && typeof arcInfo === "object"
                               ? arcInfo
                               : {}),
@@ -703,6 +1327,29 @@ export function installRenderApplicationV2Hook() {
                                 ? String(arcInfo.arcLabel ?? "")
                                 : "",
                           };
+
+                          const normalizeIdArray = (arr) =>
+                            (Array.isArray(arr) ? arr : [])
+                              .map((x) => String(x))
+                              .filter(Boolean);
+                          const arraysEqual = (a, b) => {
+                            const aa = normalizeIdArray(a);
+                            const bb = normalizeIdArray(b);
+                            if (aa.length !== bb.length) return false;
+                            for (let i = 0; i < aa.length; i += 1) {
+                              if (aa[i] !== bb[i]) return false;
+                            }
+                            return true;
+                          };
+
+                          // If we're only normalizing due to callbackLink changes,
+                          // avoid churning arcInfo unless the chain actually changed.
+                          if (
+                            arcInfoTouched ||
+                            !arraysEqual(arcInfo?.chainLogIds, chainLogIds)
+                          ) {
+                            update[`flags.${MODULE_ID}.arcInfo`] = nextArcInfo;
+                          }
                         }
                       }
                     } catch (_) {
@@ -746,8 +1393,6 @@ export function installRenderApplicationV2Hook() {
           system?.arc !== undefined;
         if (!hasChildChange) return;
 
-        void syncCallbackLinksFromMilestone(actor, item);
-
         // Avoid full character-sheet rerenders (they flash/steal focus). We only
         // need to refresh the log ordering/arc wrappers.
         refreshMissionLogSortingForActorId(actor.id);
@@ -758,6 +1403,20 @@ export function installRenderApplicationV2Hook() {
   }
 
   Hooks.on("renderApplicationV2", (app, root /* HTMLElement */, _context) => {
+    // Always drive CSS flags on STA character sheets, even if sheet enhancements are disabled.
+    try {
+      if (app?.id?.startsWith?.("STACharacterSheet2e") && root?.dataset) {
+        root.dataset.staShowLogUsedToggle = shouldShowLogUsedToggle()
+          ? "1"
+          : "0";
+      }
+    } catch (_) {
+      // ignore
+    }
+
+    // STA system tracker: add Officers Log buttons next to the roll buttons.
+    installOfficersLogButtonsInStaTracker(app, root);
+
     if (!areSheetEnhancementsEnabled()) return;
     // DialogV2: force vertical benefit button layout by wrapping footer buttons.
     // We use an in-content marker because DialogV2 window classes are not always
@@ -928,6 +1587,13 @@ export function installRenderApplicationV2Hook() {
     }
 
     applyMissionLogSorting(root, actor, getMissionLogSortModeForActor(actor));
+
+    // Logs: add a show-source icon button to flash the incoming-callback source.
+    try {
+      installCallbackSourceButtons(root, actor);
+    } catch (_) {
+      // ignore
+    }
 
     // Logs: replace delete with a confirmation-wrapped delete.
     // Deleting logs can break chain/arc references because item IDs are not reusable.
@@ -1231,6 +1897,28 @@ export function installRenderApplicationV2Hook() {
             ? pendingMilestone
             : { milestoneId: String(pendingMilestone) };
 
+        // Lightweight association: remember which Milestone this log's "Choose" button
+        // is acting on. This is stored alongside existing callbackLink data.
+        try {
+          const milestoneId = pending?.milestoneId
+            ? String(pending.milestoneId)
+            : "";
+          if (milestoneId) {
+            const existing =
+              logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+            const next = {
+              ...(existing && typeof existing === "object" ? existing : {}),
+              milestoneId,
+            };
+            await logItem.update(
+              { [`flags.${MODULE_ID}.callbackLink`]: next },
+              { renderSheet: false }
+            );
+          }
+        } catch (_) {
+          // ignore
+        }
+
         const arcFromLog = logItem.getFlag?.(MODULE_ID, "arcInfo") ?? null;
         const arc = pending?.arc ?? arcFromLog ?? null;
 
@@ -1305,7 +1993,9 @@ export function installRenderApplicationV2Hook() {
               milestone = await createMilestoneItem(actor, {
                 chosenLogId: resolvedChosenLogId,
                 currentLogId: logItem.id,
-                valueImg,
+                // Milestone icons should match the log that created them.
+                // Use the current log's icon when available, otherwise fall back to the value icon.
+                valueImg: logItem?.img ? String(logItem.img) : valueImg,
                 valueId,
                 arc: isArcBenefit ? arc : null,
                 benefitLabel,
@@ -1326,6 +2016,16 @@ export function installRenderApplicationV2Hook() {
                 t("sta-officers-log.dialog.chooseMilestoneBenefit.createFailed")
               );
               return;
+            }
+
+            // Always align milestone icon with the log the user clicked from, even when
+            // reusing an existing milestone.
+            try {
+              await syncMilestoneImgFromLog(milestone, logItem, {
+                setSourceFlag: true,
+              });
+            } catch (_) {
+              // ignore
             }
 
             if (createdItemId) {

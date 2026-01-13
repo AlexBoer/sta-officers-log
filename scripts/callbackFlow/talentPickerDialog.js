@@ -173,8 +173,7 @@ export function prepareTalentPickerContext(
   });
 
   return {
-    searchLabel:
-      t("sta-officers-log.dialog.talentPicker.search") ?? "Search",
+    searchLabel: t("sta-officers-log.dialog.talentPicker.search") ?? "Search",
     searchPlaceholder:
       t("sta-officers-log.dialog.talentPicker.searchPlaceholder") ??
       "Type to filter talents…",
@@ -194,7 +193,7 @@ export function prepareTalentPickerContext(
 export function bindTalentPickerInteractions(
   root,
   talents = [],
-  { onChoose = null, onPreview = null, onCancel = null } = {}
+  { onChoose = null, onPreview = null, onCancel = null, onCustom = null } = {}
 ) {
   if (!root) return { applyFilter: () => {} };
   if (root.dataset.staTalentPickerBound === "1") {
@@ -277,8 +276,7 @@ export function bindTalentPickerInteractions(
         {
           action: "close",
           label:
-            t("sta-officers-log.dialog.talentPicker.previewClose") ??
-            "Close",
+            t("sta-officers-log.dialog.talentPicker.previewClose") ?? "Close",
         },
       ],
       rejectClose: true,
@@ -295,6 +293,13 @@ export function bindTalentPickerInteractions(
 
     ev.preventDefault();
     ev.stopPropagation();
+
+    if (action === "custom") {
+      if (onCustom) {
+        await onCustom(btn);
+      }
+      return;
+    }
 
     const item = btn.closest(".sta-focus-picker-item");
     const uuid = String(item?.dataset?.uuid ?? "").trim();
@@ -581,6 +586,10 @@ class TalentPickerApp extends Base {
           item: talentItem,
           talenttype: talentType ?? null,
         });
+        await super.close();
+      },
+      onCustom: async () => {
+        this._resolveOnce({ custom: true });
         await super.close();
       },
       onCancel: async () => {

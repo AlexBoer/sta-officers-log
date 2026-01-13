@@ -8,9 +8,9 @@
         "name": "Enable STA Officers Log Sheet Enhancements",
         "hint": "If disabled, this module will not modify the STA character sheet UI on this client (no added buttons, sorting, link controls, or delete confirmations)."
       },
-      "manualCallbackLogUpdates": {
-        "name": "Manual Callback Log Updates",
-        "hint": "If enabled, when you make a callback the module will still grant Determination and record its internal callback links, but will NOT change visible Log fields (used/valueStates) or Log icons. You can update your Logs manually."
+      "showLogUsedToggle": {
+        "name": "Show 'Used' toggle on Logs",
+        "hint": "Advanced. Shows the strike-through toggle on Log entries. Normally hidden to prevent accidental changes; 'used' is managed automatically by callback links."
       },
       "groupShip": {
         "name": "Group Ship",
@@ -81,7 +81,7 @@
         "prompt": "How are you using {value}?",
         "choose": "Choose",
         "positiveTitle": "Positively",
-        "positiveDesc": "<strong>Use it to help you succeed.</strong><ul><li>Before rolling for a free critical success</li><li>After rolling to reroll any dice.</li></ul>",
+        "positiveDesc": "<strong>Use it to help you succeed.</strong><ul><li>-1 Determination</li><li>Before rolling for a free critical success</li><li>After rolling to reroll any dice.</li></ul>",
         "negativeTitle": "Negatively",
         "negativeDesc": "<strong>Use it against yourself.</strong><ul><li>+1 Determination</li><li>Cause a Complication</li></ul>",
         "challengeTitle": "Challenged",
@@ -232,8 +232,7 @@
       "skip": "Skip",
       "noInvokedValues": "No invoked values recorded in this log.",
       "bodyHtml": "<p><strong>Do you want to make a callback?</strong></p>\n<details><summary>Click here to read about Callbacks</summary><ul>\n<li>You can make a <strong>Callback</strong> to a previous mission when you use the same value as one used that mission.</li>\n<li>When you make a callback, gain a determination now and earn a milestone at the end of the mission.</li>\n<li>Each Log can be called back to only once.</li>\n</ul>\n<p><i>You must choose a mission in which you used the same value as the one used just now. You can check the details in your character sheet under the <strong>Development</strong> tab.</i></p>\n</details>",
-      "rewardHtml": "<h5>You made a callback!</h5>\n<ul>\n<li>+1 Determination has been added to your character sheet.</li>\n<li>A new Milestone has been added to your character sheet. Make sure to edit it and choose a milestone bonus at the end of the mission!</li>\n</ul>",
-      "rewardHtmlManual": "<h5>You made a callback!</h5>\n<ul>\n<li>+1 Determination has been added to your character sheet.</li>\n<li><strong>Note:</strong> Your settings are configured for <em>manual</em> Log updates. This module saved its internal callback link info, but it did not change any visible Log fields (used/valueStates) or Log icons.</li>\n</ul>"
+      "rewardHtml": "<h5>You made a callback!</h5>\n<ul>\n<li>+1 Determination has been added to your character sheet.</li>\n<li>A new Milestone has been added to your character sheet. Make sure to edit it and choose a milestone bonus at the end of the mission!</li>\n</ul>"
     },
     "warnings": {
       "selectValueFirst": "Select a value first.",

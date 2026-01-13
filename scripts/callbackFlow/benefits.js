@@ -1375,13 +1375,13 @@ export function formatChosenBenefitLabel(applied) {
 
   switch (applied.action) {
     case "attr":
-      return `+1: ${ATTRIBUTE_LABELS[applied.key] ?? applied.key}`;
+      return `+1 ${ATTRIBUTE_LABELS[applied.key] ?? applied.key}`;
     case "disc":
-      return `+1: ${DISCIPLINE_LABELS[applied.key] ?? applied.key}`;
+      return `+1 ${DISCIPLINE_LABELS[applied.key] ?? applied.key}`;
     case "focus":
       return applied.name ? `Focus: ${applied.name}` : "New Focus";
     case "talent":
-      return applied.name ? `New Talent: ${applied.name}` : "New Talent";
+      return applied.name ? `Talent: ${applied.name}` : "New Talent";
     case "supporting":
       if (applied.supportingActorName && applied.supportingApplied?.applied) {
         const inner = formatChosenBenefitLabel(applied.supportingApplied);
@@ -1408,11 +1408,11 @@ export function formatChosenBenefitLabel(applied) {
       return "Ship Refit (ask GM)";
 
     case "arcAttr":
-      return `Attribute +1: ${ATTRIBUTE_LABELS[applied.key] ?? applied.key}`;
+      return `+1 ${ATTRIBUTE_LABELS[applied.key] ?? applied.key}`;
     case "arcDisc":
-      return `Discipline +1: ${DISCIPLINE_LABELS[applied.key] ?? applied.key}`;
+      return `+1 ${DISCIPLINE_LABELS[applied.key] ?? applied.key}`;
     case "arcValue":
-      return applied.name ? `New Value: ${applied.name}` : "New Value";
+      return applied.name ? `Value: ${applied.name}` : "New Value";
     case "arcShipSystem":
       return `Ship System +1: ${
         SHIP_SYSTEM_LABELS[applied.key] ?? applied.key
@@ -1422,11 +1422,11 @@ export function formatChosenBenefitLabel(applied) {
         SHIP_SYSTEM_LABELS[applied.key] ?? applied.key
       }`;
     case "arcShipDepartment":
-      return `Ship Department +1: ${
+      return `Ship: +1 ${
         SHIP_DEPARTMENT_LABELS[applied.key] ?? applied.key
       }`;
     case "arcShipDepartmentManual":
-      return `Ship Department +1 (ask GM): ${
+      return `Ship Department +1 (ask GM to apply): ${
         SHIP_DEPARTMENT_LABELS[applied.key] ?? applied.key
       }`;
     case "arcShipTalent":
@@ -1435,8 +1435,8 @@ export function formatChosenBenefitLabel(applied) {
         : "New Ship Talent";
     case "arcShipTalentManual":
       return applied.name
-        ? `New Ship Talent (ask GM): ${applied.name}`
-        : "New Ship Talent (ask GM)";
+        ? `New Ship Talent (ask GM to apply): ${applied.name}`
+        : "New Ship Talent (ask GM to apply)";
     default:
       return String(applied.action ?? "");
   }

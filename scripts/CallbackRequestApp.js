@@ -1,6 +1,7 @@
 import { MODULE_ID } from "./constants.js";
 import { t } from "./i18n.js";
 import { isCallbackTargetCompatibleWithValue } from "./callbackEligibility.js";
+import { escapeHTML } from "./values.js";
 
 // Use the Handlebars mixin so the app is renderable (provides _renderHTML/_replaceHTML).
 const Base = foundry.applications.api.HandlebarsApplicationMixin(
@@ -60,8 +61,6 @@ export class CallbackRequestApp extends Base {
   }
 
   _renderInvokedValues(logId, rootEl) {
-    const escapeHTML = (s) => foundry.utils.escapeHTML(String(s ?? ""));
-
     const list = rootEl.querySelector('[data-hook="invokedList"]');
     if (!list) return;
 
@@ -72,7 +71,7 @@ export class CallbackRequestApp extends Base {
       const msg =
         t("sta-officers-log.callback.noInvokedValues") ??
         "No invoked values recorded in this log.";
-      list.innerHTML = `<li><em>${msg}</em></li>`;
+      list.innerHTML = `<li><em>${escapeHTML(msg)}</em></li>`;
       return;
     }
 
@@ -251,8 +250,7 @@ export class CallbackRequestApp extends Base {
         );
       if (!logId)
         return ui.notifications.warn(
-          t("sta-officers-log.warnings.selectLogFirst") ??
-            "Select a log first."
+          t("sta-officers-log.warnings.selectLogFirst") ?? "Select a log first."
         );
       if (yesBtn?.disabled) return;
 

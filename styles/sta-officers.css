@@ -118,6 +118,56 @@
   cursor: pointer;
 }
 
+/* STA system tracker: Officers Log buttons injected by this module */
+.tracker-container .icon-container .sta-tracker-button-columns {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.2rem;
+}
+
+.tracker-container .icon-container .sta-tracker-button-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.25rem;
+}
+
+.tracker-container .icon-container .sta-officers-log-divider {
+  width: 1px;
+  align-self: stretch;
+  height: auto;
+  margin: 0 0.15rem;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+/* Keep buttons visually consistent between both columns */
+.tracker-container .icon-container .sta-tracker-button-group .button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+}
+
+/* Match STA tracker icon styling (size + color) */
+.tracker-container .icon-container .sta-officers-log-group .button i {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #faf9f6;
+  font-size: 1.5em;
+  line-height: 1;
+  width: 1.25em;
+  height: 1em;
+}
+
 .sta-callbacks-arc-title .sta-arc-title-edit:hover {
   opacity: 1;
 }
@@ -235,6 +285,46 @@ div.section.milestones li.row.entry a.value-used.control.toggle {
   justify-content: flex-end;
   gap: 0.25rem;
   min-width: 0;
+}
+
+/* Hide only the "used" strike-through icon on Log rows unless explicitly enabled.
+   Keep the anchor visible because injected buttons live inside it. */
+[data-sta-show-log-used-toggle="0"]
+  div.section.milestones
+  li.row.entry[data-item-type="log"]
+  a.value-used.control.toggle
+  i[data-action="onStrikeThrough"] {
+  display: none;
+}
+
+/* Icon-only control: show the source log that calls back to this log */
+div.section.milestones li.row.entry[data-item-type="log"] a.value-used.control.toggle .sta-show-source-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  opacity: 0.75;
+  cursor: pointer;
+}
+
+div.section.milestones li.row.entry[data-item-type="log"] a.value-used.control.toggle .sta-show-source-btn:hover {
+  opacity: 1;
+}
+
+@keyframes sta-callbacks-double-flash {
+  0% { background-color: transparent; }
+  18% { background-color: rgba(255, 255, 255, 0.18); }
+  36% { background-color: transparent; }
+  58% { background-color: rgba(255, 255, 255, 0.14); }
+  76% { background-color: transparent; }
+  100% { background-color: transparent; }
+}
+
+/* Soft double flash for the source row */
+div.section.milestones li.row.entry.sta-callbacks-source-flash {
+  animation: sta-callbacks-double-flash 1.05s ease-in-out;
+  border-radius: 6px;
 }
 
 .sta-inline-sheet-btn {

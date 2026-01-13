@@ -1,5 +1,5 @@
 import { MODULE_ID } from "../../constants.js";
-import { STA_DEFAULT_ICON } from "../../values.js";
+import { STA_DEFAULT_ICON, escapeHTML } from "../../values.js";
 import { isLogUsed } from "../../mission.js";
 import { isCallbackTargetCompatibleWithValue } from "../../callbackEligibility.js";
 import { t } from "../../i18n.js";
@@ -77,8 +77,6 @@ export async function promptLinkLogToChain({ actor, log }) {
   if (!actor || actor.type !== "character") return;
   if (!log || log.type !== "log") return;
   if (!canCurrentUserChangeActor(actor)) return;
-
-  const escapeHTML = (s) => foundry.utils.escapeHTML(String(s ?? ""));
 
   const logs = Array.from(actor.items ?? []).filter((i) => i?.type === "log");
   const values = Array.from(actor.items ?? []).filter(
@@ -260,8 +258,6 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         }
       );
     });
-
-  const escapeHTML = (s) => foundry.utils.escapeHTML(String(s ?? ""));
 
   const existing = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
   const existingFrom = String(existing?.fromLogId ?? "");
@@ -460,6 +456,33 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     else fromSelect.value = "";
   };
 
+  const alignPrimaryValueToCallbackTarget = () => {
+    const fromLogId = String(fromSelect.value ?? "");
+    if (!fromLogId) return;
+
+    // Exception: when calling back to the end of a completed arc, do NOT
+    // auto-set the Primary Value. The new log is not part of that arc.
+    if (completedArcEndLogIds?.has?.(fromLogId)) return;
+
+    const target = actor.items.get(fromLogId);
+    if (!target || target.type !== "log") return;
+
+    const targetPrimaryValueId = String(
+      getPrimaryValueIdForLog(actor, target, values) ?? ""
+    );
+    if (!targetPrimaryValueId) return;
+
+    const optionExists = Array.from(valueSelect.options).some(
+      (o) => String(o.value) === targetPrimaryValueId
+    );
+    if (!optionExists) return;
+
+    if (String(valueSelect.value ?? "") === targetPrimaryValueId) return;
+
+    valueSelect.value = targetPrimaryValueId;
+    refreshFromOptions();
+  };
+
   const syncFormFields = () => {
     let fromLogId = String(fromSelect.value ?? "");
     const valueId = String(valueSelect.value ?? "");
@@ -642,6 +665,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     } catch (_) {
       // ignore
     }
+    alignPrimaryValueToCallbackTarget();
     syncFormFields();
     scheduleSave();
   });
@@ -680,8 +704,26 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   // Ensure the fromLog options reflect the current primary value on initial render.
   refreshFromOptions();
 
+  // On open: if we already have a callback target selected, align Primary Value
+  // to match that target (legacy data normalization). Only auto-save if this
+  // alignment actually changes the Primary Value.
+  const _openFromLogId = String(fromSelect.value ?? "");
+  const _openValueId = String(valueSelect.value ?? "");
+  const _hasPersistedPrimary = Boolean(String(persistedPrimary ?? "").trim());
+  if (!_hasPersistedPrimary && _openFromLogId) {
+    alignPrimaryValueToCallbackTarget();
+  }
+
   // Ensure hidden fields are initialized to match current UI.
   syncFormFields();
 
-  // No auto-save on open; only save after user changes a field.
+  if (
+    !_hasPersistedPrimary &&
+    _openFromLogId &&
+    String(valueSelect.value ?? "") !== _openValueId
+  ) {
+    scheduleSave();
+  }
+
+  // No auto-save on open (except legacy normalization above).
 }

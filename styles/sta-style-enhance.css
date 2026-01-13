@@ -1,109 +1,109 @@
 
-.right-column {
+body.system-sta .right-column {
 display: flex;
 flex-wrap: wrap;
 flex:1;
 }
 
-.top-right-column {
+body.system-sta .top-right-column {
 display: flex;
 flex-wrap: wrap;
 flex:1;
 }
 
-.bottom-left-column {
+body.system-sta .bottom-left-column {
 display: flex;
 flex-wrap:nowrap;
 flex-direction: column;
 }
 
-.bottom-right-column {
+body.system-sta .bottom-right-column {
 display: flex;
 flex-wrap:wrap;
 flex:1;
 flex-direction: column;
 }
 
-.bottom-right-column .sheet-tabs {
+body.system-sta .bottom-right-column .sheet-tabs {
 flex-basis:100%;
 }
 
-.name-field {
+body.system-sta .name-field {
 flex-basis:100%;
 }
 
-.top-right-column .npc-block{
+body.system-sta .top-right-column .npc-block{
 flex-basis:100%;
 }
 
-.top-right-column .tracktitle{
+body.system-sta .top-right-column .tracktitle{
 flex-basis:100%;
 }
 
-.starship-sheet .right-column .track{
+body.system-sta .starship-sheet .right-column .track{
 flex-basis:100%;
 }
 
-.top-right-column .track{
+body.system-sta .top-right-column .track{
 display: flex;
 flex-basis:100%;
 }
 
-.character-sheet .big-row{
+body.system-sta .character-sheet .big-row{
 display: flex;
 }
 
-.big-row-column .checkbox{
+body.system-sta .big-row-column .checkbox{
 justify-content: flex-start;
 }
 
-.character-sheet .row{
+body.system-sta .character-sheet .row{
 display: flex;
 }
 
-.character-sheet .section {
+body.system-sta .character-sheet .section {
 flex-basis:100%;
 }
 
-.starship-sheet .section {
+body.system-sta .starship-sheet .section {
 flex-basis:100%;
 }
 
-.character-sheet .application.sheet {
+body.system-sta .character-sheet .application.sheet {
 max-width:90%;
 }
 
-.character-sheet .title{
+body.system-sta .character-sheet .title{
 flex-basis:100%;
 }
 
-.note2e {
+body.system-sta .note2e {
 flex:1;
 }
 
 
-h4 > .chat-portrait-playerName-generic {
+body.system-sta h4 > .chat-portrait-playerName-generic {
 font-size: 14px;
 }
 
-h4 > .chat-portrait-indicator-generic {
+body.system-sta h4 > .chat-portrait-indicator-generic {
 font-size: 14px;
 }
 
-.form-fields > textarea {
+body.system-sta .form-fields > textarea {
 resize: vertical;
 }
 
-#roll-privacy > button.ui-control.icon.fa-solid.fa-user {
+body.system-sta #roll-privacy > button.ui-control.icon.fa-solid.fa-user {
 display: none;
 }
 
-.dice-rolls .checkbox-container > input[type=checkbox]{
+body.system-sta .dice-rolls .checkbox-container > input[type=checkbox]{
 padding: 2px 2px 0px 2px;
 outline: 1px solid #1e5180;
 }
 
-.note .editor-content {
+body.system-sta .note .editor-content {
     border: white 1px solid;
     border-radius: 2%;
     padding: 5px;

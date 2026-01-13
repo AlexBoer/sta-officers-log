@@ -1,12 +1,12 @@
 import { t } from "../../i18n.js";
 
 function _escapeHtml(s) {
-  return String(s)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+  // Keep this file self-contained; prefer Foundry's canonical escaping.
+  try {
+    return foundry.utils.escapeHTML(String(s ?? ""));
+  } catch (_) {
+    return String(s ?? "");
+  }
 }
 
 async function _confirmDelete({ title, contentHtml }) {
@@ -99,10 +99,10 @@ export function installConfirmDeleteControls(root, options = {}) {
         ? String(entryEl.dataset.itemType)
         : "item";
       return {
-        title:
-          `${t("sta-officers-log.confirmDelete.title")} ${itemType}?`,
-        contentHtml:
-          `${t("sta-officers-log.confirmDelete.body")}${_escapeHtml(itemType)}?`,
+        title: `${t("sta-officers-log.confirmDelete.title")} ${itemType}?`,
+        contentHtml: `${t("sta-officers-log.confirmDelete.body")}${_escapeHtml(
+          itemType
+        )}?`,
       };
     });
 

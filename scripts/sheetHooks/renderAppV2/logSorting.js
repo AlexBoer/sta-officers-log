@@ -1,13 +1,8 @@
 import { MODULE_ID } from "../../constants.js";
 import {
   getCompletedArcEndLogIds,
-  getMilestoneChildLogIds,
   getPrimaryValueIdForLog,
 } from "../../logMetadata.js";
-import {
-  computeBestChainEndingAt,
-  getCallbackLogEdgesForValue,
-} from "../../arcChains.js";
 import { openNewMilestoneArcDialog } from "./newMilestoneArcDialog.js";
 
 export { getCompletedArcEndLogIds, getPrimaryValueIdForLog };
@@ -105,15 +100,6 @@ function _getLogChainComponents(actor, logItems) {
   // even if it calls back to the last log in that Arc.
   const completedArcEndLogIds = getCompletedArcEndLogIds(actor, byId);
 
-  let milestones = [];
-  try {
-    milestones = Array.from(actor?.items ?? []).filter(
-      (i) => i?.type === "milestone"
-    );
-  } catch (_) {
-    milestones = [];
-  }
-
   const valueItems = Array.from(actor?.items ?? []).filter(
     (i) => i?.type === "value"
   );
@@ -162,75 +148,6 @@ function _getLogChainComponents(actor, logItems) {
 
     ensure(a).add(b);
     ensure(b).add(a);
-  }
-
-  // Also treat Milestone associations as chain links so manual edits update sorting.
-  for (const ms of milestones) {
-    try {
-      const isArc = !!ms.system?.arc?.isArc;
-      const childIds = getMilestoneChildLogIds(ms).filter((id) => byId.has(id));
-      if (!childIds.length) continue;
-
-      const msValueId = String(ms.getFlag(MODULE_ID, "callbackValueId") ?? "");
-
-      if (isArc) {
-        for (let i = 1; i < childIds.length; i += 1) {
-          const a = childIds[i - 1];
-          const b = childIds[i];
-
-          // Respect explicit manual unlink overrides (to-side).
-          if (callbackLinkDisabledToLogIds.has(b)) continue;
-
-          // Break chains when the milestone value doesn't match the chain primary.
-          if (msValueId) {
-            const aLog = byId.get(String(a));
-            const bLog = byId.get(String(b));
-            const aPrimary = aLog
-              ? getPrimaryValueIdForLog(actor, aLog, valueItems)
-              : "";
-            const bPrimary = bLog
-              ? getPrimaryValueIdForLog(actor, bLog, valueItems)
-              : "";
-            if (aPrimary && aPrimary !== msValueId) continue;
-            if (bPrimary && bPrimary !== msValueId) continue;
-          }
-
-          ensure(a).add(b);
-          ensure(b).add(a);
-        }
-      } else {
-        const a = String(ms.system?.childA ?? "");
-        const b = String(ms.system?.childB ?? "");
-        if (!a || !b) continue;
-        if (!byId.has(a) || !byId.has(b)) continue;
-
-        // Respect explicit manual unlink overrides (to-side).
-        if (callbackLinkDisabledToLogIds.has(b)) continue;
-
-        // Break non-arc links across completed Arc boundaries.
-        if (completedArcEndLogIds.has(a) || completedArcEndLogIds.has(b))
-          continue;
-
-        // Break chains when the milestone value doesn't match the chain primary.
-        if (msValueId) {
-          const aLog = byId.get(String(a));
-          const bLog = byId.get(String(b));
-          const aPrimary = aLog
-            ? getPrimaryValueIdForLog(actor, aLog, valueItems)
-            : "";
-          const bPrimary = bLog
-            ? getPrimaryValueIdForLog(actor, bLog, valueItems)
-            : "";
-          if (aPrimary && aPrimary !== msValueId) continue;
-          if (bPrimary && bPrimary !== msValueId) continue;
-        }
-
-        ensure(a).add(b);
-        ensure(b).add(a);
-      }
-    } catch (_) {
-      // ignore
-    }
   }
 
   const visited = new Set();
@@ -483,6 +400,96 @@ export function applyMissionLogSorting(root, actor, mode) {
       (i) => i?.type === "value"
     );
 
+    const computeChainLogIdsByParentWalk = (
+      actorDoc,
+      endLogId,
+      maxSteps,
+      disallowNodeIds,
+      presentIdSet
+    ) => {
+      try {
+        const steps = Number(maxSteps);
+        if (!Number.isFinite(steps) || steps <= 0) return [];
+        const actorItems = actorDoc?.items ?? null;
+        if (!actorItems?.get) return [];
+
+        const present = presentIdSet ?? null;
+        const result = [];
+        const seen = new Set();
+        let cur = endLogId ? String(endLogId) : "";
+
+        while (cur && result.length < steps) {
+          const id = String(cur);
+          if (seen.has(id)) break;
+          seen.add(id);
+
+          if (present && !present.has(id)) break;
+
+          const curItem = actorItems.get(id);
+          if (!curItem || curItem.type !== "log") break;
+
+          result.push(id);
+
+          const parentRaw =
+            curItem.getFlag?.(MODULE_ID, "callbackLink")?.fromLogId ?? "";
+          const parentId = parentRaw ? String(parentRaw) : "";
+          if (!parentId) break;
+
+          if (disallowNodeIds?.has?.(parentId)) break;
+
+          if (present && !present.has(parentId)) break;
+          const parentItem = actorItems.get(parentId);
+          if (!parentItem || parentItem.type !== "log") break;
+
+          cur = parentId;
+        }
+
+        return result.reverse();
+      } catch (_) {
+        return [];
+      }
+    };
+
+    const isStaleStoredChain = (
+      storedChainIds,
+      endLogId,
+      steps,
+      parentId,
+      presentIdSet,
+      disallowNodeIds
+    ) => {
+      try {
+        const s = Number(steps);
+        if (!Number.isFinite(s) || s <= 1) return false;
+
+        const endId = endLogId ? String(endLogId) : "";
+        if (!endId) return false;
+
+        const chain = (Array.isArray(storedChainIds) ? storedChainIds : [])
+          .map((x) => String(x))
+          .filter(Boolean);
+
+        const pId = parentId ? String(parentId) : "";
+        const hasValidParent =
+          pId && presentIdSet?.has?.(pId) && !disallowNodeIds?.has?.(pId);
+
+        // Stale case A: steps>1, but stored chain is just the end log, even though
+        // a valid parent is present and allowed.
+        if (chain.length === 1 && chain[0] === endId && hasValidParent)
+          return true;
+
+        // Stale case B: stored chain points at missing logs; after filtering it becomes empty,
+        // but a valid parent exists so we can reconstruct.
+        const presentChain = chain.filter((id) => presentIdSet?.has?.(id));
+        if (chain.length > 0 && presentChain.length === 0 && hasValidParent)
+          return true;
+
+        return false;
+      } catch (_) {
+        return false;
+      }
+    };
+
     // ----- 1) Build completed-Arc blocks first (Arc Order) -----
     /** @type {Array<{arcId:string, ids:string[], maxTime:number, valueNameLabel:string}>} */
     const arcBlocks = [];
@@ -513,43 +520,58 @@ export function applyMissionLogSorting(root, actor, mode) {
       let chainIds = [];
 
       try {
-        if (arcValueId) {
-          // Disallow reusing nodes already consumed by OTHER arcs.
-          const disallowNodeIds = new Set();
-          for (const other of logItems) {
-            if (String(other.id) === String(log.id)) continue;
-            const otherArcInfo = other.getFlag?.(MODULE_ID, "arcInfo") ?? null;
-            if (otherArcInfo?.isArc !== true) continue;
-            const otherChain = Array.isArray(otherArcInfo.chainLogIds)
-              ? otherArcInfo.chainLogIds
-              : [];
-            for (const id of otherChain) {
-              if (id) disallowNodeIds.add(String(id));
-            }
-          }
-
-          const { incoming } = getCallbackLogEdgesForValue(actor, arcValueId);
-          const computed = computeBestChainEndingAt({
-            incoming,
-            endLogId: String(log.id),
-            disallowNodeIds,
-          });
-
-          const full = Array.isArray(computed?.chainLogIds)
-            ? computed.chainLogIds.map((x) => String(x)).filter(Boolean)
+        // Disallow reusing nodes already consumed by OTHER arcs.
+        const disallowNodeIds = new Set();
+        for (const other of logItems) {
+          if (String(other.id) === String(log.id)) continue;
+          const otherArcInfo = other.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+          if (otherArcInfo?.isArc !== true) continue;
+          const otherChain = Array.isArray(otherArcInfo.chainLogIds)
+            ? otherArcInfo.chainLogIds
             : [];
-          chainIds = full.length > steps ? full.slice(-steps) : full;
+          for (const id of otherChain) {
+            if (id) disallowNodeIds.add(String(id));
+          }
+        }
+
+        // Prefer stored chain list (source of truth).
+        chainIds = Array.isArray(arcInfo.chainLogIds)
+          ? arcInfo.chainLogIds.map((x) => String(x)).filter(Boolean)
+          : [];
+
+        // If the stored chain is obviously stale, force fallback parent-walk.
+        const parentIdRaw = log.getFlag?.(MODULE_ID, "callbackLink")?.fromLogId;
+        const parentId = parentIdRaw ? String(parentIdRaw) : "";
+        if (
+          chainIds.length &&
+          isStaleStoredChain(
+            chainIds,
+            String(log.id),
+            steps,
+            parentId,
+            byId,
+            disallowNodeIds
+          )
+        ) {
+          chainIds = [];
+        }
+
+        // Fallback: compute via parent-walk on callbackLink.fromLogId.
+        if (!chainIds.length) {
+          chainIds = computeChainLogIdsByParentWalk(
+            actor,
+            String(log.id),
+            steps,
+            disallowNodeIds,
+            byId
+          );
         }
       } catch (_) {
         chainIds = [];
       }
 
-      // Fallback to the stored chain list (older arcs / no usable callback links).
-      if (!chainIds.length) {
-        chainIds = Array.isArray(arcInfo.chainLogIds)
-          ? arcInfo.chainLogIds.map((x) => String(x)).filter(Boolean)
-          : [];
-      }
+      // Keep only the last N steps for display grouping.
+      if (chainIds.length > steps) chainIds = chainIds.slice(-steps);
 
       // If logs were deleted, some IDs won't exist anymore. Keep the arc visible anyway.
       const presentChain = chainIds
@@ -774,7 +796,6 @@ export function applyMissionLogSorting(root, actor, mode) {
           : arcLabelBase
           ? `Arc ${arcIndex + 1} (${arcLabelBase})`
           : `Arc ${arcIndex + 1}`;
-        const collapseIconHtml = '<i class="fa-solid fa-chevron-down"></i>';
 
         const onToggle = (ev) => {
           ev?.preventDefault?.();
@@ -815,7 +836,17 @@ export function applyMissionLogSorting(root, actor, mode) {
         titleBtn.setAttribute("aria-label", titleBtn.title);
         titleBtn.setAttribute("role", "button");
         titleBtn.tabIndex = 0;
-        titleBtn.innerHTML = `${collapseIconHtml}<span class="sta-arc-collapse-label">${arcLabelFull}</span>`;
+
+        // IMPORTANT: arcLabelFull can include user-provided text; avoid innerHTML.
+        const icon = document.createElement("i");
+        icon.className = "fa-solid fa-chevron-down";
+        titleBtn.appendChild(icon);
+
+        const label = document.createElement("span");
+        label.className = "sta-arc-collapse-label";
+        label.textContent = arcLabelFull;
+        titleBtn.appendChild(label);
+
         titleBtn.addEventListener("click", onToggle);
         titleBtn.addEventListener("keydown", (ev) => {
           if (ev.key === "Enter" || ev.key === " ") onToggle(ev);

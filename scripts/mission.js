@@ -136,32 +136,40 @@ export async function setUsedCallbackThisMission(userId, used) {
 
 export async function resetMissionCallbacks() {
   await game.settings.set(MODULE_ID, "missionCallbackUsed", {});
-  ui.notifications.info(t("sta-officers-log.notifications.callbacksReset"));
+  // Preserve previous behavior by default.
+  const notify = arguments?.length ? arguments[0]?.notify !== false : true;
+  if (notify) {
+    ui.notifications.info(t("sta-officers-log.notifications.callbacksReset"));
+  }
 }
 
-export async function resetDetermination() {
+export async function resetDetermination({ notify = true } = {}) {
   const updates = [];
   for (const actor of game.actors) {
     if (actor.type !== "character") continue;
     updates.push(actor.update({ "system.determination.value": 1 }));
   }
   await Promise.allSettled(updates);
-  ui.notifications.info(
-    t("sta-officers-log.notifications.allDeterminationReset")
-  );
+  if (notify) {
+    ui.notifications.info(
+      t("sta-officers-log.notifications.allDeterminationReset")
+    );
+  }
 }
 
-export async function resetStress() {
+export async function resetStress({ notify = true } = {}) {
   const updates = [];
   for (const actor of game.actors) {
     if (actor.type !== "character") continue;
     updates.push(actor.update({ "system.stress.value": 0 }));
   }
   await Promise.allSettled(updates);
-  ui.notifications.info(t("sta-officers-log.notifications.allStressReset"));
+  if (notify) {
+    ui.notifications.info(t("sta-officers-log.notifications.allStressReset"));
+  }
 }
 
-export async function resetShipReadiness() {
+export async function resetShipReadiness({ notify = true } = {}) {
   const updates = [];
 
   for (const actor of game.actors) {
@@ -195,9 +203,11 @@ export async function resetShipReadiness() {
   }
 
   await Promise.allSettled(updates);
-  ui.notifications.info(
-    t("sta-officers-log.notifications.allShipReadinessReset")
-  );
+  if (notify) {
+    ui.notifications.info(
+      t("sta-officers-log.notifications.allShipReadinessReset")
+    );
+  }
 }
 
 async function _tryDecrementStaMomentum() {
@@ -583,10 +593,11 @@ export async function promptNewMissionAndReset() {
   const doResetShipStats = Boolean(result.resetShipStats);
   const createMissionLogs = Boolean(result.createMissionLogs);
 
-  if (doResetCallbacks) await resetMissionCallbacks();
-  if (doResetDetermination) await resetDetermination();
-  if (doResetStress) await resetStress();
-  if (doResetShipStats) await resetShipReadiness();
+  // Run selected resets silently; we'll emit consolidated notifications below.
+  if (doResetCallbacks) await resetMissionCallbacks({ notify: false });
+  if (doResetDetermination) await resetDetermination({ notify: false });
+  if (doResetStress) await resetStress({ notify: false });
+  if (doResetShipStats) await resetShipReadiness({ notify: false });
 
   // Determine selected participants
   const selectedUserIds = players
@@ -611,16 +622,34 @@ export async function promptNewMissionAndReset() {
       }
     }
 
-    ui.notifications.info(
-      `Mission set to: ${
-        newTitle || "(untitled)"
-      } — logs added to ${createdCount} character(s).`
-    );
+    // Consolidated notification (1/2)
+    {
+      const titlePart = `Mission set: ${newTitle || "(untitled)"}.`;
+      const logsPart = ` Logs created for ${createdCount} character(s).`;
+      const callbacksPart = doResetCallbacks ? " Callbacks reset." : "";
+      ui.notifications.info(`${titlePart}${logsPart}${callbacksPart}`);
+    }
   } else {
-    ui.notifications.info(
-      `Mission set to: ${
-        newTitle || "(untitled)"
-      } — no new mission logs created.`
-    );
+    // Consolidated notification (1/2)
+    {
+      const titlePart = `Mission set: ${newTitle || "(untitled)"}.`;
+      const logsPart = " No new mission logs created.";
+      const callbacksPart = doResetCallbacks ? " Callbacks reset." : "";
+      ui.notifications.info(`${titlePart}${logsPart}${callbacksPart}`);
+    }
+  }
+
+  // Consolidated notification (2/2)
+  try {
+    const parts = [];
+    if (doResetStress) parts.push("Stress");
+    if (doResetDetermination) parts.push("Determination");
+    if (doResetShipStats) parts.push("Shields & Reserve Power");
+
+    if (parts.length) {
+      ui.notifications.info(`${parts.join(", ")} reset.`);
+    }
+  } catch (_) {
+    // ignore
   }
 }

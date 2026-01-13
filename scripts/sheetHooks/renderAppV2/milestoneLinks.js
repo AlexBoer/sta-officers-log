@@ -4,6 +4,10 @@ import {
   getPrimaryValueIdForLog,
 } from "../../logMetadata.js";
 import { canCurrentUserChangeActor } from "./sheetUtils.js";
+import {
+  getMilestoneIconSourceLogId,
+  syncMilestoneImgFromLogId,
+} from "../../milestoneIcons.js";
 
 export { getMilestoneChildLogIds };
 
@@ -94,18 +98,12 @@ export async function syncCallbackLinksFromMilestone(actor, milestone) {
     if (!milestone || milestone.type !== "milestone") return;
     if (!canCurrentUserChangeActor(actor)) return;
 
-    // Keep the milestone icon aligned with childA (the first associated log).
-    // This helps visually identify the arc/chain the milestone belongs to.
+    // Keep the milestone icon aligned with its chosen source log (when set),
+    // otherwise fall back to the first associated log.
     try {
-      const isArc0 = !!milestone.system?.arc?.isArc;
-      const childAId = isArc0
-        ? String(getMilestoneChildLogIds(milestone)?.[0] ?? "")
-        : String(milestone.system?.childA ?? "");
-      const childA = childAId ? actor.items.get(childAId) : null;
-      const childImg =
-        childA?.type === "log" && childA?.img ? String(childA.img) : "";
-      if (childImg && String(milestone.img ?? "") !== childImg) {
-        await milestone.update?.({ img: childImg });
+      const sourceLogId = getMilestoneIconSourceLogId(milestone);
+      if (sourceLogId) {
+        await syncMilestoneImgFromLogId(actor, milestone, sourceLogId);
       }
     } catch (_) {
       // ignore
