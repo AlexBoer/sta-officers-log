@@ -168,7 +168,7 @@
   height: 1em;
 }
 
-.tracker-container .icon-container .sta-officers-log-group .button i {
+.tracker-container .icon-container .sta-officers-log-group .button i:hover {
   color:#89CFF0;
 }
 

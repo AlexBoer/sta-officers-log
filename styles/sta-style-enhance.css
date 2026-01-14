@@ -112,12 +112,12 @@ body.system-sta .note .editor-content {
     margin: 5px;
 }
 
-.prosemirror button.toggle, prose-mirror button.toggle {
+.prosemirror button.toggle:disabled, prose-mirror button.toggle:disabled {
+    display: none;
+}
+
+.prosemirror button.toggle:not(:disabled), prose-mirror button.toggle:not(:disabled) {
     top: 1rem;
     right: 1rem;
     display: block;
-}
-
-.prosemirror button.toggle, prose-mirror button.toggle:disabled {
-    display: none;
 }
