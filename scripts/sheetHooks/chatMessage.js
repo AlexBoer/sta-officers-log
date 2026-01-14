@@ -12,7 +12,7 @@ export function installCreateChatMessageHook() {
     if (!html.includes('class="sta roll chat card"')) return;
     if (!/\bDetermination\b/i.test(html)) return;
 
-    const authorId = message.user?.id ?? message.author?.id;
+    const authorId = message.author?.id ?? message.user?.id;
     if (!authorId) return;
 
     const targetUser = game.users.get(authorId);

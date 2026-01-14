@@ -1,7 +1,11 @@
 import { MODULE_ID } from "../../constants.js";
 import { t } from "../../i18n.js";
 import { getModuleSocket } from "../../socket.js";
-import { getCurrentMissionLogIdForUser } from "../../mission.js";
+import {
+  getCurrentMissionLogIdForUser,
+  isLogUsed,
+  setMissionLogForUser,
+} from "../../mission.js";
 import {
   isValueChallenged,
   setValueChallenged,
@@ -10,6 +14,8 @@ import {
   labelValuesOnActor,
   STA_DEFAULT_ICON,
   getValueIconPathForValueId,
+  getValueItems,
+  escapeHTML,
 } from "../../values.js";
 import {
   applyArcMilestoneBenefit,
@@ -22,6 +28,19 @@ import {
 } from "../../callbackFlow.js";
 
 import { ATTRIBUTE_KEYS, DISCIPLINE_KEYS } from "../../callbackFlow/dialogs.js";
+import {
+  DIRECTIVE_VALUE_ID_PREFIX,
+  directiveIconPath,
+  getDirectiveSnapshotForLog,
+  getMissionDirectives,
+  isDirectiveValueId,
+  isDirectiveChallenged,
+  makeDirectiveKeyFromText,
+  makeDirectiveValueIdFromText,
+  sanitizeDirectiveText,
+  setDirectiveChallenged,
+} from "../../directives.js";
+import { _promptSelectAndText } from "../../callbackFlow/dialogs.js";
 
 import { openNewMilestoneArcDialog } from "./newMilestoneArcDialog.js";
 
@@ -49,10 +68,224 @@ import {
   shouldShowLogUsedToggle,
 } from "../../clientSettings.js";
 
+import { isCallbackTargetCompatibleWithValue } from "../../callbackEligibility.js";
+import {
+  getCompletedArcEndLogIds,
+  getPrimaryValueIdForLog,
+} from "../../logMetadata.js";
+
 let _staCallbacksHelperMilestoneUpdateHookInstalled = false;
 const _staNormalizingLogIds = new Set();
 const _staNormalizingActorIds = new Set();
 const _staLogMetaDetailsOpenByLogId = new Map(); // logId -> boolean
+
+let _staOpenContextMenuEl = null;
+let _staOpenContextMenuCleanup = null;
+
+function closeStaOfficersLogContextMenu() {
+  try {
+    _staOpenContextMenuCleanup?.();
+  } catch (_) {
+    // ignore
+  }
+  _staOpenContextMenuCleanup = null;
+
+  try {
+    _staOpenContextMenuEl?.remove?.();
+  } catch (_) {
+    // ignore
+  }
+  _staOpenContextMenuEl = null;
+}
+
+function openStaOfficersLogContextMenu({ x, y, label, onClick }) {
+  closeStaOfficersLogContextMenu();
+
+  const menu = document.createElement("nav");
+  // Reuse Foundry's context menu classes so we inherit core styling.
+  menu.className = "context-menu sta-officers-log-context-menu";
+  menu.style.position = "fixed";
+  menu.style.left = `${Number(x) || 0}px`;
+  menu.style.top = `${Number(y) || 0}px`;
+  menu.style.zIndex = "10000";
+
+  const list = document.createElement("div");
+  list.className = "context-items";
+
+  const item = document.createElement("iv");
+  item.className = "context-item";
+  item.textContent = String(label ?? "");
+  item.addEventListener("click", async (ev) => {
+    try {
+      ev?.preventDefault?.();
+      ev?.stopPropagation?.();
+      ev?.stopImmediatePropagation?.();
+    } catch (_) {
+      // ignore
+    }
+
+    // Close immediately for responsiveness.
+    closeStaOfficersLogContextMenu();
+    try {
+      await onClick?.();
+    } catch (err) {
+      console.error(`${MODULE_ID} | context menu action failed`, err);
+    }
+  });
+
+  list.appendChild(item);
+  menu.appendChild(list);
+  document.body.appendChild(menu);
+
+  // Clamp to viewport.
+  try {
+    const rect = menu.getBoundingClientRect();
+    const pad = 4;
+    const maxX = Math.max(pad, window.innerWidth - rect.width - pad);
+    const maxY = Math.max(pad, window.innerHeight - rect.height - pad);
+    const clampedX = Math.min(Math.max(pad, Number(x) || 0), maxX);
+    const clampedY = Math.min(Math.max(pad, Number(y) || 0), maxY);
+    menu.style.left = `${clampedX}px`;
+    menu.style.top = `${clampedY}px`;
+  } catch (_) {
+    // ignore
+  }
+
+  const onDocMouseDown = (ev) => {
+    try {
+      const t = ev?.target;
+      if (t instanceof Node && menu.contains(t)) return;
+    } catch (_) {
+      // ignore
+    }
+    closeStaOfficersLogContextMenu();
+  };
+
+  const onKeyDown = (ev) => {
+    try {
+      if (String(ev?.key ?? "") === "Escape") closeStaOfficersLogContextMenu();
+    } catch (_) {
+      // ignore
+    }
+  };
+
+  document.addEventListener("mousedown", onDocMouseDown, true);
+  document.addEventListener("keydown", onKeyDown, true);
+
+  _staOpenContextMenuEl = menu;
+  _staOpenContextMenuCleanup = () => {
+    try {
+      document.removeEventListener("mousedown", onDocMouseDown, true);
+      document.removeEventListener("keydown", onKeyDown, true);
+    } catch (_) {
+      // ignore
+    }
+  };
+}
+
+function _hasEligibleCallbackTargetForValueId(
+  actor,
+  currentMissionLogId,
+  valueId
+) {
+  try {
+    if (!actor || actor.type !== "character") return false;
+
+    const vId = valueId ? String(valueId) : "";
+    if (!vId) return false;
+
+    // If we can't resolve the mission log id, preserve previous behavior (allow prompting).
+    // This avoids false negatives when the mission context isn't set.
+    const missionLogId = currentMissionLogId ? String(currentMissionLogId) : "";
+    if (!missionLogId) return true;
+
+    // Logs that are already used as a callback target (someone points to them) are not eligible.
+    const callbackTargetIds = new Set();
+    for (const log of actor.items ?? []) {
+      if (log?.type !== "log") continue;
+      if (log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true) continue;
+      const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
+      const fromLogId = String(link?.fromLogId ?? "");
+      if (fromLogId) callbackTargetIds.add(fromLogId);
+    }
+
+    const completedArcEndLogIds = getCompletedArcEndLogIds(actor);
+    const valueItems = getValueItems(actor);
+
+    for (const log of actor.items ?? []) {
+      if (log?.type !== "log") continue;
+      const logId = String(log.id ?? "");
+      if (!logId) continue;
+      if (logId === missionLogId) continue;
+      if (callbackTargetIds.has(logId)) continue;
+      if (isLogUsed(log)) continue;
+
+      const state = String(log.system?.valueStates?.[vId] ?? "unused");
+      if (!state || state === "unused") continue;
+
+      // Must be an invoked state (positive/negative/challenged)
+      if (!["positive", "negative", "challenged"].includes(state)) continue;
+
+      const primary = getPrimaryValueIdForLog(actor, log, valueItems);
+      const chainOk = isCallbackTargetCompatibleWithValue({
+        valueId: vId,
+        targetPrimaryValueId: primary,
+        isCompletedArcEnd: completedArcEndLogIds.has(logId),
+      });
+      if (!chainOk) continue;
+
+      return true;
+    }
+
+    return false;
+  } catch (_) {
+    // Preserve previous behavior if this check fails unexpectedly.
+    return true;
+  }
+}
+
+function _hasEligibleCallbackTargetWithAnyInvokedDirective(
+  actor,
+  currentMissionLogId
+) {
+  try {
+    if (!actor || actor.type !== "character") return false;
+
+    // If we can't resolve the mission log id, preserve previous behavior (allow prompting).
+    const missionLogId = currentMissionLogId ? String(currentMissionLogId) : "";
+    if (!missionLogId) return true;
+
+    // Logs that are already used as a callback target (someone points to them) are not eligible.
+    const callbackTargetIds = new Set();
+    for (const log of actor.items ?? []) {
+      if (log?.type !== "log") continue;
+      if (log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true) continue;
+      const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
+      const fromLogId = String(link?.fromLogId ?? "");
+      if (fromLogId) callbackTargetIds.add(fromLogId);
+    }
+
+    for (const log of actor.items ?? []) {
+      if (log?.type !== "log") continue;
+      const logId = String(log.id ?? "");
+      if (!logId) continue;
+      if (logId === missionLogId) continue;
+      if (callbackTargetIds.has(logId)) continue;
+      if (isLogUsed(log)) continue;
+
+      const states = log.system?.valueStates ?? {};
+      for (const [id, state] of Object.entries(states)) {
+        if (!String(id).startsWith(DIRECTIVE_VALUE_ID_PREFIX)) continue;
+        const s = String(state ?? "unused");
+        if (["positive", "negative", "challenged"].includes(s)) return true;
+      }
+    }
+
+    return false;
+  } catch (_) {
+    return true;
+  }
+}
 
 function installOfficersLogButtonsInStaTracker(app, root) {
   try {
@@ -218,6 +451,67 @@ function installCallbackSourceButtons(root, actor) {
       t("sta-officers-log.logs.currentMissionIndicator") ??
       "Current mission log";
 
+    const makeCurrentMissionText =
+      t("sta-officers-log.logs.makeCurrentMissionLog") ??
+      "Make Current Mission Log";
+
+    const requestSetCurrentMissionLog = async (logId) => {
+      const lId = logId ? String(logId) : "";
+      const uId = missionUserId ? String(missionUserId) : "";
+
+      if (!uId) {
+        console.error(
+          `${MODULE_ID} | cannot set current mission log (no user for actor ${String(
+            actor?.id ?? ""
+          )})`
+        );
+        return;
+      }
+      if (!lId) {
+        console.error(
+          `${MODULE_ID} | cannot set current mission log (no logId)`
+        );
+        return;
+      }
+
+      try {
+        if (game.user?.isGM) {
+          await setMissionLogForUser(uId, lId);
+        } else {
+          const socket = getModuleSocket();
+          if (!socket || typeof socket.executeAsGM !== "function") {
+            console.error(
+              `${MODULE_ID} | cannot set current mission log (socket unavailable)`
+            );
+            return;
+          }
+
+          const ok = await socket.executeAsGM("setCurrentMissionLogForUser", {
+            actorId: String(actor?.id ?? ""),
+            userId: uId,
+            logId: lId,
+          });
+
+          if (ok !== true) {
+            console.error(
+              `${MODULE_ID} | GM rejected setting current mission log for ${uId} -> ${lId}`
+            );
+            return;
+          }
+        }
+      } catch (err) {
+        console.error(`${MODULE_ID} | failed to set current mission log`, err);
+        return;
+      }
+
+      // Rerender sheets so the indicator updates.
+      try {
+        refreshOpenSheet(String(actor?.id ?? ""));
+      } catch (_) {
+        // ignore
+      }
+    };
+
     const getCreatedKey = (log) => {
       const createdRaw =
         log?._stats?.createdTime ?? log?._source?._stats?.createdTime ?? null;
@@ -314,10 +608,51 @@ function installCallbackSourceButtons(root, actor) {
     for (const row of Array.from(logRows)) {
       if (!(row instanceof HTMLElement)) continue;
 
+      const entryId = row?.dataset?.itemId ? String(row.dataset.itemId) : "";
+
+      // Right-click context menu: Make Current Mission Log
+      if (row.dataset.staMissionLogContextBound !== "1") {
+        row.dataset.staMissionLogContextBound = "1";
+        row.addEventListener(
+          "contextmenu",
+          (ev) => {
+            try {
+              ev?.preventDefault?.();
+              ev?.stopPropagation?.();
+              ev?.stopImmediatePropagation?.();
+            } catch (_) {
+              // ignore
+            }
+
+            const logId = row?.dataset?.itemId
+              ? String(row.dataset.itemId)
+              : "";
+            if (!missionUserId) {
+              console.error(
+                `${MODULE_ID} | cannot set current mission log (no user for actor)`
+              );
+              return;
+            }
+            if (!logId) {
+              console.error(
+                `${MODULE_ID} | cannot set current mission log (missing log id on row)`
+              );
+              return;
+            }
+
+            openStaOfficersLogContextMenu({
+              x: ev?.clientX ?? 0,
+              y: ev?.clientY ?? 0,
+              label: makeCurrentMissionText,
+              onClick: async () => requestSetCurrentMissionLog(logId),
+            });
+          },
+          true
+        );
+      }
+
       const toggleAnchor = row.querySelector("a.value-used.control.toggle");
       if (!(toggleAnchor instanceof HTMLElement)) continue;
-
-      const entryId = row?.dataset?.itemId ? String(row.dataset.itemId) : "";
       const isCurrentMissionRow =
         entryId && currentMissionLogId && entryId === currentMissionLogId;
       const existingIndicator = row.querySelector(
@@ -372,9 +707,9 @@ function installCallbackSourceButtons(root, actor) {
 
       const btn = document.createElement("a");
       btn.className = "sta-show-source-btn";
-      btn.title = "Show callback log";
-      btn.setAttribute("aria-label", "Show callback log");
-      btn.innerHTML = '<i class="fa-solid fa-arrow-up-wide-short"></i>';
+      btn.title = "Show Callback and Milestone";
+      btn.setAttribute("aria-label", "Show Callback and Milestone");
+      btn.innerHTML = '<i class="fa-solid fa-diagram-project"></i>';
 
       btn.addEventListener("click", (ev) => {
         try {
@@ -397,17 +732,13 @@ function installCallbackSourceButtons(root, actor) {
         const milestoneId = String(callbackLink?.milestoneId ?? "");
 
         if (!fromLogId) {
-          ui.notifications?.warn?.(
-            "Callback log does not specify its source and cannot be highlighted."
-          );
+          ui.notifications?.warn?.("This log does not make a callback.");
           return;
         }
 
         const sourceRow = findLogRowById(fromLogId);
         if (!sourceRow) {
-          ui.notifications?.warn?.(
-            "Callback log is not visible on this sheet."
-          );
+          ui.notifications?.warn?.("Callback log is missing from the sheet.");
           return;
         }
 
@@ -425,7 +756,7 @@ function installCallbackSourceButtons(root, actor) {
             flashRow(milestoneRow);
           } else {
             ui.notifications?.warn?.(
-              "Associated milestone is not visible on this sheet."
+              "Associated milestone is missing from the sheet."
             );
           }
         }
@@ -1277,13 +1608,18 @@ export function installRenderApplicationV2Hook() {
                   // Sync log icon to Primary Value (or default) after save.
                   if (primaryValueTouched) {
                     try {
-                      const valueItem = primaryValueId
-                        ? actor.items.get(primaryValueId)
-                        : null;
                       const desiredImg =
-                        valueItem?.type === "value" && valueItem?.img
-                          ? String(valueItem.img)
-                          : STA_DEFAULT_ICON;
+                        primaryValueId && isDirectiveValueId(primaryValueId)
+                          ? directiveIconPath()
+                          : (() => {
+                              const valueItem = primaryValueId
+                                ? actor.items.get(primaryValueId)
+                                : null;
+                              return valueItem?.type === "value" &&
+                                valueItem?.img
+                                ? String(valueItem.img)
+                                : STA_DEFAULT_ICON;
+                            })();
                       if (
                         desiredImg &&
                         String(item.img ?? "") !== String(desiredImg)
@@ -1497,6 +1833,13 @@ export function installRenderApplicationV2Hook() {
   }
 
   Hooks.on("renderApplicationV2", (app, root /* HTMLElement */, _context) => {
+    // Ensure our custom context menu never survives a rerender.
+    try {
+      closeStaOfficersLogContextMenu();
+    } catch (_) {
+      // ignore
+    }
+
     // Always drive CSS flags on STA character sheets, even if sheet enhancements are disabled.
     try {
       if (app?.id?.startsWith?.("STACharacterSheet2e") && root?.dataset) {
@@ -1747,6 +2090,243 @@ export function installRenderApplicationV2Hook() {
       titleEl.appendChild(btn);
     }
 
+    // Add a section-level "Use Directive" button once.
+    if (titleEl && !titleEl.querySelector(".sta-use-directive-btn")) {
+      titleEl.classList.add("sta-values-title-with-button");
+
+      const dirBtn = document.createElement("a");
+      dirBtn.className = "sta-use-directive-btn";
+      dirBtn.title = t("sta-officers-log.values.useDirectiveTooltip");
+      dirBtn.innerHTML = `${t(
+        "sta-officers-log.values.useDirective"
+      )} <i class="fa-solid fa-flag"></i>`;
+
+      dirBtn.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const det = Number(actor.system?.determination?.value ?? 0);
+
+        const missionUserId = game.user.isGM
+          ? getUserIdForCharacterActor(actor)
+          : game.user.id;
+        const currentMissionLogId = missionUserId
+          ? getCurrentMissionLogIdForUser(missionUserId)
+          : null;
+
+        const currentLog = currentMissionLogId
+          ? actor.items.get(String(currentMissionLogId))
+          : null;
+
+        // Prefer per-log snapshot (permanently copied at mission start)
+        const snapshot = currentLog
+          ? getDirectiveSnapshotForLog(currentLog)
+          : [];
+        const directives = snapshot.length ? snapshot : getMissionDirectives();
+
+        const byKey = new Map();
+        for (const d of directives) {
+          const text = sanitizeDirectiveText(d);
+          if (!text) continue;
+          const key = makeDirectiveKeyFromText(text);
+          if (!key) continue;
+          byKey.set(key, text);
+        }
+
+        // Build options list (disable challenged directives)
+        const optionsHtml = [
+          `<option value="__other__">${escapeHTML(
+            t("sta-officers-log.dialog.useDirective.other")
+          )}</option>`,
+        ];
+        for (const [key, text] of byKey.entries()) {
+          const disabled = isDirectiveChallenged(actor, key) ? " disabled" : "";
+          optionsHtml.push(
+            `<option value="${escapeHTML(key)}"${disabled}>${escapeHTML(
+              text
+            )}</option>`
+          );
+        }
+
+        const pick = await _promptSelectAndText({
+          title: t("sta-officers-log.dialog.useDirective.title"),
+          selectLabel: t("sta-officers-log.dialog.useDirective.pick"),
+          selectName: "directiveKey",
+          selectOptionsHtml: optionsHtml.join(""),
+          textLabel: t("sta-officers-log.dialog.useDirective.other"),
+          textName: "directiveText",
+          textPlaceholder: t(
+            "sta-officers-log.dialog.useDirective.otherPlaceholder"
+          ),
+        });
+
+        if (!pick) return;
+
+        const chosenKey = String(pick.directiveKey ?? "");
+        const typed = sanitizeDirectiveText(pick.directiveText ?? "");
+
+        const chosenTextRaw =
+          chosenKey && chosenKey !== "__other__" ? byKey.get(chosenKey) : typed;
+        const chosenText = sanitizeDirectiveText(chosenTextRaw);
+        if (!chosenText) {
+          ui.notifications?.warn?.(
+            t("sta-officers-log.dialog.useDirective.missing")
+          );
+          return;
+        }
+
+        const directiveKey = makeDirectiveKeyFromText(chosenText);
+        const directiveValueId = `${DIRECTIVE_VALUE_ID_PREFIX}${directiveKey}`;
+
+        // Enforce: cannot re-use challenged directives.
+        if (isDirectiveChallenged(actor, directiveKey)) return;
+
+        const choice = await promptUseValueChoice({
+          valueName: chosenText,
+          canChoosePositive: det > 0,
+        });
+
+        if (!choice) return;
+
+        const valueState =
+          choice === "positive"
+            ? "positive"
+            : choice === "challenge"
+            ? "challenged"
+            : "negative";
+
+        const applyLogUsage = async (logDoc) => {
+          if (!logDoc) return;
+
+          // Record invoked directive on the mission log
+          await logDoc.update({
+            [`system.valueStates.${directiveValueId}`]: valueState,
+          });
+
+          // Store a mapping so later UI can display the directive name.
+          try {
+            const existing =
+              logDoc.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
+            const cloned =
+              existing && typeof existing === "object"
+                ? foundry.utils.deepClone(existing)
+                : {};
+            cloned[String(directiveKey)] = chosenText;
+            await logDoc.setFlag(MODULE_ID, "directiveLabels", cloned);
+          } catch (_) {
+            // ignore
+          }
+        };
+
+        if (game.user.isGM) {
+          if (valueState === "positive") {
+            await spendDetermination(actor);
+          } else {
+            await gainDetermination(actor);
+            if (choice === "challenge") {
+              await setDirectiveChallenged(actor, directiveKey, true);
+            }
+          }
+
+          await applyLogUsage(currentLog);
+
+          // Prompt callback locally, but apply for owning player's mission context.
+          const owningUserId = getUserIdForCharacterActor(actor);
+          if (owningUserId) {
+            if (
+              _hasEligibleCallbackTargetWithAnyInvokedDirective(
+                actor,
+                currentMissionLogId
+              )
+            ) {
+              await promptCallbackForActorAsGM(actor, owningUserId, {
+                reason: "Directive used",
+                defaultValueId: directiveValueId,
+                defaultValueState: valueState,
+              });
+            }
+          }
+
+          app.render();
+          return;
+        }
+
+        const moduleSocket = getModuleSocket();
+        if (!moduleSocket) {
+          ui.notifications?.error(
+            t("sta-officers-log.errors.socketNotAvailable")
+          );
+          return;
+        }
+
+        if (choice === "positive") {
+          await spendDetermination(actor);
+          await applyLogUsage(currentLog);
+
+          // Ask the GM to prompt the player for a callback.
+          try {
+            if (
+              _hasEligibleCallbackTargetWithAnyInvokedDirective(
+                actor,
+                currentMissionLogId
+              )
+            ) {
+              await moduleSocket.executeAsGM("promptCallbackForUser", {
+                targetUserId: game.user.id,
+                reason: "Directive used",
+                defaultValueId: directiveValueId,
+                defaultValueState: "positive",
+              });
+            }
+          } catch (err) {
+            console.error(
+              "sta-officers-log | Failed to request callback prompt",
+              err
+            );
+          }
+
+          app.render();
+          return;
+        }
+
+        // GM approval required for negative and challenge
+        try {
+          const result = await moduleSocket.executeAsGM(
+            "requestDirectiveUseApproval",
+            {
+              requestingUserId: game.user.id,
+              actorUuid: actor.uuid,
+              actorName: actor.name,
+              directiveKey,
+              directiveText: chosenText,
+              usage: choice,
+              currentMissionLogId,
+            }
+          );
+
+          if (result?.approved) {
+            ui.notifications?.info(
+              t("sta-officers-log.dialog.useValue.approved")
+            );
+          } else {
+            ui.notifications?.warn(
+              t("sta-officers-log.dialog.useValue.denied")
+            );
+          }
+        } catch (err) {
+          console.error(
+            "sta-officers-log | Use Directive approval failed",
+            err
+          );
+          ui.notifications?.error(t("sta-officers-log.dialog.useValue.error"));
+        }
+
+        app.render();
+      });
+
+      titleEl.appendChild(dirBtn);
+    }
+
     // Add a per-Value "Use Value" button.
     const valueEntries = root.querySelectorAll(
       'div.section.values li.row.entry[data-item-type="value"]'
@@ -1834,11 +2414,19 @@ export function installRenderApplicationV2Hook() {
           // but apply it for the owning player's mission/chain context.
           const owningUserId = getUserIdForCharacterActor(actor);
           if (owningUserId) {
-            await promptCallbackForActorAsGM(actor, owningUserId, {
-              reason: "Value used",
-              defaultValueId: valueItem.id,
-              defaultValueState: valueState,
-            });
+            if (
+              _hasEligibleCallbackTargetForValueId(
+                actor,
+                currentMissionLogId,
+                valueItem.id
+              )
+            ) {
+              await promptCallbackForActorAsGM(actor, owningUserId, {
+                reason: "Value used",
+                defaultValueId: valueItem.id,
+                defaultValueState: valueState,
+              });
+            }
           }
 
           app.render();
@@ -1868,12 +2456,20 @@ export function installRenderApplicationV2Hook() {
 
           // Ask the GM to prompt the player for a callback.
           try {
-            await moduleSocket.executeAsGM("promptCallbackForUser", {
-              targetUserId: game.user.id,
-              reason: "Value used",
-              defaultValueId: valueItem.id,
-              defaultValueState: "positive",
-            });
+            if (
+              _hasEligibleCallbackTargetForValueId(
+                actor,
+                currentMissionLogId,
+                valueItem.id
+              )
+            ) {
+              await moduleSocket.executeAsGM("promptCallbackForUser", {
+                targetUserId: game.user.id,
+                reason: "Value used",
+                defaultValueId: valueItem.id,
+                defaultValueState: "positive",
+              });
+            }
           } catch (err) {
             console.error(
               "sta-officers-log | Failed to request callback prompt",
@@ -1924,7 +2520,7 @@ export function installRenderApplicationV2Hook() {
         });
       }
 
-      toggleAnchor.prepend(useBtn);
+      toggleAnchor.parentElement.insertBefore(useBtn, toggleAnchor);
     }
 
     // Add a per-Log "Choose Benefit" button for logs which have a pending milestone.

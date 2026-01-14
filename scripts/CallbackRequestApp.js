@@ -43,6 +43,17 @@ export class CallbackRequestApp extends Base {
     const dvi = this.data.defaultValueId
       ? String(this.data.defaultValueId)
       : "";
+
+    const markSelected = (arr) =>
+      (arr ?? []).map((v) => ({
+        ...v,
+        selected: dvi && String(v.id) === dvi && !v.disabled,
+      }));
+
+    const values = markSelected(this.data.values);
+    const directives = markSelected(this.data.directives);
+    const hasDirectives = directives.some((d) => d && d.id);
+
     return {
       requestId: this.data.requestId,
       targetUserId: this.data.targetUserId,
@@ -50,10 +61,9 @@ export class CallbackRequestApp extends Base {
       bodyHtml: this.data.bodyHtml,
       logs: this.data.logs ?? [],
       hasLogs: Boolean(this.data.hasLogs),
-      values: (this.data.values ?? []).map((v) => ({
-        ...v,
-        selected: dvi && String(v.id) === dvi && !v.disabled,
-      })),
+      values,
+      directives,
+      hasDirectives,
       isPositiveDefault: dvs === "positive",
       isNegativeDefault: dvs === "negative",
       isChallengedDefault: dvs === "challenged",
@@ -172,6 +182,23 @@ export class CallbackRequestApp extends Base {
       // Clear selection if it became disabled
       const selectedOpt = logSel?.selectedOptions?.[0];
       if (selectedOpt?.disabled) logSel.value = "";
+
+      // Auto-select the first eligible log if none is selected, or show placeholder if none eligible
+      const eligibleOpts = logOptions.filter((o) => !o.disabled);
+      const noEligibleOpt = Array.from(logSel?.options ?? []).find(
+        (o) => o.dataset.staNoEligibleLogs
+      );
+
+      if (eligibleOpts.length > 0 && !logSel?.value) {
+        logSel.value = eligibleOpts[0].value;
+        // Update invoked values list to reflect the auto-selected log
+        this._renderInvokedValues(String(logSel.value ?? ""), root);
+        if (logSel) logSel.disabled = false;
+      } else if (anyEligible === false && hasValue && noEligibleOpt) {
+        // No eligible logs for the selected value; show placeholder
+        logSel.value = "";
+        if (logSel) logSel.disabled = true;
+      }
 
       // Hint when a value is selected but no logs match it
       if (hintEl) hintEl.style.display = hasValue && !anyEligible ? "" : "none";

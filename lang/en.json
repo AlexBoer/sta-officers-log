@@ -28,6 +28,18 @@
       "focusPickerCustomCompendium": {
         "name": "Focus Picker: Extra Compendium",
         "hint": "GM only. Optional compendium pack id to include in the Focus picker (e.g. sta.focuses-homebrew). Leave blank to disable."
+      },
+      "directives": {
+        "name": "Mission Directives",
+        "label": "Edit Directives",
+        "hint": "Define mission directives that players can choose when using a Directive.",
+        "menuTitle": "Mission Directives",
+        "editorHint": "Enter one directive per line. Players can pick these when using a Directive, or enter their own.",
+        "editorLabel": "Directives",
+        "editorPlaceholder": "e.g. Prime Directive\nGeneral Order 1\nStarfleet Regulations",
+        "editorRules": "Directives are sanitized and limited to {max} characters each.",
+        "save": "Save",
+        "saved": "Mission directives saved."
       }
     },
     "tools": {
@@ -58,7 +70,9 @@
     },
     "values": {
       "useValue": "Use Value",
-      "useValueTooltip": "Use this Value."
+      "useValueTooltip": "Use this Value.",
+      "useDirective": "Use Directive",
+      "useDirectiveTooltip": "Use a Directive instead of a Value."
     },
     "milestones": {
       "chooseBenefit": "Choose Benefit",
@@ -72,7 +86,8 @@
       "arcComplete": "Arc Complete"
     },
     "logs": {
-      "currentMissionIndicator": "Current mission log"
+      "currentMissionIndicator": "Current mission log",
+      "makeCurrentMissionLog": "Make Current Mission Log"
     },
     "dialog": {
       "useValueTest": {
@@ -94,6 +109,17 @@
         "denied": "Denied.",
         "error": "Could not request GM approval.",
         "gmTitle": "Approve Value Use",
+        "gmHint": "Approving grants +1 Determination.",
+        "gmApprove": "Approve",
+        "gmDeny": "Deny"
+      },
+      "useDirective": {
+        "title": "Use Directive",
+        "pick": "Choose a directive",
+        "other": "(Other — type your own)",
+        "otherPlaceholder": "Type a directive",
+        "missing": "Enter a directive or choose one from the list.",
+        "gmTitle": "Approve Directive Use",
         "gmHint": "Approving grants +1 Determination.",
         "gmApprove": "Approve",
         "gmDeny": "Deny"
@@ -193,6 +219,8 @@
         "title": "Start New Mission",
         "missionTitle": "Mission Title",
         "missionTitlePlaceholder": "e.g. Journey to Alpha Centauri",
+        "directivesTitle": "Mission Directives",
+        "directivesHint": "One directive per line. These will be copied into each created mission log and remain there forever.",
         "noAssignedCharacter": "no assigned character",
         "resetOptions": "Reset Options",
         "resetCallbacks": "Reset Callbacks for all players",
@@ -217,8 +245,8 @@
     },
     "callback": {
       "title": "Making a callback",
-      "valueLabel": "Which Value are you using?",
-      "valuePlaceholder": "— Select a Value —",
+      "valueLabel": "Which Value or Directive are you using?",
+      "valuePlaceholder": "— Select a Value or Directive —",
       "usageLabel": "How was it used?",
       "usage": {
         "positive": "Positive",
@@ -226,8 +254,7 @@
         "challenged": "Challenged"
       },
       "logLabel": "Choose a Character Log",
-      "noUnusedLogsOption": "(No unused logs found)",
-      "noMatchHint": "No unused Logs match that Value.",
+      "noUnusedLogsOption": "(No unused logs found)",      "noEligibleLogsOption": "No Eligible Logs for a Callback, Press \"Skip\"",      "noMatchHint": "No unused Logs match that Value.",
       "noUnusedHint": "You don’t have any unused logs to spend.",
       "make": "Make a Callback",
       "skip": "Skip",

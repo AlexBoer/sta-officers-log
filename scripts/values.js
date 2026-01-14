@@ -1,6 +1,7 @@
 import { MODULE_ID, VALUE_ICON_COUNT, valueIconPath } from "./constants.js";
 import { t, tf } from "./i18n.js";
 import { syncAllMilestoneIconsOnActor } from "./milestoneIcons.js";
+import { directiveIconPath, isDirectiveValueId } from "./directives.js";
 
 export const STA_DEFAULT_ICON =
   "systems/sta/assets/icons/VoyagerCombadgeIcon.png";
@@ -56,6 +57,9 @@ export function getValueIconPathForValueId(actor, valueId) {
   const id = valueId ? String(valueId) : "";
   if (!id) return null;
 
+  // Directives are value-like ids but not actor Items.
+  if (isDirectiveValueId(id)) return directiveIconPath();
+
   const mapById = _getValueIconMapForActor(actor);
   if (!mapById) return null;
 
@@ -86,6 +90,14 @@ export async function labelValuesOnActor(actor) {
     const primaryValueId = String(
       log.getFlag?.(MODULE_ID, "primaryValueId") ?? ""
     );
+
+    if (primaryValueId && isDirectiveValueId(primaryValueId)) {
+      const desiredImg = directiveIconPath();
+      if (desiredImg && String(log.img ?? "") !== desiredImg) {
+        logUpdates.push({ _id: log.id, img: desiredImg });
+      }
+      continue;
+    }
 
     const valueItem = primaryValueId ? actor.items.get(primaryValueId) : null;
     const desiredImg =

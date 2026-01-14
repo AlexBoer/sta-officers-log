@@ -168,6 +168,10 @@
   height: 1em;
 }
 
+.tracker-container .icon-container .sta-officers-log-group .button i {
+  color:#89CFF0;
+}
+
 .sta-callbacks-arc-title .sta-arc-title-edit:hover {
   opacity: 1;
 }
@@ -277,6 +281,10 @@
   white-space: nowrap;
 }
 
+.sta-choose-milestone-btn:hover {
+  border-color: rgba(250, 223, 71, 0.7);
+} 
+
 /* Keep injected text actions inside the STA sheet columns */
 div.section.values li.row.entry a.value-used.control.toggle,
 div.section.milestones li.row.entry a.value-used.control.toggle {
@@ -357,12 +365,16 @@ div.section.milestones li.row.entry .sta-current-mission-indicator {
     padding: 0.1rem 0.45rem;
     border: thin solid white;
     border-radius: 10px;
-    margin: 0.5rem;
 }
 
 .sta-inline-sheet-btn.is-disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.sta-inline-sheet-btn:hover {
+    border-color:goldenrod;
+    color: goldenrod;
 }
 
 /* New Milestone/Arc dialog: visually indicate a locked/disabled tab header */
@@ -562,6 +574,42 @@ div.section.milestones li.row.entry .sta-current-mission-indicator {
   flex-direction: row;
   gap: 0.75rem;
   margin: 0.35rem 0 0.5rem 0;
+}
+
+/* Log sheet: inline invoked directives (rendered as value-state rows) */
+.item-sheet .sta-directive-value-row .sta-directive-inline-text,
+.sta-directive-value-row .sta-directive-inline-text {
+  width: 100%;
+}
+
+.item-sheet .sta-directive-name-cell,
+.sta-directive-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.item-sheet .sta-directive-remove-btn,
+.sta-directive-remove-btn {
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  padding: 0.15rem 0.35rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-text-light-6);
+}
+
+.item-sheet .sta-directive-remove-btn:hover,
+.sta-directive-remove-btn:hover {
+  color: var(--color-text-light-1);
+}
+
+.item-sheet .sta-add-directive-btn,
+.sta-add-directive-btn {
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.75rem;
 }
 
 .sta-officers-log .item-sheet .sta-log-link-controls select {
@@ -989,5 +1037,25 @@ div.section.milestones li.row.entry[data-item-type="log"] .item-name a {
 }
 
 
+.sta-officers-log-context-menu {
+    border: solid white 1px;
+    background: rgb(0, 0, 0);
+    margin: 6px;
+    padding: 6px;
+    border-radius: 3px;
+}
+
+.sta-officers-log-context-menu:hover {
+    border: solid rgb(246, 248, 97) 1px;
+    background: rgb(59, 59, 59);
+}
+
+.tracker-container .icon-container .sta-tracker-button-group {
+  padding-top: 5px;
+}
 
 
+.tracker-container .combadge {
+    height: 1.3em;
+    width: 1.3em;
+}

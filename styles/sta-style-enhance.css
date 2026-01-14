@@ -111,3 +111,13 @@ body.system-sta .note .editor-content {
     padding: 5px;
     margin: 5px;
 }
+
+.prosemirror button.toggle, prose-mirror button.toggle {
+    top: 1rem;
+    right: 1rem;
+    display: block;
+}
+
+.prosemirror button.toggle, prose-mirror button.toggle:disabled {
+    display: none;
+}

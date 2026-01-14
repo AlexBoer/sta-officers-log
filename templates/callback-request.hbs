@@ -10,6 +10,13 @@
     {{#each values}}
       <option value="{{this.id}}"{{#if this.selected}} selected{{/if}}{{#if this.disabled}} disabled{{/if}}>{{this.name}}</option>
     {{/each}}
+
+    {{#if hasDirectives}}
+      <option value="__directives__" disabled>--Directives--</option>
+      {{#each directives}}
+        <option value="{{this.id}}"{{#if this.selected}} selected{{/if}}{{#if this.disabled}} disabled{{/if}}>{{this.name}}</option>
+      {{/each}}
+    {{/if}}
   </select>
 </div>
 
@@ -36,6 +43,7 @@
     <label>{{localize "sta-officers-log.callback.logLabel"}}</label>
     <select name="logId" {{#unless hasLogs}}disabled{{/unless}}>
       {{#if hasLogs}}
+        <option value="" data-sta-no-eligible-logs style="display:none">{{localize "sta-officers-log.callback.noEligibleLogsOption"}}</option>
         {{#each logs}}
           <option value="{{this.id}}">{{{this.name}}}</option>
         {{/each}}

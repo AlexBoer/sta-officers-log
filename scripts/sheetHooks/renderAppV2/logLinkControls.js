@@ -4,6 +4,18 @@ import { isLogUsed } from "../../mission.js";
 import { isCallbackTargetCompatibleWithValue } from "../../callbackEligibility.js";
 import { t } from "../../i18n.js";
 import {
+  DIRECTIVE_VALUE_ID_PREFIX,
+  directiveIconPath,
+  getDirectiveKeyFromValueId,
+  getDirectiveSnapshotForLog,
+  getDirectiveTextForValueId,
+  getMissionDirectives,
+  isDirectiveValueId,
+  makeDirectiveKeyFromText,
+  makeDirectiveValueIdFromText,
+  sanitizeDirectiveText,
+} from "../../directives.js";
+import {
   computeBestChainEndingAt,
   getCallbackLogEdgesForValue,
 } from "../../arcChains.js";
@@ -21,6 +33,18 @@ async function _syncLogImgToValue(actor, log, valueId) {
   const vId = valueId ? String(valueId) : "";
   if (!actor || actor.type !== "character") return;
   if (!log || log.type !== "log") return;
+
+  if (vId && isDirectiveValueId(vId)) {
+    const icon = directiveIconPath();
+    if (icon && String(log.img ?? "") !== String(icon)) {
+      try {
+        await log.update({ img: icon }, { render: false, renderSheet: false });
+      } catch (_) {
+        // ignore
+      }
+    }
+    return;
+  }
 
   // If no value is selected, restore STA default.
   if (!vId) {
@@ -268,6 +292,52 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     log.getFlag?.(MODULE_ID, "primaryValueId") ?? ""
   );
 
+  const directivesSnapshot = (() => {
+    const snap = getDirectiveSnapshotForLog(log);
+    return snap.length ? snap : getMissionDirectives();
+  })();
+  const directivesByKey = new Map();
+  for (const d of directivesSnapshot) {
+    const text = sanitizeDirectiveText(d);
+    if (!text) continue;
+    const key = makeDirectiveKeyFromText(text);
+    if (!key) continue;
+    directivesByKey.set(key, text);
+  }
+
+  // Also include any directives already present on this log, so they can be
+  // selected as Primary even if they are not in the current mission list.
+  try {
+    const existingLabels = log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
+    if (existingLabels && typeof existingLabels === "object") {
+      for (const [k, v] of Object.entries(existingLabels)) {
+        const key = String(k ?? "");
+        const text = sanitizeDirectiveText(v ?? "");
+        if (!key || !text) continue;
+        if (!directivesByKey.has(key)) directivesByKey.set(key, text);
+      }
+    }
+  } catch (_) {
+    // ignore
+  }
+
+  try {
+    const states = log?.system?.valueStates ?? {};
+    for (const [valueId, state] of Object.entries(states)) {
+      if (String(state) === "unused") continue;
+      if (!isDirectiveValueId(valueId)) continue;
+      const key = getDirectiveKeyFromValueId(valueId);
+      if (!key) continue;
+      if (directivesByKey.has(String(key))) continue;
+      const text = sanitizeDirectiveText(
+        getDirectiveTextForValueId(log, valueId)
+      );
+      if (text) directivesByKey.set(String(key), text);
+    }
+  } catch (_) {
+    // ignore
+  }
+
   const existingArcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
   const isArcEnd = existingArcInfo?.isArc === true;
   const existingArcValueId = String(existingArcInfo?.valueId ?? "");
@@ -357,6 +427,61 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     return options.join("");
   };
 
+  const buildPrimaryValueOptionsHtml = (currentValueId) => {
+    const curId = currentValueId ? String(currentValueId) : "";
+    const options = [];
+
+    const emptySel = !curId ? " selected" : "";
+    options.push(`<option value=""${emptySel}>-</option>`);
+
+    // Values first
+    for (const v of values) {
+      const id = String(v.id);
+      const sel = id === curId ? " selected" : "";
+      options.push(
+        `<option value="${escapeHTML(id)}"${sel}>${escapeHTML(
+          String(v.name ?? "")
+        )}</option>`
+      );
+    }
+
+    // Directives section
+    const directiveOptions = [];
+    const seenDirectiveValueIds = new Set();
+
+    for (const [key, text] of directivesByKey.entries()) {
+      const valueId = `${DIRECTIVE_VALUE_ID_PREFIX}${String(key)}`;
+      seenDirectiveValueIds.add(String(valueId));
+      const sel = String(valueId) === curId ? " selected" : "";
+      directiveOptions.push(
+        `<option value="${escapeHTML(valueId)}"${sel}>${escapeHTML(
+          String(text ?? valueId)
+        )}</option>`
+      );
+    }
+
+    // Ensure the currently-selected directive displays even if it isn't in the current directives list.
+    if (
+      curId &&
+      isDirectiveValueId(curId) &&
+      !seenDirectiveValueIds.has(curId)
+    ) {
+      const label =
+        sanitizeDirectiveText(getDirectiveTextForValueId(log, curId)) || curId;
+      directiveOptions.unshift(
+        `<option value="${escapeHTML(curId)}" selected>${escapeHTML(
+          label
+        )}</option>`
+      );
+    }
+
+    // Always show the directives section separator.
+    options.push('<option value="" disabled>--Directives--</option>');
+    if (directiveOptions.length) options.push(directiveOptions.join(""));
+
+    return options.join("");
+  };
+
   const wrapper = document.createElement("div");
   wrapper.className = "sta-log-link-controls";
   wrapper.innerHTML = `
@@ -376,16 +501,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     <div class="column">
       <div class="title">Primary Value</div>
       <select data-sta-callbacks-field="valueId">
-        <option value="">-</option>
-        ${values
-          .map((v) => {
-            const sel =
-              String(v.id) === String(selectedValueId) ? " selected" : "";
-            return `<option value="${escapeHTML(v.id)}"${sel}>${escapeHTML(
-              v.name
-            )}</option>`;
-          })
-          .join("")}
+        ${buildPrimaryValueOptionsHtml(selectedValueId)}
       </select>
     </div>
 
@@ -443,8 +559,43 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   if (wrapper.dataset.staBound === "1") return;
   wrapper.dataset.staBound = "1";
 
+  const getEffectiveValueId = () => {
+    return String(valueSelect.value ?? "");
+  };
+
+  const ensurePrimaryValueOptionExists = (valueId, label) => {
+    const vId = valueId ? String(valueId) : "";
+    if (!vId) return;
+    const exists = Array.from(valueSelect.options).some(
+      (o) => String(o.value) === vId
+    );
+    if (exists) return;
+
+    if (!isDirectiveValueId(vId)) return;
+
+    const safeLabel = sanitizeDirectiveText(label ?? "") || vId;
+    const opt = document.createElement("option");
+    opt.value = vId;
+    opt.textContent = safeLabel;
+
+    // Insert after the "--Directives--" separator if present.
+    const sep = Array.from(valueSelect.options).find(
+      (o) => o.disabled && String(o.textContent ?? "").includes("Directives")
+    );
+    if (sep) {
+      try {
+        sep.after(opt);
+        return;
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    valueSelect.appendChild(opt);
+  };
+
   const refreshFromOptions = () => {
-    const curVal = String(valueSelect.value ?? "");
+    const curVal = String(getEffectiveValueId() ?? "");
     const existingSel = String(fromSelect.value ?? "");
     fromSelect.innerHTML = buildFromOptionsHtml(curVal);
 
@@ -472,20 +623,28 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     );
     if (!targetPrimaryValueId) return;
 
+    if (isDirectiveValueId(targetPrimaryValueId)) {
+      const label =
+        getDirectiveTextForValueId(log, targetPrimaryValueId) ||
+        getDirectiveTextForValueId(target, targetPrimaryValueId) ||
+        targetPrimaryValueId;
+      ensurePrimaryValueOptionExists(targetPrimaryValueId, label);
+    }
+
     const optionExists = Array.from(valueSelect.options).some(
       (o) => String(o.value) === targetPrimaryValueId
     );
     if (!optionExists) return;
 
     if (String(valueSelect.value ?? "") === targetPrimaryValueId) return;
-
     valueSelect.value = targetPrimaryValueId;
+
     refreshFromOptions();
   };
 
   const syncFormFields = () => {
     let fromLogId = String(fromSelect.value ?? "");
-    const valueId = String(valueSelect.value ?? "");
+    const valueId = String(getEffectiveValueId() ?? "");
     const wantsArcEnd = arcToggle.checked === true;
 
     const parseSteps = () => {
@@ -555,7 +714,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     syncFormFields();
 
     let fromLogId = String(fromSelect.value ?? "");
-    const valueId = String(valueSelect.value ?? "");
+    const valueId = String(getEffectiveValueId() ?? "");
     const wantsArcEnd = arcToggle.checked === true;
     const stepsRaw = Number(arcStepsInput.value ?? 0);
     const steps =
@@ -573,6 +732,40 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
     // Primary Value
     update[`flags.${MODULE_ID}.primaryValueId`] = valueId ? valueId : null;
+
+    // Directive metadata for editing/display
+    if (valueId && isDirectiveValueId(valueId)) {
+      const key = getDirectiveKeyFromValueId(valueId);
+      update[`flags.${MODULE_ID}.primaryDirectiveKey`] = key ? key : null;
+
+      // Keep directiveLabels updated from the directives list (or existing map).
+      // Do not allow editing directive text from this Primary Value UI.
+      if (key) {
+        try {
+          const existing = log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
+          const cloned =
+            existing && typeof existing === "object"
+              ? foundry.utils.deepClone(existing)
+              : {};
+
+          const fromList = directivesByKey.get(String(key)) ?? "";
+          const fromExisting =
+            typeof cloned?.[String(key)] === "string"
+              ? String(cloned[String(key)])
+              : "";
+          const desired = sanitizeDirectiveText(fromList || fromExisting);
+
+          if (desired && String(cloned[String(key)] ?? "") !== desired) {
+            cloned[String(key)] = desired;
+            update[`flags.${MODULE_ID}.directiveLabels`] = cloned;
+          }
+        } catch (_) {
+          // ignore
+        }
+      }
+    } else {
+      update[`flags.${MODULE_ID}.primaryDirectiveKey`] = null;
+    }
 
     // Calls-back-to link
     if (!fromLogId) {
@@ -604,9 +797,14 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       // This is persisted once and won't change if the Value is renamed later.
       if (!arcLabel.trim() && arcValueId) {
         try {
-          const v = actor.items.get(String(arcValueId));
-          const name = v?.type === "value" ? String(v.name ?? "") : "";
-          if (name) arcLabel = name;
+          if (isDirectiveValueId(arcValueId)) {
+            const name = getDirectiveTextForValueId(log, arcValueId);
+            if (name) arcLabel = name;
+          } else {
+            const v = actor.items.get(String(arcValueId));
+            const name = v?.type === "value" ? String(v.name ?? "") : "";
+            if (name) arcLabel = name;
+          }
         } catch (_) {
           // ignore
         }
@@ -623,11 +821,15 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
     // Sync icon to Primary Value (or default)
     try {
-      const valueItem = valueId ? actor.items.get(valueId) : null;
       const desiredImg =
-        valueItem?.type === "value" && valueItem?.img
-          ? String(valueItem.img)
-          : STA_DEFAULT_ICON;
+        valueId && isDirectiveValueId(valueId)
+          ? directiveIconPath()
+          : (() => {
+              const valueItem = valueId ? actor.items.get(valueId) : null;
+              return valueItem?.type === "value" && valueItem?.img
+                ? String(valueItem.img)
+                : STA_DEFAULT_ICON;
+            })();
       if (desiredImg && String(log.img ?? "") !== String(desiredImg)) {
         update.img = desiredImg;
       }
@@ -703,6 +905,523 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
   // Ensure the fromLog options reflect the current primary value on initial render.
   refreshFromOptions();
+
+  // --- Add Directive button (inline in the system value-state table header) ---
+  const installAddDirectiveButton = () => {
+    const anyRadio = sheetRoot.querySelector(
+      'input[type="radio"][name^="system.valueStates."]'
+    );
+    const firstRow = anyRadio?.closest?.(".row") ?? null;
+    const rowsParent = firstRow?.parentElement ?? null;
+    if (!rowsParent) return;
+
+    const headerRow =
+      rowsParent.querySelector(":scope > .row.title") ||
+      rowsParent.querySelector(".row.title");
+    if (!(headerRow instanceof HTMLElement)) return;
+
+    const nameCol =
+      headerRow.querySelector(":scope > .col-name") ||
+      headerRow.querySelector(".col-name");
+    if (!(nameCol instanceof HTMLElement)) return;
+
+    if (nameCol.querySelector(":scope > .sta-add-directive-btn")) return;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "sta-inline-sheet-btn sta-add-directive-btn";
+    btn.textContent = "Add Directive";
+
+    btn.addEventListener("click", async (ev) => {
+      try {
+        ev?.preventDefault?.();
+        ev?.stopPropagation?.();
+      } catch (_) {
+        // ignore
+      }
+
+      const optionsHtml = Array.from(directivesByKey.entries())
+        .map(([key, text]) => {
+          return `<option value="${escapeHTML(String(key))}">${escapeHTML(
+            String(text)
+          )}</option>`;
+        })
+        .join("");
+
+      const res = await foundry.applications.api.DialogV2.wait({
+        window: { title: "Add Directive" },
+        content: `
+          <div class="form-group">
+            <label>Directive</label>
+            <div class="form-fields">
+              <select name="directiveKey">
+                <option value="__other__">${escapeHTML(
+                  t("sta-officers-log.dialog.useDirective.other")
+                )}</option>
+                ${optionsHtml}
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Text (optional)</label>
+            <div class="form-fields">
+              <input type="text" name="directiveText" maxlength="100" placeholder="${escapeHTML(
+                t("sta-officers-log.dialog.useDirective.otherPlaceholder")
+              )}" />
+            </div>
+            <p class="hint">If blank, uses the selected directive. Sanitized, max 100 characters.</p>
+          </div>
+        `,
+        buttons: [
+          {
+            action: "add",
+            label: "Add",
+            default: true,
+            callback: (_event, button) => ({
+              directiveKey: String(
+                button.form?.elements?.directiveKey?.value ?? "__other__"
+              ),
+              directiveText: String(
+                button.form?.elements?.directiveText?.value ?? ""
+              ),
+            }),
+          },
+          { action: "cancel", label: "Cancel" },
+        ],
+        rejectClose: false,
+        modal: false,
+      });
+
+      if (!res || res === "cancel") return;
+
+      const selectedKey = String(res.directiveKey ?? "__other__");
+      const typed = sanitizeDirectiveText(res.directiveText ?? "");
+      const chosen = typed
+        ? typed
+        : selectedKey && selectedKey !== "__other__"
+        ? directivesByKey.get(selectedKey) || ""
+        : "";
+      const cleaned = sanitizeDirectiveText(chosen);
+      if (!cleaned) {
+        ui.notifications?.warn?.(
+          t("sta-officers-log.dialog.useDirective.missing")
+        );
+        return;
+      }
+
+      const valueId = makeDirectiveValueIdFromText(cleaned);
+      const key = makeDirectiveKeyFromText(cleaned);
+      if (!valueId || !key) return;
+
+      const curState = String(
+        log?.system?.valueStates?.[String(valueId)] ?? "unused"
+      );
+      const nextState = curState === "unused" ? "positive" : curState;
+
+      const update = {
+        [`system.valueStates.${valueId}`]: nextState,
+      };
+
+      try {
+        const existing = log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
+        const cloned =
+          existing && typeof existing === "object"
+            ? foundry.utils.deepClone(existing)
+            : {};
+        cloned[String(key)] = cleaned;
+        update[`flags.${MODULE_ID}.directiveLabels`] = cloned;
+      } catch (_) {
+        // ignore
+      }
+
+      try {
+        await log.update(update, { render: false, renderSheet: false });
+      } catch (_) {
+        // ignore
+      }
+
+      try {
+        refreshMissionLogSortingForActorId(actor.id);
+      } catch (_) {
+        // ignore
+      }
+
+      try {
+        log?.sheet?.render?.(false);
+      } catch (_) {
+        // ignore
+      }
+    });
+
+    nameCol.appendChild(btn);
+  };
+
+  // Ensure the currently-selected directive is present in the Primary Value dropdown.
+  if (selectedValueId && isDirectiveValueId(selectedValueId)) {
+    ensurePrimaryValueOptionExists(
+      String(selectedValueId),
+      getDirectiveTextForValueId(log, selectedValueId)
+    );
+  }
+
+  // --- Inline invoked directives in the value state list ---
+
+  const installInlineInvokedDirectiveRows = () => {
+    const states = log?.system?.valueStates ?? {};
+    const invoked = [];
+    for (const [valueId, state] of Object.entries(states)) {
+      if (!isDirectiveValueId(valueId)) continue;
+      if (String(state) === "unused") continue;
+      invoked.push({
+        valueId: String(valueId),
+        state: String(state),
+        text: getDirectiveTextForValueId(log, valueId),
+      });
+    }
+    invoked.sort((a, b) =>
+      String(a.text ?? a.valueId).localeCompare(
+        String(b.text ?? b.valueId),
+        undefined,
+        {
+          sensitivity: "base",
+        }
+      )
+    );
+
+    // Find the system-provided value-state rows.
+    const anyRadio = sheetRoot.querySelector(
+      'input[type="radio"][name^="system.valueStates."]'
+    );
+    const firstRow = anyRadio?.closest?.(".row") ?? null;
+    const rowsParent = firstRow?.parentElement ?? null;
+    if (!rowsParent) return;
+
+    // Clear any previously injected directive rows.
+    for (const el of Array.from(
+      rowsParent.querySelectorAll(":scope > .sta-directive-value-row")
+    )) {
+      try {
+        el.remove();
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    if (!invoked.length) return;
+
+    const valueStateRows = Array.from(rowsParent.children).filter((el) => {
+      if (!(el instanceof HTMLElement)) return false;
+      if (!el.classList.contains("row")) return false;
+      return Boolean(
+        el.querySelector('input[type="radio"][name^="system.valueStates."]')
+      );
+    });
+
+    const insertAfter = valueStateRows.length
+      ? valueStateRows[valueStateRows.length - 1]
+      : firstRow;
+    if (!(insertAfter instanceof HTMLElement)) return;
+
+    let anchor = insertAfter;
+
+    for (const d of invoked) {
+      const row = document.createElement("div");
+      row.className = "row sta-directive-value-row";
+      row.dataset.staDirectiveValueId = d.valueId;
+
+      const safeText = sanitizeDirectiveText(d.text ?? "") || d.valueId;
+
+      const nameCol = document.createElement("div");
+      nameCol.className = "col-name value-name sta-directive-name-cell";
+
+      const textInput = document.createElement("input");
+      textInput.type = "text";
+      textInput.className = "text-entry sta-directive-inline-text";
+      textInput.value = safeText;
+      textInput.placeholder = t(
+        "sta-officers-log.dialog.useDirective.otherPlaceholder"
+      );
+      textInput.maxLength = 100;
+      nameCol.appendChild(textInput);
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "sta-directive-remove-btn";
+      removeBtn.title = "Remove directive";
+      removeBtn.setAttribute("aria-label", "Remove directive");
+      removeBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+      nameCol.appendChild(removeBtn);
+
+      row.appendChild(nameCol);
+
+      const buildRadio = (value) => {
+        const col = document.createElement("div");
+        col.className = "col-radio";
+        const input = document.createElement("input");
+        input.type = "radio";
+        input.name = `system.valueStates.${d.valueId}`;
+        input.value = value;
+        if (String(d.state) === String(value)) input.checked = true;
+        col.appendChild(input);
+        return input;
+      };
+
+      const unusedRadio = buildRadio("unused");
+      const posRadio = buildRadio("positive");
+      const negRadio = buildRadio("negative");
+      const chalRadio = buildRadio("challenged");
+      row.appendChild(unusedRadio.closest(".col-radio"));
+      row.appendChild(posRadio.closest(".col-radio"));
+      row.appendChild(negRadio.closest(".col-radio"));
+      row.appendChild(chalRadio.closest(".col-radio"));
+
+      const onStateChange = async (ev) => {
+        const input = ev?.currentTarget;
+        if (!(input instanceof HTMLInputElement)) return;
+        if (!input.checked) return;
+        const next = String(input.value ?? "unused");
+        try {
+          await log.update(
+            { [`system.valueStates.${d.valueId}`]: next },
+            { render: false, renderSheet: false }
+          );
+        } catch (_) {
+          // ignore
+        }
+
+        if (next === "unused") {
+          try {
+            row.remove();
+          } catch (_) {
+            // ignore
+          }
+        }
+
+        try {
+          refreshMissionLogSortingForActorId(actor.id);
+        } catch (_) {
+          // ignore
+        }
+      };
+
+      for (const r of [unusedRadio, posRadio, negRadio, chalRadio]) {
+        r.addEventListener("change", (ev) => {
+          try {
+            ev?.stopPropagation?.();
+          } catch (_) {
+            // ignore
+          }
+          void onStateChange(ev);
+        });
+      }
+
+      const onTextChange = async () => {
+        const newText = sanitizeDirectiveText(textInput.value ?? "");
+        if (!newText) {
+          textInput.value = safeText;
+          return;
+        }
+
+        const oldId = String(d.valueId);
+        const newId = makeDirectiveValueIdFromText(newText);
+        if (!newId) return;
+
+        const currentStates = log?.system?.valueStates ?? {};
+        const oldState = String(currentStates?.[oldId] ?? "unused");
+        if (oldState === "unused") return;
+
+        const oldKey = getDirectiveKeyFromValueId(oldId);
+        const newKey = makeDirectiveKeyFromText(newText);
+
+        const update = {};
+
+        if (newId !== oldId) {
+          update[`system.valueStates.${oldId}`] = "unused";
+          update[`system.valueStates.${newId}`] = oldState;
+
+          try {
+            const curPrimary = String(
+              log.getFlag?.(MODULE_ID, "primaryValueId") ?? ""
+            );
+            if (curPrimary === oldId)
+              update[`flags.${MODULE_ID}.primaryValueId`] = newId;
+          } catch (_) {
+            // ignore
+          }
+
+          try {
+            const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+            const linkVal = String(link?.valueId ?? "");
+            if (linkVal === oldId) {
+              update[`flags.${MODULE_ID}.callbackLink.valueId`] = newId;
+            }
+          } catch (_) {
+            // ignore
+          }
+
+          try {
+            const arcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+            const arcVal = String(arcInfo?.valueId ?? "");
+            if (arcVal === oldId) {
+              update[`flags.${MODULE_ID}.arcInfo.valueId`] = newId;
+            }
+          } catch (_) {
+            // ignore
+          }
+        }
+
+        try {
+          const existingLabels =
+            log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
+          const cloned =
+            existingLabels && typeof existingLabels === "object"
+              ? foundry.utils.deepClone(existingLabels)
+              : {};
+          if (oldKey) delete cloned[String(oldKey)];
+          if (newKey) cloned[String(newKey)] = newText;
+          update[`flags.${MODULE_ID}.directiveLabels`] = cloned;
+        } catch (_) {
+          // ignore
+        }
+
+        try {
+          await log.update(update, { render: false, renderSheet: false });
+        } catch (_) {
+          // ignore
+        }
+
+        try {
+          refreshMissionLogSortingForActorId(actor.id);
+        } catch (_) {
+          // ignore
+        }
+
+        // Re-render to rebuild the inline rows with the new id.
+        try {
+          log?.sheet?.render?.(false);
+        } catch (_) {
+          // ignore
+        }
+      };
+
+      textInput.addEventListener("change", (ev) => {
+        try {
+          ev?.stopPropagation?.();
+        } catch (_) {
+          // ignore
+        }
+        void onTextChange();
+      });
+
+      removeBtn.addEventListener("click", async (ev) => {
+        try {
+          ev?.preventDefault?.();
+          ev?.stopPropagation?.();
+        } catch (_) {
+          // ignore
+        }
+
+        const oldId = String(d.valueId);
+        const oldKey = getDirectiveKeyFromValueId(oldId);
+
+        const update = {
+          [`system.valueStates.${oldId}`]: "unused",
+        };
+
+        // If this directive is referenced by log metadata, clear it.
+        try {
+          const curPrimary = String(
+            log.getFlag?.(MODULE_ID, "primaryValueId") ?? ""
+          );
+          if (curPrimary === oldId) {
+            update[`flags.${MODULE_ID}.primaryValueId`] = null;
+            update[`flags.${MODULE_ID}.primaryDirectiveKey`] = null;
+
+            // Clear callback link (cannot keep a link without a valueId).
+            update[`flags.${MODULE_ID}.callbackLink`] = null;
+            update[`flags.${MODULE_ID}.callbackLinkDisabled`] = true;
+
+            // Clear arc info if it depended on this directive.
+            update[`flags.${MODULE_ID}.arcInfo`] = null;
+
+            // Restore default icon.
+            if (STA_DEFAULT_ICON) update.img = STA_DEFAULT_ICON;
+          }
+        } catch (_) {
+          // ignore
+        }
+
+        try {
+          const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+          const linkVal = String(link?.valueId ?? "");
+          if (linkVal === oldId) {
+            update[`flags.${MODULE_ID}.callbackLink`] = null;
+            update[`flags.${MODULE_ID}.callbackLinkDisabled`] = true;
+          }
+        } catch (_) {
+          // ignore
+        }
+
+        try {
+          const arcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+          const arcVal = String(arcInfo?.valueId ?? "");
+          if (arcVal === oldId) {
+            update[`flags.${MODULE_ID}.arcInfo`] = null;
+          }
+        } catch (_) {
+          // ignore
+        }
+
+        // Remove from directiveLabels map so it is no longer considered invoked/displayed.
+        try {
+          if (oldKey) {
+            const existingLabels =
+              log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
+            const cloned =
+              existingLabels && typeof existingLabels === "object"
+                ? foundry.utils.deepClone(existingLabels)
+                : {};
+            if (Object.prototype.hasOwnProperty.call(cloned, String(oldKey))) {
+              delete cloned[String(oldKey)];
+              update[`flags.${MODULE_ID}.directiveLabels`] = cloned;
+            }
+          }
+        } catch (_) {
+          // ignore
+        }
+
+        try {
+          await log.update(update, { render: false, renderSheet: false });
+        } catch (_) {
+          // ignore
+        }
+
+        try {
+          row.remove();
+        } catch (_) {
+          // ignore
+        }
+
+        try {
+          refreshMissionLogSortingForActorId(actor.id);
+        } catch (_) {
+          // ignore
+        }
+
+        try {
+          log?.sheet?.render?.(false);
+        } catch (_) {
+          // ignore
+        }
+      });
+
+      anchor.after(row);
+      anchor = row;
+    }
+  };
+
+  installInlineInvokedDirectiveRows();
+  installAddDirectiveButton();
 
   // On open: if we already have a callback target selected, align Primary Value
   // to match that target (legacy data normalization). Only auto-save if this

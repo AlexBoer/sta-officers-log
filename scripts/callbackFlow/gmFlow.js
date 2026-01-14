@@ -14,6 +14,16 @@ import {
   getValueIconPathForValueId,
   getValueItems,
 } from "../values.js";
+import {
+  directiveIconPath,
+  getDirectiveSnapshotForLog,
+  getDirectiveKeyFromValueId,
+  getDirectiveTextForValueId,
+  getMissionDirectives,
+  isDirectiveChallenged,
+  isDirectiveValueId,
+  makeDirectiveValueIdFromText,
+} from "../directives.js";
 import { getCharacterArcEligibility } from "../arcChains.js";
 import {
   getCompletedArcEndLogIds,
@@ -30,6 +40,17 @@ function buildInvokedValues(actor, log) {
 
   for (const [valueId, state] of Object.entries(valueStates)) {
     if (state === "unused") continue;
+
+    if (isDirectiveValueId(valueId)) {
+      const name = getDirectiveTextForValueId(log, valueId);
+      rows.push({
+        id: valueId,
+        name: name || "(Directive)",
+        state: String(state),
+      });
+      continue;
+    }
+
     const valueItem = actor.items.get(valueId);
     rows.push({
       id: valueId,
@@ -40,19 +61,39 @@ function buildInvokedValues(actor, log) {
   return rows;
 }
 
-function buildValuesPayload(actor) {
+function buildValuesPayload(actor, directiveValueIds = []) {
   const values = getValueItems(actor).slice();
 
   // Stable ordering by sort so V1..V8 mapping is consistent
   values.sort((a, b) => Number(a.sort ?? 0) - Number(b.sort ?? 0));
 
-  return values.map((v) => ({
+  const valueOptions = values.map((v) => ({
     id: v.id,
     // NOTE: the callback-request template uses normal Handlebars escaping for this field.
     // Do not pre-escape here or it will render as "&amp;" etc.
     name: v.name ?? "",
     disabled: isValueChallenged(v),
   }));
+
+  const directiveOptions = (directiveValueIds ?? []).map((directiveValueId) => {
+    const key = getDirectiveKeyFromValueId(directiveValueId);
+    // Try to decode for display. If that fails, show a generic label.
+    let name = "(Directive)";
+    try {
+      // The encoded key is derived from the sanitized directive text.
+      // It's fine to decode; worst-case fallback is generic.
+      name = getDirectiveTextForValueId(null, directiveValueId) || name;
+    } catch (_) {
+      // ignore
+    }
+    return {
+      id: directiveValueId,
+      name,
+      disabled: isDirectiveChallenged(actor, key),
+    };
+  });
+
+  return { values: valueOptions, directives: directiveOptions };
 }
 
 async function markLogUsed(item) {
@@ -122,6 +163,46 @@ async function orchestrateCallbackPrompt({
   const valueItems = getValueItems(actor);
   const completedArcEndLogIds = getCompletedArcEndLogIds(actor);
 
+  // Include directive "value" options found in eligible logs,
+  // PLUS the current mission's directive list (so the user can select a directive
+  // even if no eligible logs match it, which will show the normal "no match" hint).
+  const directiveValueIds = new Set();
+
+  // Seed from mission directives snapshot/world list.
+  try {
+    const currentId = getCurrentMissionLogIdForUser(targetUser.id);
+    const currentLog = currentId ? actor.items.get(String(currentId)) : null;
+    const list = currentLog
+      ? getDirectiveSnapshotForLog(currentLog)
+      : getMissionDirectives();
+
+    for (const text of list) {
+      const id = makeDirectiveValueIdFromText(text);
+      if (id) directiveValueIds.add(String(id));
+    }
+  } catch (_) {
+    // ignore
+  }
+
+  // Ensure the default directive (e.g. from "Use Directive") is selectable.
+  try {
+    const dvi = defaultValueId ? String(defaultValueId) : "";
+    if (dvi && isDirectiveValueId(dvi)) directiveValueIds.add(dvi);
+  } catch (_) {
+    // ignore
+  }
+
+  try {
+    for (const log of unusedLogs) {
+      const states = log.system?.valueStates ?? {};
+      for (const valueId of Object.keys(states)) {
+        if (isDirectiveValueId(valueId)) directiveValueIds.add(String(valueId));
+      }
+    }
+  } catch (_) {
+    // ignore
+  }
+
   const logsPayload = unusedLogs.map((log) => {
     const invoked = buildInvokedValues(actor, log);
     const primaryValueId = getPrimaryValueIdForLog(actor, log, valueItems);
@@ -135,7 +216,10 @@ async function orchestrateCallbackPrompt({
     };
   });
 
-  const valuesPayload = buildValuesPayload(actor);
+  const valuesPayload = buildValuesPayload(
+    actor,
+    Array.from(directiveValueIds)
+  );
 
   const bodyHtml = `
     ${t("sta-officers-log.callback.bodyHtml")}
@@ -177,7 +261,8 @@ async function orchestrateCallbackPrompt({
       bodyHtml,
       logs: logsPayload,
       hasLogs: logsPayload.length > 0,
-      values: valuesPayload,
+      values: valuesPayload.values,
+      directives: valuesPayload.directives,
       defaultValueId: dvi,
       defaultValueState: dvs,
       reason,
@@ -219,8 +304,11 @@ async function orchestrateCallbackPrompt({
     return;
   }
 
-  const chosenValue = actorDoc.items.get(response.valueId);
-  if (!chosenValue) {
+  const chosenValueId = response.valueId ? String(response.valueId) : "";
+  const chosenValue = !isDirectiveValueId(chosenValueId)
+    ? actorDoc.items.get(chosenValueId)
+    : null;
+  if (!isDirectiveValueId(chosenValueId) && !chosenValue) {
     console.error(
       "Chosen value not found on actor:",
       response.valueId,
@@ -290,13 +378,17 @@ async function orchestrateCallbackPrompt({
 
   if (isLogUsed(chosenLog)) return;
 
-  const valueId = response.valueId;
+  const valueId = chosenValueId;
   const valueState = response.valueState;
 
   if (!valueId) return;
   if (!["positive", "negative", "challenged"].includes(valueState)) return;
 
-  const valueImg = chosenValue?.img ? String(chosenValue.img) : "";
+  const valueImg = isDirectiveValueId(valueId)
+    ? directiveIconPath()
+    : chosenValue?.img
+    ? String(chosenValue.img)
+    : "";
 
   await _gainDetermination(actorDoc);
   await setUsedCallbackThisMission(targetUser.id, true);

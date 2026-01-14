@@ -1,5 +1,10 @@
 import { MODULE_ID } from "./constants.js";
 import { t, tf } from "./i18n.js";
+import {
+  getMissionDirectives,
+  sanitizeDirectiveText,
+  setMissionDirectives,
+} from "./directives.js";
 
 export const GROUP_SHIP_ACTOR_SETTING = "groupShipActorId";
 
@@ -435,8 +440,20 @@ async function addMissionLogToUser(user, missionTitle) {
       .map((i) => Number(i.sort ?? 0))
   );
 
+  const directivesSnapshot = getMissionDirectives();
+
   const [created] = await actor.createEmbeddedDocuments("Item", [
-    { name, type: "log", sort: maxSort + 1 },
+    {
+      name,
+      type: "log",
+      sort: maxSort + 1,
+      flags: {
+        [MODULE_ID]: {
+          directivesSnapshot,
+          directiveLabels: {},
+        },
+      },
+    },
   ]);
 
   return created?.id ?? null;
@@ -547,6 +564,7 @@ export async function promptAddParticipant() {
 export async function promptNewMissionAndReset() {
   if (!game.user.isGM)
     return ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
+  const existingDirectives = getMissionDirectives();
 
   const currentTitle = game.settings.get(MODULE_ID, "missionTitle") ?? "";
   const prevParticipants = new Set(
@@ -569,6 +587,7 @@ export async function promptNewMissionAndReset() {
     `modules/${MODULE_ID}/templates/new-mission.hbs`,
     {
       currentTitle,
+      directivesText: existingDirectives.join("\n"),
       hasPlayers: playersForTemplate.length > 0,
       players: playersForTemplate,
     }
@@ -592,6 +611,18 @@ export async function promptNewMissionAndReset() {
   const doResetStress = Boolean(result.resetStress);
   const doResetShipStats = Boolean(result.resetShipStats);
   const createMissionLogs = Boolean(result.createMissionLogs);
+
+  // Update mission directives (persist until GM edits again)
+  try {
+    const rawDirectives = String(result.missionDirectivesText ?? "");
+    const directives = rawDirectives
+      .split(/\r?\n/g)
+      .map((s) => sanitizeDirectiveText(s))
+      .filter(Boolean);
+    await setMissionDirectives(directives);
+  } catch (_) {
+    // ignore
+  }
 
   // Run selected resets silently; we'll emit consolidated notifications below.
   if (doResetCallbacks) await resetMissionCallbacks({ notify: false });

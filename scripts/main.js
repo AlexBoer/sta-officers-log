@@ -32,6 +32,7 @@ import {
   installRenderApplicationV2Hook,
 } from "./sheetHooks.js";
 import { registerClientSettings } from "./clientSettings.js";
+import { registerDirectiveSettings } from "./directives.js";
 
 /** @type {Map<string, Function>} */
 const pendingResponses = new Map();
@@ -84,6 +85,12 @@ function safeRegisterSettings() {
     registerMissionSettings();
   } catch (err) {
     console.error(`${MODULE_ID} | failed to register settings`, err);
+  }
+
+  try {
+    registerDirectiveSettings();
+  } catch (err) {
+    console.error(`${MODULE_ID} | failed to register directive settings`, err);
   }
 
   try {
