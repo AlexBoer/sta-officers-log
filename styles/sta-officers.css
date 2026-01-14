@@ -322,24 +322,42 @@ div.section.milestones li.row.entry[data-item-type="log"] a.value-used.control.t
 }
 
 /* Soft double flash for the source row */
-div.section.milestones li.row.entry.sta-callbacks-source-flash {
+div.section.milestones li.row.entry.sta-callbacks-source-flash,
+div.section.milestones li.row.entry[data-item-type="milestone"].sta-callbacks-source-flash {
   animation: sta-callbacks-double-flash 1.05s ease-in-out;
-  border-radius: 6px;
+  border-radius: 10px;
+}
+
+div.section.milestones li.row.entry.sta-current-mission-log {
+  position: relative;
+  border-radius: 10px;
+  outline: 1px solid rgba(250, 223, 71, 0.7);
+  outline-offset: -2px;
+}
+
+div.section.milestones li.row.entry .sta-current-mission-indicator {
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+}
+
+.sta-log-inline-actions {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
 }
 
 .sta-inline-sheet-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  min-width: fit-content;
-  max-width: none;
-  padding: 0.1rem 0.45rem;
-  border: thin solid white;
-  box-shadow: inset 0 0 0 1px var(--color-border-light-primary);
-  border-radius: 10px;
-  line-height: 1.2;
-  white-space: normal;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.1rem 0.45rem;
+    border: thin solid white;
+    border-radius: 10px;
+    margin: 0.5rem;
 }
 
 .sta-inline-sheet-btn.is-disabled {

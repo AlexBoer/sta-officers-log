@@ -59,6 +59,8 @@ justify-content: flex-start;
 
 body.system-sta .character-sheet .row{
 display: flex;
+align-items: center;
+padding-right:0.3rem;
 }
 
 body.system-sta .character-sheet .section {

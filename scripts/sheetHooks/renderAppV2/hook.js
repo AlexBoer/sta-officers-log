@@ -184,6 +184,21 @@ function installOfficersLogButtonsInStaTracker(app, root) {
   }
 }
 
+function ensureInlineActionsContainer(rowEl, toggleEl) {
+  if (!(rowEl instanceof HTMLElement) || !(toggleEl instanceof HTMLElement)) {
+    return null;
+  }
+  let container = rowEl.querySelector(".sta-log-inline-actions");
+  if (!(container instanceof HTMLElement)) {
+    container = document.createElement("span");
+    container.className = "sta-log-inline-actions";
+  }
+  if (container.parentElement !== rowEl || container.nextSibling !== toggleEl) {
+    rowEl.insertBefore(container, toggleEl);
+  }
+  return container;
+}
+
 function installCallbackSourceButtons(root, actor) {
   try {
     if (!(root instanceof HTMLElement)) return;
@@ -195,6 +210,13 @@ function installCallbackSourceButtons(root, actor) {
     const logRows = root.querySelectorAll(
       'div.section.milestones li.row.entry[data-item-type="log"]'
     );
+    const missionUserId = getUserIdForCharacterActor(actor);
+    const currentMissionLogId = missionUserId
+      ? String(getCurrentMissionLogIdForUser(missionUserId) ?? "")
+      : "";
+    const currentMissionIndicatorText =
+      t("sta-officers-log.logs.currentMissionIndicator") ??
+      "Current mission log";
 
     const getCreatedKey = (log) => {
       const createdRaw =
@@ -239,6 +261,37 @@ function installCallbackSourceButtons(root, actor) {
       return ordered[0] ?? null;
     };
 
+    const escapeItemIdForSelector = (value) => {
+      const raw = String(value ?? "").trim();
+      if (!raw) return "";
+      if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+        return CSS.escape(raw);
+      }
+      return raw.replace(/"/g, '\\"');
+    };
+
+    const findLogRowById = (logId) => {
+      const normalized = escapeItemIdForSelector(logId);
+      if (!normalized) return null;
+      const selector =
+        'div.section.milestones li.row.entry[data-item-type="log"][data-item-id="' +
+        normalized +
+        '"]';
+      const rowEl = root.querySelector(selector);
+      return rowEl instanceof HTMLElement ? rowEl : null;
+    };
+
+    const findMilestoneRowById = (milestoneId) => {
+      const normalized = escapeItemIdForSelector(milestoneId);
+      if (!normalized) return null;
+      const selector =
+        'div.section.milestones li.row.entry[data-item-type="milestone"][data-item-id="' +
+        normalized +
+        '"]';
+      const rowEl = root.querySelector(selector);
+      return rowEl instanceof HTMLElement ? rowEl : null;
+    };
+
     const flashRow = (rowEl) => {
       if (!(rowEl instanceof HTMLElement)) return;
       try {
@@ -263,6 +316,30 @@ function installCallbackSourceButtons(root, actor) {
 
       const toggleAnchor = row.querySelector("a.value-used.control.toggle");
       if (!(toggleAnchor instanceof HTMLElement)) continue;
+
+      const entryId = row?.dataset?.itemId ? String(row.dataset.itemId) : "";
+      const isCurrentMissionRow =
+        entryId && currentMissionLogId && entryId === currentMissionLogId;
+      const existingIndicator = row.querySelector(
+        ".sta-current-mission-indicator"
+      );
+      if (isCurrentMissionRow) {
+        const inlineActions = ensureInlineActionsContainer(row, toggleAnchor);
+        if (!inlineActions) continue;
+        row.classList.add("sta-current-mission-log");
+        if (!existingIndicator) {
+          const indicator = document.createElement("span");
+          indicator.className = "sta-current-mission-indicator";
+          indicator.title = currentMissionIndicatorText;
+          indicator.innerHTML = '<i class="fa-solid fa-video"></i>';
+          inlineActions.prepend(indicator);
+        } else {
+          inlineActions.prepend(existingIndicator);
+        }
+      } else {
+        row.classList.remove("sta-current-mission-log");
+        existingIndicator?.remove();
+      }
 
       // If the native Used toggle is hidden, prevent accidental toggle clicks.
       // Keep injected buttons clickable.
@@ -295,9 +372,9 @@ function installCallbackSourceButtons(root, actor) {
 
       const btn = document.createElement("a");
       btn.className = "sta-show-source-btn";
-      btn.title = "Show log that called back to this log";
-      btn.setAttribute("aria-label", "Show source log");
-      btn.innerHTML = '<i class="fa-solid fa-arrow-down-wide-short"></i>';
+      btn.title = "Show callback log";
+      btn.setAttribute("aria-label", "Show callback log");
+      btn.innerHTML = '<i class="fa-solid fa-arrow-up-wide-short"></i>';
 
       btn.addEventListener("click", (ev) => {
         try {
@@ -311,20 +388,26 @@ function installCallbackSourceButtons(root, actor) {
         const targetLogId = row?.dataset?.itemId
           ? String(row.dataset.itemId)
           : "";
-        const sourceLog = findSourceLogForTargetId(targetLogId);
-        const sourceId = sourceLog?.id ? String(sourceLog.id) : "";
-        if (!sourceId) {
-          ui.notifications?.warn?.("No incoming callback found for this log.");
+        const targetLogItem = targetLogId
+          ? actor.items?.get?.(String(targetLogId)) ?? null
+          : null;
+        const callbackLink =
+          targetLogItem?.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+        const fromLogId = String(callbackLink?.fromLogId ?? "");
+        const milestoneId = String(callbackLink?.milestoneId ?? "");
+
+        if (!fromLogId) {
+          ui.notifications?.warn?.(
+            "Callback log does not specify its source and cannot be highlighted."
+          );
           return;
         }
 
-        const selector =
-          'div.section.milestones li.row.entry[data-item-type="log"][data-item-id="' +
-          sourceId +
-          '"]';
-        const sourceRow = root.querySelector(selector);
-        if (!(sourceRow instanceof HTMLElement)) {
-          ui.notifications?.warn?.("Source log is not visible on this sheet.");
+        const sourceRow = findLogRowById(fromLogId);
+        if (!sourceRow) {
+          ui.notifications?.warn?.(
+            "Callback log is not visible on this sheet."
+          );
           return;
         }
 
@@ -335,6 +418,17 @@ function installCallbackSourceButtons(root, actor) {
         }
 
         flashRow(sourceRow);
+
+        if (milestoneId) {
+          const milestoneRow = findMilestoneRowById(milestoneId);
+          if (milestoneRow) {
+            flashRow(milestoneRow);
+          } else {
+            ui.notifications?.warn?.(
+              "Associated milestone is not visible on this sheet."
+            );
+          }
+        }
       });
 
       toggleAnchor.appendChild(btn);
@@ -1869,7 +1963,9 @@ export function installRenderApplicationV2Hook() {
 
       const toggleEl = entry.querySelector("a.value-used.control.toggle");
       if (!toggleEl) continue;
-      if (toggleEl.querySelector(".sta-choose-milestone-btn")) continue;
+      const inlineActions = ensureInlineActionsContainer(entry, toggleEl);
+      if (!inlineActions) continue;
+      if (inlineActions.querySelector(".sta-choose-milestone-btn")) continue;
 
       const chooseBtn = document.createElement("span");
       chooseBtn.className = "sta-choose-milestone-btn sta-inline-sheet-btn";
@@ -2054,6 +2150,19 @@ export function installRenderApplicationV2Hook() {
               benefitChosen: true,
             });
 
+            try {
+              const currentLink =
+                logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+              const updatedLink =
+                currentLink && typeof currentLink === "object"
+                  ? { ...currentLink }
+                  : {};
+              updatedLink.milestoneId = milestone.id;
+              await logItem.setFlag(MODULE_ID, "callbackLink", updatedLink);
+            } catch (_) {
+              // ignore
+            }
+
             app.render();
             openCreatedItemSheetAfterMilestone(actor, createdItemId);
           },
@@ -2065,7 +2174,7 @@ export function installRenderApplicationV2Hook() {
         if (ev.key === "Enter" || ev.key === " ") onChoose(ev);
       });
 
-      toggleEl.prepend(chooseBtn);
+      inlineActions.appendChild(chooseBtn);
     }
   });
 }

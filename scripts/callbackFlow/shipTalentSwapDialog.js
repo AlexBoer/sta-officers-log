@@ -61,10 +61,11 @@ class ShipTalentSwapApp extends Base {
         showCustomButton: false,
       }
     );
-    const rawPickerMarkup = await renderTemplate(
-      `modules/${MODULE_ID}/templates/talent-picker.hbs`,
-      pickerContext
-    );
+    const rawPickerMarkup =
+      await foundry.applications.handlebars.renderTemplate(
+        `modules/${MODULE_ID}/templates/talent-picker.hbs`,
+        pickerContext
+      );
     const talentPickerMarkup = String(rawPickerMarkup ?? "")
       .trim()
       .replace(/^<form\b([^>]*)>/i, "<div$1>")
@@ -72,8 +73,7 @@ class ShipTalentSwapApp extends Base {
 
     const shipName = this._ship?.name ?? "";
     const notChosen =
-      t("sta-officers-log.dialog.shipTalentSwap.notChosen") ??
-      "Not chosen yet";
+      t("sta-officers-log.dialog.shipTalentSwap.notChosen") ?? "Not chosen yet";
 
     const customLabel =
       t("sta-officers-log.dialog.shipTalentSwap.customLabel") ??
@@ -90,8 +90,7 @@ class ShipTalentSwapApp extends Base {
         t("sta-officers-log.dialog.shipTalentSwap.leftTitle") ??
         "Current Ship Talents",
       rightTitle:
-        t("sta-officers-log.dialog.shipTalentSwap.rightTitle") ??
-        "New Talent",
+        t("sta-officers-log.dialog.shipTalentSwap.rightTitle") ?? "New Talent",
       removeHint:
         t("sta-officers-log.dialog.shipTalentSwap.removeHint") ??
         `Choose a talent from ${shipName || "the ship"} to remove.`,
@@ -102,15 +101,13 @@ class ShipTalentSwapApp extends Base {
       customPlaceholder,
       customButtonLabel,
       removeLabel:
-        t("sta-officers-log.dialog.shipTalentSwap.removeLabel") ??
-        "Removing",
+        t("sta-officers-log.dialog.shipTalentSwap.removeLabel") ?? "Removing",
       addLabel:
         t("sta-officers-log.dialog.shipTalentSwap.addLabel") ?? "Adding",
       selectedExistingLabel: notChosen,
       selectedNewLabel: notChosen,
       confirmLabel:
-        t("sta-officers-log.dialog.shipTalentSwap.confirm") ??
-        "Confirm Swap",
+        t("sta-officers-log.dialog.shipTalentSwap.confirm") ?? "Confirm Swap",
       backLabel: t("sta-officers-log.dialog.shipTalentSwap.back") ?? "Back",
       cancelLabel:
         t("sta-officers-log.dialog.shipTalentSwap.cancel") ?? "Cancel",
@@ -300,9 +297,8 @@ export async function promptShipTalentSwapDialog({ ship = null } = {}) {
           type: itemType,
           typeLabel:
             itemType === "shiptalent"
-              ? t(
-                  "sta-officers-log.dialog.shipTalentSwap.shipTalentLabel"
-                ) ?? "Ship Talent"
+              ? t("sta-officers-log.dialog.shipTalentSwap.shipTalentLabel") ??
+                "Ship Talent"
               : t("sta-officers-log.dialog.shipTalentSwap.talentLabel") ??
                 "Talent",
         };

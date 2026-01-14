@@ -71,6 +71,9 @@
     "logSheet": {
       "arcComplete": "Arc Complete"
     },
+    "logs": {
+      "currentMissionIndicator": "Current mission log"
+    },
     "dialog": {
       "useValueTest": {
         "title": "Use Value: {value}",
