@@ -1,13 +1,5 @@
 import { t } from "../../i18n.js";
-
-function _escapeHtml(s) {
-  // Keep this file self-contained; prefer Foundry's canonical escaping.
-  try {
-    return foundry.utils.escapeHTML(String(s ?? ""));
-  } catch (_) {
-    return String(s ?? "");
-  }
-}
+import { escapeHTML } from "../../values.js";
 
 async function _confirmDelete({ title, contentHtml }) {
   // Prefer DialogV2 so we don't end up with mixed dialog versions.
@@ -100,7 +92,7 @@ export function installConfirmDeleteControls(root, options = {}) {
         : "item";
       return {
         title: `${t("sta-officers-log.confirmDelete.title")} ${itemType}?`,
-        contentHtml: `${t("sta-officers-log.confirmDelete.body")}${_escapeHtml(
+        contentHtml: `${t("sta-officers-log.confirmDelete.body")}${escapeHTML(
           itemType
         )}?`,
       };

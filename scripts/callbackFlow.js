@@ -1,4 +1,3 @@
-export { setPendingResponses } from "./callbackFlow/state.js";
 export {
   applyArcMilestoneBenefit,
   applyNonArcMilestoneBenefit,
@@ -13,3 +12,4 @@ export {
   promptCallbackForActorAsGM,
   openGMFlow,
 } from "./callbackFlow/gmFlow.js";
+export { openPendingShipBenefitsDialog } from "./callbackFlow/pendingShipBenefitsDialog.js";

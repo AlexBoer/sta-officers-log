@@ -103,6 +103,54 @@ async function _handleShipPermissionFallback({
   manualAction,
   extraPayload = {},
 }) {
+  // Queue the pending ship benefit for GM to apply later
+  try {
+    const pending = actor.getFlag?.(MODULE_ID, "pendingShipBenefits") ?? [];
+    const id = (() => {
+      try {
+        if (typeof foundry?.utils?.randomID === "function")
+          return foundry.utils.randomID();
+      } catch (_) {
+        // ignore
+      }
+      return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    })();
+    const newBenefit = {
+      id,
+      timestamp: Date.now(),
+      shipId: ship.id,
+      shipName: ship.name,
+      action: manualAction,
+      label,
+      instruction,
+      flagPath,
+      ...extraPayload,
+    };
+
+    await actor.setFlag(MODULE_ID, "pendingShipBenefits", [
+      ...pending,
+      newBenefit,
+    ]);
+
+    ui.notifications.info(
+      `Ship benefit queued for GM to apply: ${label}. The GM will be notified when they log in.`
+    );
+
+    return {
+      status: "queued",
+      result: {
+        applied: false,
+        action: manualAction,
+        shipId: ship.id,
+        queued: true,
+        ...extraPayload,
+      },
+    };
+  } catch (err) {
+    console.error(`${MODULE_ID} | Failed to queue ship benefit:`, err);
+  }
+
+  // Fall back to manual instructions dialog if queuing fails
   const res = await _promptManualMilestoneInstructions({
     title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
     html: `
@@ -164,9 +212,7 @@ export async function applyArcMilestoneBenefit(
           const atMax = Number(cur ?? 0) >= 12;
           const dis = atMax ? " disabled" : "";
           const suffix = atMax
-            ? ` (${t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.max"
-              )})`
+            ? ` (${t("sta-officers-log.dialog.chooseMilestoneBenefit.max")})`
             : "";
           const label = ATTRIBUTE_LABELS[k] ?? k;
           return `<option value="${k}"${dis}>${escapeHTML(label)}${escapeHTML(
@@ -221,9 +267,7 @@ export async function applyArcMilestoneBenefit(
           const atMax = Number(cur ?? 0) >= 5;
           const dis = atMax ? " disabled" : "";
           const suffix = atMax
-            ? ` (${t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.max"
-              )})`
+            ? ` (${t("sta-officers-log.dialog.chooseMilestoneBenefit.max")})`
             : "";
           const label = DISCIPLINE_LABELS[k] ?? k;
           return `<option value="${k}"${dis}>${escapeHTML(label)}${escapeHTML(
@@ -314,9 +358,7 @@ export async function applyArcMilestoneBenefit(
       const key = String(picked);
       if (_getStaSelectionFlag(actor, `system.${key}`)) {
         ui.notifications?.warn(
-          t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved"
-          )
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved")
         );
         return { applied: false };
       }
@@ -367,10 +409,7 @@ export async function applyArcMilestoneBenefit(
       try {
         await ship.update({ [path]: next });
       } catch (err) {
-        console.error(
-          "sta-officers-log | arc ship system update failed",
-          err
-        );
+        console.error("sta-officers-log | arc ship system update failed", err);
         ui.notifications?.error?.("Failed to update the Group Ship.");
         return { applied: false };
       }
@@ -414,9 +453,7 @@ export async function applyArcMilestoneBenefit(
       const key = String(picked);
       if (_getStaSelectionFlag(actor, `department.${key}`)) {
         ui.notifications?.warn(
-          t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved"
-          )
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved")
         );
         return { applied: false };
       }
@@ -617,9 +654,7 @@ export async function applyNonArcMilestoneBenefitInternal(
       while (true) {
         const res = await foundry.applications.api.DialogV2.wait({
           window: {
-            title: t(
-              "sta-officers-log.dialog.chooseMilestoneBenefit.title"
-            ),
+            title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
             classes: ["choose-benefit"],
           },
           content: `
@@ -686,15 +721,11 @@ export async function applyNonArcMilestoneBenefitInternal(
             },
             {
               action: "back",
-              label: t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.back"
-              ),
+              label: t("sta-officers-log.dialog.chooseMilestoneBenefit.back"),
             },
             {
               action: "cancel",
-              label: t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.cancel"
-              ),
+              label: t("sta-officers-log.dialog.chooseMilestoneBenefit.cancel"),
             },
           ],
           rejectClose: false,
@@ -796,9 +827,7 @@ export async function applyNonArcMilestoneBenefitInternal(
       while (true) {
         const shipAction = await foundry.applications.api.DialogV2.wait({
           window: {
-            title: t(
-              "sta-officers-log.dialog.chooseMilestoneBenefit.title"
-            ),
+            title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
             classes: ["choose-benefit"],
           },
           content: `
@@ -827,15 +856,11 @@ export async function applyNonArcMilestoneBenefitInternal(
             },
             {
               action: "back",
-              label: t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.back"
-              ),
+              label: t("sta-officers-log.dialog.chooseMilestoneBenefit.back"),
             },
             {
               action: "cancel",
-              label: t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.cancel"
-              ),
+              label: t("sta-officers-log.dialog.chooseMilestoneBenefit.cancel"),
             },
           ],
           rejectClose: false,
@@ -871,9 +896,7 @@ export async function applyNonArcMilestoneBenefitInternal(
             const options2Html = options1Html;
 
             const res = await _promptTwoSelect({
-              title: t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.title"
-              ),
+              title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
               label1: "Decrease system (-1)",
               name1: "dec",
               options1Html,
@@ -914,10 +937,7 @@ export async function applyNonArcMilestoneBenefitInternal(
             try {
               await ship.update(updates);
             } catch (err) {
-              console.error(
-                "sta-officers-log | ship system swap failed",
-                err
-              );
+              console.error("sta-officers-log | ship system swap failed", err);
               ui.notifications?.error?.("Failed to update the Group Ship.");
               return { applied: false };
             }
@@ -955,9 +975,7 @@ export async function applyNonArcMilestoneBenefitInternal(
             const options2Html = options1Html;
 
             const res = await _promptTwoSelect({
-              title: t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.title"
-              ),
+              title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
               label1: "Decrease department (-1)",
               name1: "dec",
               options1Html,
@@ -1097,10 +1115,7 @@ export async function applyNonArcMilestoneBenefitInternal(
               added: created?.name ?? shipTalentData.name ?? "",
             };
           } catch (err) {
-            console.error(
-              "sta-officers-log | ship talent swap failed",
-              err
-            );
+            console.error("sta-officers-log | ship talent swap failed", err);
             ui.notifications?.error?.("Failed to update the Group Ship.");
             return { applied: false };
           }
@@ -1127,13 +1142,9 @@ export async function applyNonArcMilestoneBenefitInternal(
           const improved = _getStaSelectionFlag(actor, `attributes.${k}`);
           const dis = atMax || improved ? " disabled" : "";
           const suffix = atMax
-            ? ` (${t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.max"
-              )})`
+            ? ` (${t("sta-officers-log.dialog.chooseMilestoneBenefit.max")})`
             : improved
-            ? ` (${t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.used"
-              )})`
+            ? ` (${t("sta-officers-log.dialog.chooseMilestoneBenefit.used")})`
             : "";
           const label = ATTRIBUTE_LABELS[k] ?? k;
           return `<option value="${k}"${dis}>${escapeHTML(label)}${escapeHTML(
@@ -1159,9 +1170,7 @@ export async function applyNonArcMilestoneBenefitInternal(
       const key = String(picked);
       if (_getStaSelectionFlag(actor, `attributes.${key}`)) {
         ui.notifications?.warn(
-          t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved"
-          )
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved")
         );
         return { applied: false };
       }
@@ -1198,13 +1207,9 @@ export async function applyNonArcMilestoneBenefitInternal(
           const improved = _getStaSelectionFlag(actor, `discipline.${k}`);
           const dis = atMax || improved ? " disabled" : "";
           const suffix = atMax
-            ? ` (${t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.max"
-              )})`
+            ? ` (${t("sta-officers-log.dialog.chooseMilestoneBenefit.max")})`
             : improved
-            ? ` (${t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.used"
-              )})`
+            ? ` (${t("sta-officers-log.dialog.chooseMilestoneBenefit.used")})`
             : "";
           const label = DISCIPLINE_LABELS[k] ?? k;
           return `<option value="${k}"${dis}>${escapeHTML(label)}${escapeHTML(
@@ -1230,9 +1235,7 @@ export async function applyNonArcMilestoneBenefitInternal(
       const key = String(picked);
       if (_getStaSelectionFlag(actor, `discipline.${key}`)) {
         ui.notifications?.warn(
-          t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved"
-          )
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved")
         );
         return { applied: false };
       }
@@ -1422,9 +1425,7 @@ export function formatChosenBenefitLabel(applied) {
         SHIP_SYSTEM_LABELS[applied.key] ?? applied.key
       }`;
     case "arcShipDepartment":
-      return `Ship: +1 ${
-        SHIP_DEPARTMENT_LABELS[applied.key] ?? applied.key
-      }`;
+      return `Ship: +1 ${SHIP_DEPARTMENT_LABELS[applied.key] ?? applied.key}`;
     case "arcShipDepartmentManual":
       return `Ship Department +1 (ask GM to apply): ${
         SHIP_DEPARTMENT_LABELS[applied.key] ?? applied.key

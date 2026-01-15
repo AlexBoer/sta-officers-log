@@ -21,6 +21,10 @@
         "name": "Player Ambient Audio Uses Selected Tokens",
         "hint": "If enabled, non-GM users only hear ambient audio near tokens they currently have selected/controlled (matching GM behavior). If disabled, Foundry's default behavior applies (players hear audio near all owned tokens)."
       },
+      "autoCallbackOnDeterminationRoll": {
+        "name": "Auto-prompt Callback on Determination Rolls",
+        "hint": "If enabled, the GM client will scan new STA roll chat messages for 'Determination', automatically spend 1 Determination for the rolling character, and prompt the player to make a Callback."
+      },
       "talentPickerCustomCompendium": {
         "name": "Talent Picker: Extra Compendium",
         "hint": "Optional compendium pack id to include in the Talent picker (e.g. module-name.talents-homebrew)."
@@ -66,7 +70,14 @@
       "allShipReadinessReset": "All ship shields/reserve power reset.",
       "momentumNotFound": "Could not find an STA Momentum setting to decrement.",
       "newSceneDone": "New scene: Momentum -1. NPC Personal Threat refreshed.",
-      "callbacksReset": "Callback usage reset for a new mission."
+      "callbacksReset": "Callback usage reset for a new mission.",
+
+      "pendingShipBenefitsAllProcessed": "All pending ship benefits have been processed.",
+      "pendingShipBenefitsAllRemoved": "All pending benefits removed.",
+      "pendingShipBenefitsAppliedSystemIncrease": "Applied ship system increase: {key} for {character}.",
+      "pendingShipBenefitsAppliedDepartmentIncrease": "Applied ship department increase: {key} for {character}.",
+      "pendingShipBenefitsAppliedSystemSwap": "Applied ship system swap: {from} → {to} for {character}.",
+      "pendingShipBenefitsAppliedDepartmentSwap": "Applied ship department swap: {from} → {to} for {character}."
     },
     "values": {
       "useValue": "Use Value",
@@ -206,6 +217,20 @@
         "customButton": "Choose Custom Talent",
         "customNameRequired": "Enter a custom talent name before selecting it."
       },
+      "pendingShipBenefits": {
+        "title": "Review Pending Ship Benefits",
+        "close": "Close",
+        "apply": "Apply",
+        "skip": "Skip",
+        "remove": "Remove",
+        "shipLabel": "Ship:",
+        "benefitLabel": "Benefit:",
+        "unknownDate": "Unknown",
+        "unknownShip": "Unknown Ship",
+        "unknownBenefit": "Unknown",
+        "summaryOne": "pending ship benefit queued by players who lacked ship permissions.",
+        "summaryMany": "pending ship benefits queued by players who lacked ship permissions."
+      },
       "addPlayer": {
         "title": "Add Player to Current Mission",
         "playerLabel": "Player",
@@ -240,8 +265,13 @@
         "playerLabel": "Player",
         "usedHint": "Players marked “already used” cannot make another callback this mission.",
         "send": "Send",
-        "cancel": "Cancel"
-      }
+        "cancel": "Cancel"      },
+      "pickValue": {
+        "title": "Choose a Value for the Callback",
+        "valueLabel": "Value",
+        "hint": "The player will make a callback using this value.",
+        "send": "Send Prompt",
+        "cancel": "Cancel"      }
     },
     "callback": {
       "title": "Making a callback",
@@ -258,9 +288,12 @@
       "noUnusedHint": "You don’t have any unused logs to spend.",
       "make": "Make a Callback",
       "skip": "Skip",
+      "usingValue": "Using Value",
+      "chooseAnother": "Choose another log",
+      "confirmSelection": "Confirm",
       "noInvokedValues": "No invoked values recorded in this log.",
-      "bodyHtml": "<p><strong>Do you want to make a callback?</strong></p>\n<details><summary>Click here to read about Callbacks</summary><ul>\n<li>You can make a <strong>Callback</strong> to a previous mission when you use the same value as one used that mission.</li>\n<li>When you make a callback, gain a determination now and earn a milestone at the end of the mission.</li>\n<li>Each Log can be called back to only once.</li>\n</ul>\n<p><i>You must choose a mission in which you used the same value as the one used just now. You can check the details in your character sheet under the <strong>Development</strong> tab.</i></p>\n</details>",
-      "rewardHtml": "<h5>You made a callback!</h5>\n<ul>\n<li>+1 Determination has been added to your character sheet.</li>\n<li>A new Milestone has been added to your character sheet. Make sure to edit it and choose a milestone bonus at the end of the mission!</li>\n</ul>"
+      "bodyHtml": "<h2>Make a Callback</h2><p>Build a character arc by linking your values now to your values in a previous mission.</p>",
+      "rewardHtml": "<h5>You made a callback!</h5>\n<ul>\n<li>+1 Determination.</li>\n<li>At the end of the mission, choose a new Milestone!</li>\n</ul>"
     },
     "warnings": {
       "selectValueFirst": "Select a value first.",
@@ -269,7 +302,10 @@
       "userNotConnected": "That user is not connected.",
       "alreadyUsedThisMission": "{user} already made a callback this mission.",
       "allActivePlayersUsed": "All active players have already made a callback this mission.",
-      "noEligibleLogs": "{user} has no eligible logs to callback to."
+      "noEligibleLogs": "{user} has no eligible logs to callback to.",
+
+      "pendingShipBenefitsTalentSwapManual": "Ship talent swap for {character} requires manual application. The talent selection dialog should be shown.",
+      "pendingShipBenefitsUnknownAction": "Unknown ship benefit action: {action}. Please apply manually."
     },
     "confirmDelete": {
       "delete": "Delete",
@@ -279,7 +315,15 @@
     },
     "errors": {
       "socketNotAvailable": "SocketLib socket not available. Is the module initialized on GM and player?",
-      "socketLibRequired": "STA Officers Log requires the SocketLib module. Please install and activate it."
+      "socketLibRequired": "STA Officers Log requires the SocketLib module. Please install and activate it.",
+
+      "pendingShipBenefitsShipNotFound": "Could not find ship actor (ID: {id}) to apply benefit.",
+      "pendingShipBenefitsMissingSystemKeyIncrease": "Missing system key for ship system increase.",
+      "pendingShipBenefitsMissingDepartmentKeyIncrease": "Missing department key for ship department increase.",
+      "pendingShipBenefitsMissingSystemKeysSwap": "Missing system keys for ship system swap.",
+      "pendingShipBenefitsMissingDepartmentKeysSwap": "Missing department keys for ship department swap.",
+      "pendingShipBenefitsApplyFailed": "Failed to apply ship benefit: {message}",
+      "pendingShipBenefitsUnknownError": "Unknown error"
     }
   }
 }

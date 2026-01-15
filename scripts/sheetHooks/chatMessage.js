@@ -2,10 +2,26 @@ import {
   sendCallbackPromptToUser,
   spendDetermination,
 } from "../callbackFlow.js";
+import { MODULE_ID } from "../constants.js";
+import { AUTO_CALLBACK_ON_DETERMINATION_ROLL_SETTING } from "../mission.js";
 
 // Hook to detect when a Determination roll is made in chat and prompt the user to use a callback.
 export function installCreateChatMessageHook() {
   Hooks.on("createChatMessage", async (message) => {
+    // Feature toggle: disable automatic Determination scanning/prompting unless enabled.
+    try {
+      const enabled = Boolean(
+        game.settings.get(
+          MODULE_ID,
+          AUTO_CALLBACK_ON_DETERMINATION_ROLL_SETTING
+        )
+      );
+      if (!enabled) return;
+    } catch (_) {
+      // If settings are unavailable for some reason, fail closed.
+      return;
+    }
+
     if (!game.user.isGM) return;
 
     const html = message.content ?? "";

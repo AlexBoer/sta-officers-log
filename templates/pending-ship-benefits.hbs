@@ -1,0 +1,38 @@
+<div style="max-height: 60vh; overflow-y: auto;">
+  <p style="margin-bottom: 1em;">
+    <strong>{{count}}</strong> {{localize summaryKey}}
+  </p>
+
+  {{#each items}}
+    <div class="pending-ship-benefit" style="margin-bottom: 1em; padding: 0.5em; border: 1px solid #ccc; border-radius: 4px;">
+      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5em;">
+        <strong style="flex: 1;">{{actorName}}</strong>
+        <small style="opacity: 0.7;">{{dateLabel}}</small>
+      </div>
+
+      <div style="margin-bottom: 0.5em;">
+        <strong>{{localize "sta-officers-log.dialog.pendingShipBenefits.shipLabel"}}</strong> {{shipName}}
+      </div>
+
+      <div style="margin-bottom: 0.5em;">
+        <strong>{{localize "sta-officers-log.dialog.pendingShipBenefits.benefitLabel"}}</strong> {{benefitLabel}}
+      </div>
+
+      <div style="margin-bottom: 0.5em; font-size: 0.9em; opacity: 0.8;">
+        {{instruction}}
+      </div>
+
+      <div style="display: flex; gap: 0.5em;">
+        <button type="button" data-action="apply" data-actor-id="{{actorId}}" data-benefit-id="{{benefitId}}" style="flex: 1;">
+          {{localize "sta-officers-log.dialog.pendingShipBenefits.apply"}}
+        </button>
+        <button type="button" data-action="skip" data-actor-id="{{actorId}}" data-benefit-id="{{benefitId}}" style="flex: 1;">
+          {{localize "sta-officers-log.dialog.pendingShipBenefits.skip"}}
+        </button>
+        <button type="button" data-action="remove" data-actor-id="{{actorId}}" data-benefit-id="{{benefitId}}" style="flex: 1;">
+          {{localize "sta-officers-log.dialog.pendingShipBenefits.remove"}}
+        </button>
+      </div>
+    </div>
+  {{/each}}
+</div>

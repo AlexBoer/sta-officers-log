@@ -92,26 +92,82 @@ export async function setMissionLogSortModeForActor(actor, mode) {
   }
 }
 
-function _getLogChainComponents(actor, logItems) {
+/**
+ * Builds the common validation context for callback links.
+ */
+function _buildCallbackLinkContext(actor, logItems) {
   const byId = new Map(logItems.map((l) => [String(l.id), l]));
-  const adj = new Map();
-
-  // When an Arc is completed, we want the next mission to start a new chain
-  // even if it calls back to the last log in that Arc.
   const completedArcEndLogIds = getCompletedArcEndLogIds(actor, byId);
-
   const valueItems = Array.from(actor?.items ?? []).filter(
     (i) => i?.type === "value"
   );
 
-  // Explicit per-log override set by the "Link Log to Chain" dialog.
-  // If true, we will not treat this log as a "callback to" anything in chain sorting,
-  // even if milestones imply otherwise.
   const callbackLinkDisabledToLogIds = new Set();
   for (const log of logItems) {
     const disabled = log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true;
     if (disabled) callbackLinkDisabledToLogIds.add(String(log.id));
   }
+
+  return {
+    byId,
+    completedArcEndLogIds,
+    valueItems,
+    callbackLinkDisabledToLogIds,
+  };
+}
+
+/**
+ * Checks if a callback link from one log to a parent is valid.
+ * Returns true if the link should be included in chain operations.
+ */
+function _isValidCallbackLink(log, parentLog, link, context) {
+  if (!context) return false;
+
+  const {
+    byId,
+    completedArcEndLogIds,
+    valueItems,
+    callbackLinkDisabledToLogIds,
+  } = context;
+  const logId = String(log.id);
+  const parentId = link?.fromLogId ? String(link.fromLogId) : "";
+
+  if (!parentId) return false;
+  if (!byId.has(parentId)) return false;
+
+  // Respect explicit manual unlink overrides.
+  if (callbackLinkDisabledToLogIds.has(logId)) return false;
+
+  // Break chains across completed Arc boundaries.
+  if (completedArcEndLogIds.has(parentId)) return false;
+
+  // Break chains when the callback link's value doesn't match the chain primary.
+  const valueId = link?.valueId ? String(link.valueId) : "";
+  if (valueId) {
+    // Note: We pass actor as the first param, but log/parentLog have it via their structure
+    const logPrimary = getPrimaryValueIdForLog(
+      log.actor || log.parent,
+      log,
+      valueItems
+    );
+    const parentPrimary = parentLog
+      ? getPrimaryValueIdForLog(
+          parentLog.actor || parentLog.parent,
+          parentLog,
+          valueItems
+        )
+      : "";
+    if (logPrimary && logPrimary !== valueId) return false;
+    if (parentPrimary && parentPrimary !== valueId) return false;
+  }
+
+  return true;
+}
+
+function _getLogChainComponents(actor, logItems) {
+  const context = _buildCallbackLinkContext(actor, logItems);
+  const { byId } = context;
+  const adj = new Map();
 
   const ensure = (id) => {
     const key = String(id);
@@ -122,30 +178,12 @@ function _getLogChainComponents(actor, logItems) {
   // Undirected edges between logs that are linked via callbackLink.
   for (const log of logItems) {
     const link = log.getFlag?.(MODULE_ID, "callbackLink");
-    const fromId = link?.fromLogId ? String(link.fromLogId) : "";
-    const valueId = link?.valueId ? String(link.valueId) : "";
-    if (!fromId) continue;
+    const parentLog = byId.get(link?.fromLogId);
+
+    if (!_isValidCallbackLink(log, parentLog, link, context)) continue;
+
     const a = String(log.id);
-    const b = fromId;
-    if (!byId.has(b)) continue;
-
-    // Respect explicit manual unlink overrides.
-    if (callbackLinkDisabledToLogIds.has(a)) continue;
-
-    // Break chains across completed Arc boundaries.
-    if (completedArcEndLogIds.has(b)) continue;
-
-    // Break chains when the callback link's value doesn't match the chain primary.
-    if (valueId) {
-      const aPrimary = getPrimaryValueIdForLog(actor, log, valueItems);
-      const bLog = byId.get(String(b));
-      const bPrimary = bLog
-        ? getPrimaryValueIdForLog(actor, bLog, valueItems)
-        : "";
-      if (aPrimary && aPrimary !== valueId) continue;
-      if (bPrimary && bPrimary !== valueId) continue;
-    }
-
+    const b = String(link.fromLogId);
     ensure(a).add(b);
     ensure(b).add(a);
   }
@@ -179,53 +217,17 @@ function _getLogChainComponents(actor, logItems) {
 }
 
 function _getValidCallbackParentMap(actor, logItems) {
-  const byId = new Map(logItems.map((l) => [String(l.id), l]));
-
-  // When an Arc is completed, we want the next mission to start a new chain
-  // even if it calls back to the last log in that Arc.
-  const completedArcEndLogIds = getCompletedArcEndLogIds(actor, byId);
-
-  const valueItems = Array.from(actor?.items ?? []).filter(
-    (i) => i?.type === "value"
-  );
-
-  // Explicit per-log override set by the "Link Log to Chain" dialog.
-  const callbackLinkDisabledToLogIds = new Set();
-  for (const log of logItems) {
-    const disabled = log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true;
-    if (disabled) callbackLinkDisabledToLogIds.add(String(log.id));
-  }
-
-  /** @type {Map<string, string>} */
+  const context = _buildCallbackLinkContext(actor, logItems);
   const parentByChildId = new Map();
 
   for (const log of logItems) {
     const link = log.getFlag?.(MODULE_ID, "callbackLink");
-    const fromId = link?.fromLogId ? String(link.fromLogId) : "";
-    const valueId = link?.valueId ? String(link.valueId) : "";
-    if (!fromId) continue;
+    const parentLog = context.byId.get(link?.fromLogId);
+
+    if (!_isValidCallbackLink(log, parentLog, link, context)) continue;
 
     const childId = String(log.id);
-    const parentId = fromId;
-    if (!byId.has(parentId)) continue;
-
-    // Respect explicit manual unlink overrides.
-    if (callbackLinkDisabledToLogIds.has(childId)) continue;
-
-    // Break chains across completed Arc boundaries.
-    if (completedArcEndLogIds.has(parentId)) continue;
-
-    // Break chains when the callback link's value doesn't match the chain primary.
-    if (valueId) {
-      const childPrimary = getPrimaryValueIdForLog(actor, log, valueItems);
-      const parentLog = byId.get(String(parentId));
-      const parentPrimary = parentLog
-        ? getPrimaryValueIdForLog(actor, parentLog, valueItems)
-        : "";
-      if (childPrimary && childPrimary !== valueId) continue;
-      if (parentPrimary && parentPrimary !== valueId) continue;
-    }
-
+    const parentId = String(link.fromLogId);
     parentByChildId.set(childId, parentId);
   }
 

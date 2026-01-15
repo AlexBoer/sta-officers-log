@@ -14,6 +14,32 @@ export class CallbackRequestApp extends Base {
     this.data = data ?? {};
   }
 
+  /**
+   * Override close to handle cleanup when dialog is closed without clicking Yes/No
+   */
+  async close(options) {
+    // Clear timeout
+    if (this._timeoutId) {
+      clearTimeout(this._timeoutId);
+      this._timeoutId = null;
+    }
+
+    // If promise resolver still exists, resolve with "no" action (user closed dialog)
+    if (this._resolveCallback) {
+      this._resolveCallback({
+        module: MODULE_ID,
+        type: "callback:response",
+        requestId: this.data.requestId,
+        action: "no",
+        targetUserId: this.data.targetUserId,
+        actorUuid: this.data.actorUuid,
+      });
+      this._resolveCallback = null;
+    }
+
+    return super.close(options);
+  }
+
   static DEFAULT_OPTIONS = {
     id: "sta-callbacks-request",
     window: {
@@ -44,29 +70,34 @@ export class CallbackRequestApp extends Base {
       ? String(this.data.defaultValueId)
       : "";
 
-    const markSelected = (arr) =>
-      (arr ?? []).map((v) => ({
-        ...v,
-        selected: dvi && String(v.id) === dvi && !v.disabled,
-      }));
+    // Find the display name for the selected value/directive
+    let selectedValueName = "";
+    if (dvi) {
+      const values = this.data.values ?? [];
+      const directives = this.data.directives ?? [];
 
-    const values = markSelected(this.data.values);
-    const directives = markSelected(this.data.directives);
-    const hasDirectives = directives.some((d) => d && d.id);
+      const valueItem = values.find((v) => String(v.id) === dvi);
+      const directiveItem = directives.find((d) => String(d.id) === dvi);
+
+      selectedValueName = valueItem?.name || directiveItem?.name || "";
+    }
+
+    const allLogs = this.data.logs ?? [];
+    const logsForButtons = allLogs.slice(0, 3); // Show max 3 as buttons
+    const hasMoreLogs = allLogs.length > 3;
 
     return {
       requestId: this.data.requestId,
       targetUserId: this.data.targetUserId,
       actorUuid: this.data.actorUuid,
       bodyHtml: this.data.bodyHtml,
-      logs: this.data.logs ?? [],
+      logs: allLogs,
+      logsForButtons,
+      hasMoreLogs,
       hasLogs: Boolean(this.data.hasLogs),
-      values,
-      directives,
-      hasDirectives,
-      isPositiveDefault: dvs === "positive",
-      isNegativeDefault: dvs === "negative",
-      isChallengedDefault: dvs === "challenged",
+      selectedValueId: dvi,
+      selectedValueName,
+      selectedValueState: dvs,
     };
   }
 
@@ -108,190 +139,151 @@ export class CallbackRequestApp extends Base {
     if (root.dataset.staCallbacksBound === "1") return;
     root.dataset.staCallbacksBound = "1";
 
-    const form = root.querySelector("form") ?? root; // depending on template wrapper
-    const yesBtn = root.querySelector('[data-action="yes"]');
+    const form = root.querySelector("form") ?? root;
     const noBtn = root.querySelector('[data-action="no"]');
+    const allLogsSelect = root.querySelector('[data-hook="allLogsSelect"]');
 
-    const valueSel = root.querySelector('[name="valueId"]');
-    const logSel = root.querySelector('[name="logId"]');
-    const hintEl = root.querySelector("[data-callback-log-hint]");
+    // Get all logs data
+    const logs = this.data.logs ?? [];
+    let selectedLogId = logs.length > 0 ? String(logs[0].id) : "";
 
-    // ----- Invoked-values list under the log selector -----
-    if (logSel) this._renderInvokedValues(String(logSel.value ?? ""), root);
-    logSel?.addEventListener("change", (ev) => {
-      this._renderInvokedValues(String(ev.target?.value ?? ""), root);
+    // Auto-select and show invoked values for the first log
+    if (selectedLogId) {
+      this._renderInvokedValues(selectedLogId, root);
+    }
+
+    // Handle log button clicks - immediately submit the callback
+    const logButtons = root.querySelectorAll('[data-action="select-log"]');
+    logButtons.forEach((btn, index) => {
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        const logId = btn.dataset.logId;
+
+        // Auto-confirm and submit the callback for this log
+        this._sendResponse({
+          action: "yes",
+          logId,
+        });
+      });
     });
 
-    // ----- Eligibility filtering (throttled to 1/frame) -----
-    const logs = this.data.logs ?? [];
-    const logsById = new Map(logs.map((l) => [String(l.id), l]));
-    const logInvokedMap = new Map(
-      logs.map((l) => [
-        l.id,
-        new Set(l.invokedIds ?? (l.invoked ?? []).map((x) => x.id)),
-      ])
-    );
+    // Handle "show all logs" button - replace buttons with dropdown
+    const showAllBtn = root.querySelector('[data-action="show-all-logs"]');
+    if (showAllBtn) {
+      showAllBtn.addEventListener("click", (ev) => {
+        ev.preventDefault();
 
-    const logOptions = Array.from(logSel?.options ?? []).filter((o) => o.value);
+        // Hide buttons and link
+        const buttonsDiv = root.querySelector(".sta-callback-logs-buttons");
+        const moreLogsDiv = root.querySelector(".sta-callback-more-logs");
+        const selectorDiv = root.querySelector(
+          ".sta-callback-all-logs-selector"
+        );
 
-    let rafScheduled = false;
+        if (buttonsDiv) buttonsDiv.style.display = "none";
+        if (moreLogsDiv) moreLogsDiv.style.display = "none";
+        if (selectorDiv) selectorDiv.style.display = "block";
 
-    const applyEligibility = () => {
-      rafScheduled = false;
+        // Show the select and focus it
+        if (allLogsSelect) {
+          allLogsSelect.value = selectedLogId || "";
+          allLogsSelect.focus();
+        }
+      });
+    }
 
-      const valueId = String(valueSel?.value ?? "");
-      const hasValue = Boolean(valueId);
+    // Handle selection from the all-logs dropdown - enable confirm button
+    if (allLogsSelect) {
+      allLogsSelect.addEventListener("change", (ev) => {
+        selectedLogId = String(ev.target.value);
 
-      let anyEligible = false;
-
-      for (const opt of logOptions) {
-        if (!hasValue) {
-          opt.disabled = true;
-          continue;
+        // Update invoked values for reference
+        if (selectedLogId) {
+          this._renderInvokedValues(selectedLogId, root);
         }
 
-        const invokedSet = logInvokedMap.get(opt.value);
-        const invokedOk = invokedSet ? invokedSet.has(valueId) : false;
+        // Enable/disable confirm button based on selection
+        const confirmBtn = root.querySelector('[data-action="confirm-log"]');
+        if (confirmBtn) {
+          confirmBtn.disabled = !selectedLogId;
+        }
+      });
+    }
 
-        const meta = logsById.get(String(opt.value)) ?? null;
-        const targetPrimary = meta?.primaryValueId
-          ? String(meta.primaryValueId)
-          : "";
-        const isArcEnd = meta?.isCompletedArcEnd === true;
-        const chainOk = isCallbackTargetCompatibleWithValue({
-          valueId,
-          targetPrimaryValueId: targetPrimary,
-          isCompletedArcEnd: isArcEnd,
-        });
+    // Handle confirm button click
+    const confirmBtn = root.querySelector('[data-action="confirm-log"]');
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", (ev) => {
+        ev.preventDefault();
 
-        const eligible = invokedOk && chainOk;
+        if (selectedLogId) {
+          this._sendResponse({
+            action: "yes",
+            logId: selectedLogId,
+          });
+        }
+      });
+    }
 
-        // Add a small hint in the option label when it is blocked by primary value.
-        if (!opt.dataset.staBaseLabel)
-          opt.dataset.staBaseLabel = opt.textContent;
-        opt.textContent = eligible
-          ? opt.dataset.staBaseLabel
-          : invokedOk && !chainOk
-          ? `${opt.dataset.staBaseLabel} (part of another value's arc)`
-          : opt.dataset.staBaseLabel;
+    // Handle the NO button (skip)
+    noBtn?.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      this._sendResponse({
+        action: "no",
+      });
+    });
+  }
 
-        opt.disabled = !eligible;
-        if (eligible) anyEligible = true;
+  _sendResponse({ action, logId = null }) {
+    // Clear timeout
+    if (this._timeoutId) {
+      clearTimeout(this._timeoutId);
+      this._timeoutId = null;
+    }
+
+    const valueId = String(
+      this.data.defaultValueId ? String(this.data.defaultValueId) : ""
+    );
+    const valueState = String(this.data.defaultValueState ?? "positive");
+
+    if (action === "yes") {
+      if (!valueId) {
+        ui.notifications.warn("No value selected for callback.");
+        return;
       }
-
-      // Clear selection if it became disabled
-      const selectedOpt = logSel?.selectedOptions?.[0];
-      if (selectedOpt?.disabled) logSel.value = "";
-
-      // Auto-select the first eligible log if none is selected, or show placeholder if none eligible
-      const eligibleOpts = logOptions.filter((o) => !o.disabled);
-      const noEligibleOpt = Array.from(logSel?.options ?? []).find(
-        (o) => o.dataset.staNoEligibleLogs
-      );
-
-      if (eligibleOpts.length > 0 && !logSel?.value) {
-        logSel.value = eligibleOpts[0].value;
-        // Update invoked values list to reflect the auto-selected log
-        this._renderInvokedValues(String(logSel.value ?? ""), root);
-        if (logSel) logSel.disabled = false;
-      } else if (anyEligible === false && hasValue && noEligibleOpt) {
-        // No eligible logs for the selected value; show placeholder
-        logSel.value = "";
-        if (logSel) logSel.disabled = true;
-      }
-
-      // Hint when a value is selected but no logs match it
-      if (hintEl) hintEl.style.display = hasValue && !anyEligible ? "" : "none";
-
-      // Enable YES only if value selected AND selected log is eligible
-      const hasLog = Boolean(logSel?.value);
-      const selectedOk = hasLog && !logSel?.selectedOptions?.[0]?.disabled;
-      if (yesBtn) yesBtn.disabled = !(hasValue && selectedOk);
-    };
-
-    const scheduleEligibility = () => {
-      if (rafScheduled) return;
-      rafScheduled = true;
-      requestAnimationFrame(applyEligibility);
-    };
-
-    valueSel?.addEventListener("change", scheduleEligibility);
-    logSel?.addEventListener("change", scheduleEligibility);
-
-    // Initial state
-    scheduleEligibility();
-
-    // ----- SocketLib RPC response (Player -> GM) -----
-    const sendResponse = (payload) => {
-      const sock = game.staCallbacksHelperSocket;
-      if (!sock?.executeAsGM) {
-        ui.notifications?.error(
-          t("sta-officers-log.errors.socketNotAvailable") ??
-            "SocketLib socket not available. Is the module initialized on GM and player?"
-        );
+      if (!logId) {
+        ui.notifications.warn("No log selected for callback.");
         return;
       }
 
-      // Defer off the click handler to reduce input-jank warnings
-      setTimeout(() => {
-        try {
-          sock.executeAsGM("deliverCallbackResponse", payload);
-        } catch (e) {
-          console.error(`${MODULE_ID} | sendResponse failed`, e);
-        }
-      }, 0);
+      if (this._resolveCallback) {
+        this._resolveCallback({
+          module: MODULE_ID,
+          type: "callback:response",
+          requestId: this.data.requestId,
+          targetUserId: this.data.targetUserId,
+          actorUuid: this.data.actorUuid,
+          action: "yes",
+          logId,
+          valueId,
+          valueState,
+        });
+        this._resolveCallback = null;
+      }
+    } else if (action === "no") {
+      if (this._resolveCallback) {
+        this._resolveCallback({
+          module: MODULE_ID,
+          type: "callback:response",
+          requestId: this.data.requestId,
+          action: "no",
+          targetUserId: this.data.targetUserId,
+          actorUuid: this.data.actorUuid,
+        });
+        this._resolveCallback = null;
+      }
+    }
 
-      this.close();
-    };
-
-    noBtn?.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      sendResponse({
-        module: MODULE_ID,
-        type: "callback:response",
-        requestId: this.data.requestId,
-        action: "no",
-        targetUserId: this.data.targetUserId,
-        actorUuid: this.data.actorUuid,
-      });
-    });
-
-    yesBtn?.addEventListener("click", (ev) => {
-      ev.preventDefault();
-
-      // Read current inputs at click-time
-      const logId = String(root.querySelector('[name="logId"]')?.value ?? "");
-      const valueId = String(
-        root.querySelector('[name="valueId"]')?.value ?? ""
-      );
-      const valueState =
-        root.querySelector('[name="valueState"]:checked')?.value ??
-        String(root.querySelector('[name="valueState"]')?.value ?? "") ??
-        this.data.defaultValueState ??
-        "positive";
-
-      if (!valueId)
-        return ui.notifications.warn(
-          t("sta-officers-log.warnings.selectValueFirst") ??
-            "Select a value first."
-        );
-      if (!logId)
-        return ui.notifications.warn(
-          t("sta-officers-log.warnings.selectLogFirst") ?? "Select a log first."
-        );
-      if (yesBtn?.disabled) return;
-
-      sendResponse({
-        module: MODULE_ID,
-        type: "callback:response",
-        requestId: this.data.requestId,
-        targetUserId: this.data.targetUserId,
-        actorUuid: this.data.actorUuid,
-        action: "yes",
-        logId,
-        valueId,
-        valueState,
-      });
-    });
+    this.close();
   }
 }

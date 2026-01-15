@@ -1,12 +1,12 @@
 import { MODULE_ID } from "./constants.js";
 import { t } from "./i18n.js";
 import { setValueChallenged } from "./valueChallenged.js";
-import { setMissionLogForUser } from "./mission.js";
-import { isLogUsed } from "./mission.js";
-import { isCallbackTargetCompatibleWithValue } from "./callbackEligibility.js";
+import { isLogUsed, setMissionLogForUser } from "./mission.js";
+import { gainDetermination } from "./callbackFlow/milestones.js";
 import {
   getCompletedArcEndLogIds,
   getPrimaryValueIdForLog,
+  hasEligibleCallbackTargetForValueId,
 } from "./logMetadata.js";
 import { getValueItems } from "./values.js";
 import {
@@ -15,58 +15,6 @@ import {
   sanitizeDirectiveText,
   setDirectiveChallenged,
 } from "./directives.js";
-
-function _hasEligibleCallbackTargetForValueId(
-  actor,
-  currentMissionLogId,
-  valueId
-) {
-  try {
-    if (!actor || actor.type !== "character") return false;
-    const vId = valueId ? String(valueId) : "";
-    if (!vId) return false;
-
-    const missionLogId = currentMissionLogId ? String(currentMissionLogId) : "";
-    if (!missionLogId) return true;
-
-    const callbackTargetIds = new Set();
-    for (const log of actor.items ?? []) {
-      if (log?.type !== "log") continue;
-      if (log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true) continue;
-      const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
-      const fromLogId = String(link?.fromLogId ?? "");
-      if (fromLogId) callbackTargetIds.add(fromLogId);
-    }
-
-    const completedArcEndLogIds = getCompletedArcEndLogIds(actor);
-    const valueItems = getValueItems(actor);
-
-    for (const log of actor.items ?? []) {
-      if (log?.type !== "log") continue;
-      const logId = String(log.id ?? "");
-      if (!logId) continue;
-      if (logId === missionLogId) continue;
-      if (callbackTargetIds.has(logId)) continue;
-      if (isLogUsed(log)) continue;
-
-      const state = String(log.system?.valueStates?.[vId] ?? "unused");
-      if (!["positive", "negative", "challenged"].includes(state)) continue;
-
-      const primary = getPrimaryValueIdForLog(actor, log, valueItems);
-      const chainOk = isCallbackTargetCompatibleWithValue({
-        valueId: vId,
-        targetPrimaryValueId: primary,
-        isCompletedArcEnd: completedArcEndLogIds.has(logId),
-      });
-      if (!chainOk) continue;
-
-      return true;
-    }
-    return false;
-  } catch (_) {
-    return true;
-  }
-}
 
 function _hasEligibleCallbackTargetWithAnyInvokedDirective(
   actor,
@@ -176,6 +124,33 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     return true;
   });
 
+  // --- RPC: GM -> Player (tell player to show their callback prompt) ---
+  moduleSocket.register("showCallbackPromptToPlayer", async (msg) => {
+    if (game.user.id !== msg.targetUserId) {
+      return;
+    }
+
+    // Import directly and call the function
+    const { sendCallbackPromptToUser } = await import(
+      "./callbackFlow/gmFlow.js"
+    );
+
+    if (typeof sendCallbackPromptToUser !== "function") {
+      console.error(
+        "[sta-officers-log] sendCallbackPromptToUser not found in gmFlow.js"
+      );
+      return;
+    }
+
+    const user = game.user;
+    await sendCallbackPromptToUser(user, {
+      reason: msg?.reason ?? "Value used",
+      messageId: msg?.messageId ?? "",
+      defaultValueId: msg?.defaultValueId ?? "",
+      defaultValueState: msg?.defaultValueState ?? "positive",
+    });
+  });
+
   // --- RPC: Player -> GM (set current mission log for the actor's assigned user) ---
   moduleSocket.register("setCurrentMissionLogForUser", async (msg) => {
     if (!game.user.isGM) return false;
@@ -239,15 +214,6 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     return u?.name ?? "(Unknown user)";
   }
 
-  async function _gainDetermination(actor) {
-    if (actor?.type !== "character") return;
-    const prevDet = Number(actor.system?.determination?.value ?? 0);
-    const nextDet = Math.min(3, prevDet + 1);
-    if (nextDet !== prevDet) {
-      await actor.update({ "system.determination.value": nextDet });
-    }
-  }
-
   // --- RPC: Player -> GM (request approval for Value usage) ---
   moduleSocket.register("requestValueUseApproval", async (msg) => {
     if (!game.user.isGM) return { approved: false, reason: "not-gm" };
@@ -275,7 +241,15 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
       : (await foundry.applications.api.DialogV2.wait({
           window: { title: t("sta-officers-log.dialog.useValue.gmTitle") },
           content: `
-            <p><strong>${requestingUserName}</strong> requests to use <strong>${valueName}</strong> on <strong>${actorName}</strong> as <strong>${usage}</strong>.</p>
+            <p><strong>${foundry.utils.escapeHTML(
+              requestingUserName
+            )}</strong> requests to use <strong>${foundry.utils.escapeHTML(
+            valueName
+          )}</strong> on <strong>${foundry.utils.escapeHTML(
+            actorName
+          )}</strong> as <strong>${foundry.utils.escapeHTML(
+            usage
+          )}</strong>.</p>
             <p>${t("sta-officers-log.dialog.useValue.gmHint")}</p>
           `,
           buttons: [
@@ -295,7 +269,7 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
 
     if (!approved) return { approved: false };
 
-    await _gainDetermination(actor);
+    await gainDetermination(actor);
     if (usage === "challenge") {
       await setValueChallenged(valueItem, true);
     }
@@ -313,25 +287,22 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
       });
     }
 
-    // After approval, prompt the player to consider making a callback.
+    // After approval, tell the requesting player to show their own callback prompt.
     try {
-      const api = game.staCallbacksHelper;
-      const fn = api?.promptCallbackForUserId;
-      if (typeof fn === "function") {
-        const valueState = usage === "challenge" ? "challenged" : "negative";
-        if (
-          _hasEligibleCallbackTargetForValueId(
-            actor,
-            missionLogId,
-            valueItem.id
-          )
-        ) {
-          await fn(String(msg.requestingUserId ?? ""), {
+      const valueState = usage === "challenge" ? "challenged" : "negative";
+      if (
+        hasEligibleCallbackTargetForValueId(actor, missionLogId, valueItem.id)
+      ) {
+        await moduleSocket.executeAsUser(
+          "showCallbackPromptToPlayer",
+          String(msg.requestingUserId ?? ""),
+          {
+            targetUserId: String(msg.requestingUserId ?? ""),
             reason: "Value used",
             defaultValueId: valueItem.id,
             defaultValueState: valueState,
-          });
-        }
+          }
+        );
       }
     } catch (err) {
       console.error(
@@ -397,7 +368,7 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
 
     if (!approved) return { approved: false };
 
-    await _gainDetermination(actor);
+    await gainDetermination(actor);
     if (usage === "challenge") {
       await setDirectiveChallenged(actor, directiveKey, true);
     }
@@ -440,21 +411,22 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
       }
     }
 
-    // After approval, prompt the player to consider making a callback.
+    // After approval, tell the requesting player to show their own callback prompt.
     try {
-      const api = game.staCallbacksHelper;
-      const fn = api?.promptCallbackForUserId;
-      if (typeof fn === "function") {
-        const valueState = usage === "challenge" ? "challenged" : "negative";
-        if (
-          _hasEligibleCallbackTargetWithAnyInvokedDirective(actor, missionLogId)
-        ) {
-          await fn(String(msg.requestingUserId ?? ""), {
+      const valueState = usage === "challenge" ? "challenged" : "negative";
+      if (
+        _hasEligibleCallbackTargetWithAnyInvokedDirective(actor, missionLogId)
+      ) {
+        await moduleSocket.executeAsUser(
+          "showCallbackPromptToPlayer",
+          String(msg.requestingUserId ?? ""),
+          {
+            targetUserId: String(msg.requestingUserId ?? ""),
             reason: "Directive used",
             defaultValueId: directiveValueId,
             defaultValueState: valueState,
-          });
-        }
+          }
+        );
       }
     } catch (err) {
       console.error(

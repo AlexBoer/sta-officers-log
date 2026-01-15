@@ -25,7 +25,8 @@ import { getCharacterArcEligibility } from "./arcChains.js";
 import {
   openGMFlow,
   promptCallbackForUserId,
-  setPendingResponses,
+  sendCallbackPromptToUser,
+  openPendingShipBenefitsDialog,
 } from "./callbackFlow.js";
 import {
   installCreateChatMessageHook,
@@ -33,10 +34,6 @@ import {
 } from "./sheetHooks.js";
 import { registerClientSettings } from "./clientSettings.js";
 import { registerDirectiveSettings } from "./directives.js";
-
-/** @type {Map<string, Function>} */
-const pendingResponses = new Map();
-setPendingResponses(pendingResponses);
 
 function registerApi() {
   // Public API (available on all clients; methods may GM-guard internally)
@@ -52,12 +49,16 @@ function registerApi() {
 
     // Expose for socket + tools
     promptCallbackForUserId,
+    sendCallbackPromptToUser,
 
     // Arc tooling
     getCharacterArcEligibility,
 
     // Small helper for hooks (cheap guard)
     hasUsedCallbackThisMission,
+
+    // Ship benefits review
+    reviewPendingShipBenefits: openPendingShipBenefitsDialog,
   };
 
   // Back-compat for macros that reference a global symbol.
@@ -150,7 +151,7 @@ function safeRegisterAmbientAudioSettings() {
 
 function safeInitSocket() {
   try {
-    initSocket({ CallbackRequestApp, pendingResponses });
+    initSocket({ CallbackRequestApp });
   } catch (err) {
     console.error(`${MODULE_ID} | initSocket failed`, err);
   }
@@ -162,6 +163,115 @@ function refreshSceneControls() {
     ui.controls?.initialize?.();
   } catch (_) {
     // ignore
+  }
+}
+
+/**
+ * One-time migration: copy world settings data (callback usage, mission logs) to actor flags.
+ * TODO (May 2026): Remove this migration code after transition period
+ */
+async function migrateWorldSettingsToActorFlags() {
+  // Only GM can set world settings
+  if (!game.user.isGM) {
+    return;
+  }
+
+  const migrationKey = "worldSettingsToActorFlagsMigration";
+  const migrated = game.settings.get(MODULE_ID, migrationKey);
+
+  if (migrated) {
+    // Migration already completed
+    return;
+  }
+
+  console.log(
+    `${MODULE_ID} | Running one-time migration: world settings → actor flags`
+  );
+
+  try {
+    // Get world settings data
+    const callbackUsedMap =
+      game.settings.get(MODULE_ID, "missionCallbackUsed") ?? {};
+    const missionLogMap =
+      game.settings.get(MODULE_ID, "missionLogByUser") ?? {};
+
+    // Migrate to actor flags
+    const updates = [];
+    for (const actor of game.actors) {
+      if (actor.type !== "character") continue;
+
+      // Find the user who owns this actor
+      const userId = Object.keys(actor.ownership || {}).find(
+        (uid) =>
+          uid !== "default" &&
+          actor.ownership[uid] === CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+      );
+
+      if (!userId) continue;
+
+      // Migrate callback usage
+      const hasUsed = Boolean(callbackUsedMap[userId]);
+      if (hasUsed && !actor.getFlag(MODULE_ID, "usedCallbackThisMission")) {
+        updates.push(actor.setFlag(MODULE_ID, "usedCallbackThisMission", true));
+      }
+
+      // Migrate mission log
+      const logId = missionLogMap[userId];
+      if (logId && !actor.getFlag(MODULE_ID, "currentMissionLogId")) {
+        updates.push(
+          actor.setFlag(MODULE_ID, "currentMissionLogId", String(logId))
+        );
+      }
+    }
+
+    await Promise.allSettled(updates);
+
+    // Mark migration as complete
+    await game.settings.set(MODULE_ID, migrationKey, true);
+
+    console.log(
+      `${MODULE_ID} | Migration complete: ${updates.length} actors updated`
+    );
+  } catch (err) {
+    console.error(`${MODULE_ID} | Migration failed:`, err);
+  }
+}
+
+/**
+ * Check all actors for pending ship benefits and notify GM if any exist
+ */
+async function checkPendingShipBenefits() {
+  try {
+    let totalPending = 0;
+
+    for (const actor of game.actors) {
+      if (actor.type !== "character") continue;
+
+      const pending = actor.getFlag(MODULE_ID, "pendingShipBenefits");
+      if (pending && Array.isArray(pending) && pending.length > 0) {
+        totalPending += pending.length;
+      }
+    }
+
+    if (totalPending > 0) {
+      const notification = ui.notifications.info(
+        `${totalPending} pending ship benefit${
+          totalPending === 1 ? "" : "s"
+        } to review. Click here to review them.`,
+        { permanent: true }
+      );
+
+      // Make the notification clickable
+      if (notification?.element) {
+        notification.element.style.cursor = "pointer";
+        notification.element.addEventListener("click", () => {
+          openPendingShipBenefitsDialog();
+          notification.close();
+        });
+      }
+    }
+  } catch (err) {
+    console.error(`${MODULE_ID} | checkPendingShipBenefits failed:`, err);
   }
 }
 
@@ -200,6 +310,21 @@ Hooks.once("ready", () => {
     if (game.user.isGM) ensureNewSceneMacro();
   } catch (err) {
     console.error(`${MODULE_ID} | ensureNewSceneMacro failed`, err);
+  }
+
+  // Migrate world settings to actor flags (one-time migration)
+  // TODO (May 2026): Remove this migration code after transition period
+  try {
+    migrateWorldSettingsToActorFlags();
+  } catch (err) {
+    console.error(`${MODULE_ID} | migration failed`, err);
+  }
+
+  // Check for pending ship benefits and notify GM
+  try {
+    if (game.user.isGM) checkPendingShipBenefits();
+  } catch (err) {
+    console.error(`${MODULE_ID} | checkPendingShipBenefits failed`, err);
   }
 
   // Hooks moved out of main.js

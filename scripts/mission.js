@@ -7,8 +7,19 @@ import {
 } from "./directives.js";
 
 export const GROUP_SHIP_ACTOR_SETTING = "groupShipActorId";
+export const AUTO_CALLBACK_ON_DETERMINATION_ROLL_SETTING =
+  "autoCallbackOnDeterminationRoll";
 
 export function registerMissionSettings() {
+  game.settings.register(MODULE_ID, "worldSettingsToActorFlagsMigration", {
+    name: "World Settings to Actor Flags Migration",
+    hint: "Internal flag tracking whether migration from world settings to actor flags has completed.",
+    scope: "world",
+    config: false,
+    type: Boolean,
+    default: false,
+  });
+
   game.settings.register(MODULE_ID, "missionCallbackUsed", {
     name: "Mission Callback Used Map",
     hint: "Internal map of userId -> true for whether they've used a callback this mission.",
@@ -84,6 +95,22 @@ export function registerMissionSettings() {
       return out;
     },
   });
+
+  // GM-configurable world setting: enable/disable automatic callback prompts
+  // triggered by detecting "Determination" usage in chat.
+  game.settings.register(
+    MODULE_ID,
+    AUTO_CALLBACK_ON_DETERMINATION_ROLL_SETTING,
+    {
+      name: t("sta-officers-log.settings.autoCallbackOnDeterminationRoll.name"),
+      hint: t("sta-officers-log.settings.autoCallbackOnDeterminationRoll.hint"),
+      scope: "world",
+      config: true,
+      type: Boolean,
+      // Default OFF: this behavior can be noisy and is system/chat-template dependent.
+      default: false,
+    }
+  );
 }
 
 export function getGroupShipActorId() {
@@ -98,11 +125,92 @@ export function getMissionLogByUser() {
   return game.settings.get(MODULE_ID, "missionLogByUser") ?? {};
 }
 
+function _getAssignedCharacterActorForUserId(userId) {
+  try {
+    const uId = userId ? String(userId) : "";
+    if (!uId) return null;
+
+    const u = game.users?.get?.(uId) ?? null;
+    const a = u?.character ?? null;
+    if (a && a.type === "character") return a;
+
+    // Some Foundry builds may expose character as an id.
+    const charId = a ? String(a) : "";
+    if (charId) {
+      const byId = game.actors?.get?.(charId) ?? null;
+      if (byId && byId.type === "character") return byId;
+    }
+
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Get the current mission log ID for a user.
+ * Now uses actor flags instead of world settings for offline support.
+ * Falls back to world settings for backward compatibility during migration.
+ */
 export function getCurrentMissionLogIdForUser(userId) {
+  // Prefer the user's explicitly assigned character actor.
+  // This avoids selecting an arbitrary owned actor when a user owns multiple characters.
+  const assignedActor = _getAssignedCharacterActorForUserId(userId);
+  if (assignedActor) {
+    const flagValue = assignedActor.getFlag?.(MODULE_ID, "currentMissionLogId");
+    if (flagValue) return String(flagValue);
+  }
+
+  // Fallback: first character actor the user owns.
+  const ownedActor = game.actors?.find(
+    (a) =>
+      a.type === "character" &&
+      a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+  );
+
+  if (ownedActor) {
+    const flagValue = ownedActor.getFlag?.(MODULE_ID, "currentMissionLogId");
+    if (flagValue) return String(flagValue);
+  }
+
+  // Fall back to world settings (for backward compatibility during migration)
   return getMissionLogByUser()?.[userId] ?? null;
 }
 
+/**
+ * Set the current mission log for a user.
+ * Now uses actor flags instead of world settings for offline support.
+ * Updates both flag and world settings during transition period.
+ */
 export async function setMissionLogForUser(userId, logId) {
+  // Update actor flag (new method)
+  // Prefer writing to the user's assigned character.
+  const actor =
+    _getAssignedCharacterActorForUserId(userId) ??
+    game.actors?.find(
+      (a) =>
+        a.type === "character" &&
+        a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+    ) ??
+    null;
+
+  if (actor && actor.type === "character") {
+    try {
+      await actor.setFlag(
+        MODULE_ID,
+        "currentMissionLogId",
+        logId ? String(logId) : null
+      );
+    } catch (err) {
+      console.warn(
+        `${MODULE_ID} | Failed to set currentMissionLogId flag on actor:`,
+        err
+      );
+    }
+  }
+
+  // Also update world settings (for backward compatibility)
+  // TODO (May 2026): Remove world settings update after migration period
   const map = foundry.utils.deepClone(getMissionLogByUser());
   map[userId] = logId;
   await game.settings.set(MODULE_ID, "missionLogByUser", map);
@@ -127,22 +235,72 @@ function getMissionCallbackUsedMap() {
   return game.settings.get(MODULE_ID, "missionCallbackUsed") ?? {};
 }
 
+/**
+ * Check if a user has used their callback this mission.
+ * Now uses actor flags instead of world settings for offline support.
+ * Falls back to world settings for backward compatibility during migration.
+ */
 export function hasUsedCallbackThisMission(userId) {
+  // Find the actor assigned to this user
+  const actor = game.actors?.find(
+    (a) =>
+      a.type === "character" &&
+      a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+  );
+
+  if (actor) {
+    const flagValue = actor.getFlag?.(MODULE_ID, "usedCallbackThisMission");
+    if (typeof flagValue !== "undefined") {
+      return Boolean(flagValue);
+    }
+  }
+
+  // Fall back to world settings (for backward compatibility during migration)
   const map = getMissionCallbackUsedMap();
   return Boolean(map?.[userId]);
 }
 
+/**
+ * Set whether a user has used their callback this mission.
+ * Now uses actor flags instead of world settings for offline support.
+ * Only updates actor flags (world settings being phased out).
+ */
 export async function setUsedCallbackThisMission(userId, used) {
-  const map = foundry.utils.deepClone(getMissionCallbackUsedMap());
-  if (used) map[userId] = true;
-  else delete map[userId];
-  await game.settings.set(MODULE_ID, "missionCallbackUsed", map);
+  // Update actor flag (new method)
+  const actor = game.actors?.find(
+    (a) =>
+      a.type === "character" &&
+      a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+  );
+
+  if (actor) {
+    try {
+      await actor.setFlag(MODULE_ID, "usedCallbackThisMission", Boolean(used));
+    } catch (err) {
+      console.warn(
+        `${MODULE_ID} | Failed to set usedCallbackThisMission flag on actor:`,
+        err
+      );
+    }
+  }
 }
 
-export async function resetMissionCallbacks() {
-  await game.settings.set(MODULE_ID, "missionCallbackUsed", {});
-  // Preserve previous behavior by default.
-  const notify = arguments?.length ? arguments[0]?.notify !== false : true;
+export async function resetMissionCallbacks({ notify = true } = {}) {
+  // Reset actor flags (new method)
+  const flagUpdates = [];
+  for (const actor of game.actors ?? []) {
+    if (actor.type !== "character") continue;
+    try {
+      flagUpdates.push(actor.unsetFlag(MODULE_ID, "usedCallbackThisMission"));
+    } catch (err) {
+      console.warn(
+        `${MODULE_ID} | Failed to reset usedCallbackThisMission flag on actor:`,
+        err
+      );
+    }
+  }
+  await Promise.allSettled(flagUpdates);
+
   if (notify) {
     ui.notifications.info(t("sta-officers-log.notifications.callbacksReset"));
   }

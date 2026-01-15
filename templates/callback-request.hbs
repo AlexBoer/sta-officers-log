@@ -1,83 +1,81 @@
 <form class="sta-callbacks-form">
-  {{{bodyHtml}}}
+  <div class="sta-callback-body">
+    {{{bodyHtml}}}
+  </div>
 
   <hr>
 
-  <div class="form-group">
-  <label>{{localize "sta-officers-log.callback.valueLabel"}}</label>
-  <select name="valueId">
-    <option value="">{{localize "sta-officers-log.callback.valuePlaceholder"}}</option>
-    {{#each values}}
-      <option value="{{this.id}}"{{#if this.selected}} selected{{/if}}{{#if this.disabled}} disabled{{/if}}>{{this.name}}</option>
-    {{/each}}
+  <!-- Display the selected value/directive -->
+  {{#if selectedValueName}}
+    <div class="sta-callback-value-header">
+      <p class="sta-callback-value-label">
+        {{localize "sta-officers-log.callback.usingValue"}}
+        <strong>{{selectedValueName}}</strong>
+      </p>
+    </div>
+  {{/if}}
 
-    {{#if hasDirectives}}
-      <option value="__directives__" disabled>--Directives--</option>
-      {{#each directives}}
-        <option value="{{this.id}}"{{#if this.selected}} selected{{/if}}{{#if this.disabled}} disabled{{/if}}>{{this.name}}</option>
+  <!-- Hidden form fields for value and valueState (pre-selected by server) -->
+  <input type="hidden" name="valueId" value="{{selectedValueId}}" />
+  <input type="hidden" name="valueState" value="{{selectedValueState}}" />
+
+  <!-- Log selection as big buttons (max 3 shown) -->
+  {{#if hasLogs}}
+    <div class="sta-callback-logs-buttons">
+      {{#each logsForButtons}}
+        <button type="button" 
+                class="sta-callback-log-button" 
+                data-log-id="{{this.id}}"
+                data-action="select-log">
+          {{{this.name}}}
+        </button>
       {{/each}}
+    </div>
+
+    <!-- "Choose another log" link if more than 3 logs -->
+    {{#if hasMoreLogs}}
+      <div class="sta-callback-more-logs">
+        <button type="button" 
+                class="sta-callback-show-all-link" 
+                data-action="show-all-logs">
+          {{localize "sta-officers-log.callback.chooseAnother"}}
+        </button>
+      </div>
     {{/if}}
-  </select>
-</div>
 
-<div class="form-group">
-  <label>{{localize "sta-officers-log.callback.usageLabel"}}</label>
-  <div class="form-fields">
-    <label class="radio">
-      <input type="radio" name="valueState" value="positive" {{checked isPositiveDefault}}>
-      {{localize "sta-officers-log.callback.usage.positive"}}
-    </label>
-    <label class="radio">
-      <input type="radio" name="valueState" value="negative" {{checked isNegativeDefault}}>
-      {{localize "sta-officers-log.callback.usage.negative"}}
-    </label>
-    <label class="radio">
-      <input type="radio" name="valueState" value="challenged" {{checked isChallengedDefault}}>
-      {{localize "sta-officers-log.callback.usage.challenged"}}
-    </label>
-  </div>
-</div>
+    <!-- Dropdown for all logs (initially hidden) -->
+    {{#if hasMoreLogs}}
+      <div class="sta-callback-all-logs-selector" style="display:none">
+        <div class="form-group">
+          <label>{{localize "sta-officers-log.callback.logLabel"}}</label>
+          <select name="logId" data-hook="allLogsSelect">
+            <option value="">— Select a log —</option>
+            {{#each logs}}
+              <option value="{{this.id}}">{{{this.name}}}</option>
+            {{/each}}
+          </select>
+        </div>
+        <button type="button" 
+                class="sta-callback-confirm-btn dialog-button default" 
+                data-action="confirm-log"
+                disabled>
+          {{localize "sta-officers-log.callback.confirmSelection"}}
+        </button>
+      </div>
+    {{/if}}
 
+  {{else}}
+    <p class="hint">{{localize "sta-officers-log.callback.noUnusedHint"}}</p>
+  {{/if}}
 
-  <div class="form-group">
-    <label>{{localize "sta-officers-log.callback.logLabel"}}</label>
-    <select name="logId" {{#unless hasLogs}}disabled{{/unless}}>
-      {{#if hasLogs}}
-        <option value="" data-sta-no-eligible-logs style="display:none">{{localize "sta-officers-log.callback.noEligibleLogsOption"}}</option>
-        {{#each logs}}
-          <option value="{{this.id}}">{{{this.name}}}</option>
-        {{/each}}
-      {{else}}
-        <option value="">{{localize "sta-officers-log.callback.noUnusedLogsOption"}}</option>
-      {{/if}}
-    </select>
-
-    <p class="hint" data-callback-log-hint style="display:none">{{localize "sta-officers-log.callback.noMatchHint"}}</p>
-
-    {{#unless hasLogs}}
-      <p class="hint">{{localize "sta-officers-log.callback.noUnusedHint"}}</p>
-    {{/unless}}
-  </div>
-
-  <div class="form-group">
-    <ul class="sta-callbacks-invoked" data-hook="invokedList"></ul>
-  </div>
-
-<footer class="dialog-buttons sta-callbacks-buttons">
-  <button type="button"
-          class="dialog-button default"
-          data-action="yes"
-          {{#unless hasLogs}}disabled{{/unless}}>
-    <i class="fa-solid fa-check"></i>
-    {{localize "sta-officers-log.callback.make"}}
-  </button>
-
-  <button type="button"
-          class="dialog-button"
-          data-action="no">
-    {{localize "sta-officers-log.callback.skip"}}
-  </button>
-</footer>
+  <!-- Footer with Skip button -->
+  <footer class="dialog-buttons sta-callbacks-buttons">
+    <button type="button"
+            class="dialog-button"
+            data-action="no">
+      {{localize "sta-officers-log.callback.skip"}}
+    </button>
+  </footer>
 
 </form>
 

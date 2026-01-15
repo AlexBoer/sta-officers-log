@@ -14,17 +14,15 @@ import {
   labelValuesOnActor,
   STA_DEFAULT_ICON,
   getValueIconPathForValueId,
-  getValueItems,
   escapeHTML,
 } from "../../values.js";
 import {
-  applyArcMilestoneBenefit,
-  applyNonArcMilestoneBenefit,
   createMilestoneItem,
   formatChosenBenefitLabel,
   gainDetermination,
   spendDetermination,
   promptCallbackForActorAsGM,
+  sendCallbackPromptToUser,
 } from "../../callbackFlow.js";
 
 import { ATTRIBUTE_KEYS, DISCIPLINE_KEYS } from "../../callbackFlow/dialogs.js";
@@ -36,7 +34,6 @@ import {
   isDirectiveValueId,
   isDirectiveChallenged,
   makeDirectiveKeyFromText,
-  makeDirectiveValueIdFromText,
   sanitizeDirectiveText,
   setDirectiveChallenged,
 } from "../../directives.js";
@@ -63,15 +60,14 @@ import {
   getMissionLogSortModeForActor,
   setMissionLogSortModeForActor,
 } from "./logSorting.js";
+import { getCreatedKey, compareKeys } from "./sortingUtils.js";
 import {
   areSheetEnhancementsEnabled,
   shouldShowLogUsedToggle,
 } from "../../clientSettings.js";
 
-import { isCallbackTargetCompatibleWithValue } from "../../callbackEligibility.js";
 import {
-  getCompletedArcEndLogIds,
-  getPrimaryValueIdForLog,
+  hasEligibleCallbackTargetForValueId,
 } from "../../logMetadata.js";
 
 let _staCallbacksHelperMilestoneUpdateHookInstalled = false;
@@ -104,6 +100,7 @@ function openStaOfficersLogContextMenu({ x, y, label, onClick }) {
   const menu = document.createElement("nav");
   // Reuse Foundry's context menu classes so we inherit core styling.
   menu.className = "context-menu sta-officers-log-context-menu";
+  menu.setAttribute("role", "menu");
   menu.style.position = "fixed";
   menu.style.left = `${Number(x) || 0}px`;
   menu.style.top = `${Number(y) || 0}px`;
@@ -112,10 +109,12 @@ function openStaOfficersLogContextMenu({ x, y, label, onClick }) {
   const list = document.createElement("div");
   list.className = "context-items";
 
-  const item = document.createElement("iv");
+  const item = document.createElement("div");
   item.className = "context-item";
+  item.setAttribute("role", "menuitem");
+  item.tabIndex = 0;
   item.textContent = String(label ?? "");
-  item.addEventListener("click", async (ev) => {
+  const runAction = async (ev) => {
     try {
       ev?.preventDefault?.();
       ev?.stopPropagation?.();
@@ -131,6 +130,12 @@ function openStaOfficersLogContextMenu({ x, y, label, onClick }) {
     } catch (err) {
       console.error(`${MODULE_ID} | context menu action failed`, err);
     }
+  };
+
+  item.addEventListener("click", runAction);
+  item.addEventListener("keydown", (ev) => {
+    const k = String(ev?.key ?? "");
+    if (k === "Enter" || k === " ") runAction(ev);
   });
 
   list.appendChild(item);
@@ -181,67 +186,6 @@ function openStaOfficersLogContextMenu({ x, y, label, onClick }) {
       // ignore
     }
   };
-}
-
-function _hasEligibleCallbackTargetForValueId(
-  actor,
-  currentMissionLogId,
-  valueId
-) {
-  try {
-    if (!actor || actor.type !== "character") return false;
-
-    const vId = valueId ? String(valueId) : "";
-    if (!vId) return false;
-
-    // If we can't resolve the mission log id, preserve previous behavior (allow prompting).
-    // This avoids false negatives when the mission context isn't set.
-    const missionLogId = currentMissionLogId ? String(currentMissionLogId) : "";
-    if (!missionLogId) return true;
-
-    // Logs that are already used as a callback target (someone points to them) are not eligible.
-    const callbackTargetIds = new Set();
-    for (const log of actor.items ?? []) {
-      if (log?.type !== "log") continue;
-      if (log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true) continue;
-      const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
-      const fromLogId = String(link?.fromLogId ?? "");
-      if (fromLogId) callbackTargetIds.add(fromLogId);
-    }
-
-    const completedArcEndLogIds = getCompletedArcEndLogIds(actor);
-    const valueItems = getValueItems(actor);
-
-    for (const log of actor.items ?? []) {
-      if (log?.type !== "log") continue;
-      const logId = String(log.id ?? "");
-      if (!logId) continue;
-      if (logId === missionLogId) continue;
-      if (callbackTargetIds.has(logId)) continue;
-      if (isLogUsed(log)) continue;
-
-      const state = String(log.system?.valueStates?.[vId] ?? "unused");
-      if (!state || state === "unused") continue;
-
-      // Must be an invoked state (positive/negative/challenged)
-      if (!["positive", "negative", "challenged"].includes(state)) continue;
-
-      const primary = getPrimaryValueIdForLog(actor, log, valueItems);
-      const chainOk = isCallbackTargetCompatibleWithValue({
-        valueId: vId,
-        targetPrimaryValueId: primary,
-        isCompletedArcEnd: completedArcEndLogIds.has(logId),
-      });
-      if (!chainOk) continue;
-
-      return true;
-    }
-
-    return false;
-  } catch (_) {
-    // Preserve previous behavior if this check fails unexpectedly.
-    return true;
-  }
 }
 
 function _hasEligibleCallbackTargetWithAnyInvokedDirective(
@@ -512,27 +456,9 @@ function installCallbackSourceButtons(root, actor) {
       }
     };
 
-    const getCreatedKey = (log) => {
-      const createdRaw =
-        log?._stats?.createdTime ?? log?._source?._stats?.createdTime ?? null;
-      const created = Number(createdRaw);
-      const createdKey = Number.isFinite(created)
-        ? created
-        : Number.MAX_SAFE_INTEGER;
-
-      const sortRaw = Number(log?.sort ?? 0);
-      const sortKey = Number.isFinite(sortRaw) ? sortRaw : 0;
-
-      const idKey = String(log?.id ?? "");
-      return { createdKey, sortKey, idKey };
-    };
-
-    const compareKeys = (a, b) => {
-      if (a.createdKey !== b.createdKey) return a.createdKey - b.createdKey;
-      if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
-      return String(a.idKey).localeCompare(String(b.idKey));
-    };
-
+    /** Takes a log's ID, and searches through other log items on the same actor until it finds items whose flags.sta-officers-log.callbackLink.fromLogId equals that targetId.
+     *  In other words: “find logs that point back to this log”.
+     *  If multiple logs match, it sorts them by creation time (getCreatedKey) and returns the earliest one. */
     const findSourceLogForTargetId = (targetId) => {
       const tId = targetId ? String(targetId) : "";
       if (!tId) return null;
@@ -773,6 +699,20 @@ async function enforceUniqueFromLogIdTargets(actor, { editedLogId } = {}) {
   try {
     if (!actor?.items) return { loserLogIds: [] };
 
+    // Only the GM or an OWNER of the actor should perform normalization writes.
+    // Other connected clients will still receive the document updates, but must not
+    // attempt to "fix" anything locally or Foundry will raise permission errors.
+    try {
+      const canWrite =
+        game.user?.isGM === true ||
+        actor?.isOwner === true ||
+        (typeof actor?.testUserPermission === "function" &&
+          actor.testUserPermission(game.user, "OWNER"));
+      if (!canWrite) return { loserLogIds: [] };
+    } catch (_) {
+      return { loserLogIds: [] };
+    }
+
     const logs = Array.from(actor.items ?? []).filter((i) => i?.type === "log");
     if (!logs.length) return { loserLogIds: [] };
 
@@ -792,27 +732,6 @@ async function enforceUniqueFromLogIdTargets(actor, { editedLogId } = {}) {
         // ignore
       }
     }
-
-    const getCreatedKey = (log) => {
-      const createdRaw =
-        log?._stats?.createdTime ?? log?._source?._stats?.createdTime ?? null;
-      const created = Number(createdRaw);
-      const createdKey = Number.isFinite(created)
-        ? created
-        : Number.MAX_SAFE_INTEGER;
-
-      const sortRaw = Number(log?.sort ?? 0);
-      const sortKey = Number.isFinite(sortRaw) ? sortRaw : 0;
-
-      const idKey = String(log?.id ?? "");
-      return { createdKey, sortKey, idKey };
-    };
-
-    const compareKeys = (a, b) => {
-      if (a.createdKey !== b.createdKey) return a.createdKey - b.createdKey;
-      if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
-      return String(a.idKey).localeCompare(String(b.idKey));
-    };
 
     const loserLogIds = [];
     const loserToFromLogId = new Map(); // childLogId -> fromLogId
@@ -890,6 +809,19 @@ async function enforceUniqueFromLogIdTargets(actor, { editedLogId } = {}) {
 async function syncCallbackTargetUsedFlags(actor) {
   try {
     if (!actor?.items) return;
+
+    // Only the GM or an OWNER of the actor should perform normalization writes.
+    // Prevents "User X lacks permission to update Item" errors on other clients.
+    try {
+      const canWrite =
+        game.user?.isGM === true ||
+        actor?.isOwner === true ||
+        (typeof actor?.testUserPermission === "function" &&
+          actor.testUserPermission(game.user, "OWNER"));
+      if (!canWrite) return;
+    } catch (_) {
+      return;
+    }
 
     const logs = Array.from(actor.items ?? []).filter((i) => i?.type === "log");
     if (!logs.length) return;
@@ -1481,6 +1413,22 @@ export function installRenderApplicationV2Hook() {
           })();
 
           if (actor?.type === "character" && actor?.id && hasChainFlagChange) {
+            // Normalization writes (enforcing uniqueness, syncing used flags) must only
+            // run on a client that can actually update the actor, otherwise Foundry logs
+            // permission errors for non-owners.
+            const canWriteActor = (() => {
+              try {
+                return (
+                  game.user?.isGM === true ||
+                  actor?.isOwner === true ||
+                  (typeof actor?.testUserPermission === "function" &&
+                    actor.testUserPermission(game.user, "OWNER"))
+                );
+              } catch (_) {
+                return false;
+              }
+            })();
+
             // Normalize flags for consistent chain behavior.
             const logId = item?.id ? String(item.id) : "";
             if (logId && !_staNormalizingLogIds.has(logId)) {
@@ -1495,12 +1443,14 @@ export function installRenderApplicationV2Hook() {
                   ) {
                     _staNormalizingActorIds.add(String(actor.id));
                     try {
-                      await enforceUniqueFromLogIdTargets(actor, {
-                        editedLogId: logId,
-                      });
+                      if (canWriteActor) {
+                        await enforceUniqueFromLogIdTargets(actor, {
+                          editedLogId: logId,
+                        });
 
-                      // Keep system.used in sync with whether a log is a callback target.
-                      await syncCallbackTargetUsedFlags(actor);
+                        // Keep system.used in sync with whether a log is a callback target.
+                        await syncCallbackTargetUsedFlags(actor);
+                      }
                     } catch (_) {
                       // ignore
                     } finally {
@@ -1787,7 +1737,8 @@ export function installRenderApplicationV2Hook() {
                     }
                   }
 
-                  if (Object.keys(update).length) {
+                  // Only a client with write permission should apply normalization writes.
+                  if (canWriteActor && Object.keys(update).length) {
                     await item.update(update, { renderSheet: false });
                   }
                 } catch (_) {
@@ -2058,7 +2009,7 @@ export function installRenderApplicationV2Hook() {
               <p><strong>Deleting a log can break arc chains</strong></p>
               <p>You will need to recreate the chain manually by setting the correct callbacks.</p>
               <hr />
-              <p>Delete <strong>${String(name)}</strong> anyway?</p>
+              <p>Delete <strong>${escapeHTML(String(name))}</strong> anyway?</p>
             `.trim(),
           };
         },
@@ -2415,7 +2366,7 @@ export function installRenderApplicationV2Hook() {
           const owningUserId = getUserIdForCharacterActor(actor);
           if (owningUserId) {
             if (
-              _hasEligibleCallbackTargetForValueId(
+              hasEligibleCallbackTargetForValueId(
                 actor,
                 currentMissionLogId,
                 valueItem.id
@@ -2454,17 +2405,17 @@ export function installRenderApplicationV2Hook() {
             });
           }
 
-          // Ask the GM to prompt the player for a callback.
+          // Show callback prompt locally to the player.
           try {
             if (
-              _hasEligibleCallbackTargetForValueId(
+              hasEligibleCallbackTargetForValueId(
                 actor,
                 currentMissionLogId,
                 valueItem.id
               )
             ) {
-              await moduleSocket.executeAsGM("promptCallbackForUser", {
-                targetUserId: game.user.id,
+              const targetUser = game.user;
+              await sendCallbackPromptToUser(targetUser, {
                 reason: "Value used",
                 defaultValueId: valueItem.id,
                 defaultValueState: "positive",
@@ -2472,7 +2423,7 @@ export function installRenderApplicationV2Hook() {
             }
           } catch (err) {
             console.error(
-              "sta-officers-log | Failed to request callback prompt",
+              "sta-officers-log | Failed to show callback prompt",
               err
             );
           }
