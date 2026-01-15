@@ -154,13 +154,11 @@ async function processCallbackResponse({
   const actorDoc = await fromUuid(response.actorUuid);
   if (!actorDoc) return;
 
-  // Only the owner/current user should process the callback
-  // (This prevents non-owning players from trying to apply updates)
-  const isOwner = targetUser.id === game.user.id;
-  if (!isOwner) {
-    // Non-owner: silently return without processing
-    return;
-  }
+  // Only the owning player OR a GM should process/apply the callback updates.
+  // This prevents non-owning players from trying to apply updates, while allowing
+  // GMs to submit callbacks from player sheets (GM has full document permissions).
+  const canProcess = targetUser.id === game.user.id || game.user.isGM;
+  if (!canProcess) return;
 
   // Owner processes the callback and applies updates
   await applyCallbackUpdates(response, targetUser, actorDoc, {
@@ -334,6 +332,25 @@ async function applyCallbackUpdates(
 
   // Group 3: Current log updates (all flags and value states)
   if (currentLog) {
+    // IMPORTANT: Persist the callbackLink edge first.
+    // getCharacterArcEligibility() derives the chain from callbackLink flags,
+    // so if we compute eligibility before writing the link, arcs will fail to detect.
+    {
+      const results = await Promise.allSettled([
+        currentLog.setFlag(MODULE_ID, "callbackLink", {
+          fromLogId: chosenLog.id,
+          valueId,
+        }),
+      ]);
+      const failed = results.filter((r) => r.status === "rejected");
+      if (failed.length) {
+        console.error(
+          "sta-officers-log | Group 3 (phase 1) updates had failures:",
+          failed.map((f) => f.reason)
+        );
+      }
+    }
+
     const eligibility = getCharacterArcEligibility(actorDoc, {
       valueId,
       endLogId: currentLog.id,
@@ -357,14 +374,6 @@ async function applyCallbackUpdates(
       })
     );
 
-    // Set callback link flag
-    currentLogUpdates.push(
-      currentLog.setFlag(MODULE_ID, "callbackLink", {
-        fromLogId: chosenLog.id,
-        valueId,
-      })
-    );
-
     // Set primary value flag
     currentLogUpdates.push(
       currentLog.setFlag(MODULE_ID, "primaryValueId", valueId)
@@ -375,7 +384,7 @@ async function applyCallbackUpdates(
       currentLogUpdates.push(currentLog.setFlag(MODULE_ID, "arcInfo", arcInfo));
     }
 
-    // Set pending milestone benefit
+    // Set pending milestone benefit (includes arc payload for milestone creation)
     currentLogUpdates.push(
       currentLog.setFlag(MODULE_ID, "pendingMilestoneBenefit", {
         milestoneId: null,
@@ -396,7 +405,7 @@ async function applyCallbackUpdates(
       const failed = results.filter((r) => r.status === "rejected");
       if (failed.length) {
         console.error(
-          "sta-officers-log | Group 3 updates had failures:",
+          "sta-officers-log | Group 3 (phase 2) updates had failures:",
           failed.map((f) => f.reason)
         );
       }

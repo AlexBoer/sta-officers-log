@@ -1,5 +1,6 @@
 import { MODULE_ID } from "./constants.js";
 
+// Loops over all the logs and return with the number of arcs earned on the actor.
 export function getArcsEarnedOnActor(actor) {
   if (!actor) return 0;
   const logs = actor.items.filter((i) => i.type === "log");

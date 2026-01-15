@@ -670,6 +670,7 @@ export async function addParticipantToCurrentMission(
   );
 }
 
+// This function is exposed to the api so a macro can be used to add players to a mission after it's already started.
 export async function promptAddParticipant() {
   if (!game.user.isGM)
     return ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
@@ -719,6 +720,9 @@ export async function promptAddParticipant() {
   });
 }
 
+// Used by a new button in the STATracker to start a new mission.
+// Resets callback state (PCs can make 1 per mission) and adds mission logs.
+// Resets stress, determination, and ship stats as selected.
 export async function promptNewMissionAndReset() {
   if (!game.user.isGM)
     return ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
