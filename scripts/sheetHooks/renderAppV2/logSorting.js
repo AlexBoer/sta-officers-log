@@ -239,12 +239,67 @@ function _getChainIndentChildLogIds(actor, logItems) {
 export function applyMissionLogSorting(root, actor, mode) {
   const sortMode = normalizeMissionLogSortMode(mode);
 
+  const section = root?.querySelector?.("div.section.milestones");
+  if (!section) return;
+
+  // ----- Milestones UI tweak: replace default "+"" with custom button -----
+  try {
+    // Try multiple selectors to find the milestone create button
+    // (handles different Foundry versions and structures)
+    let milestoneCreate = section.querySelector(
+      'a.control.create[data-type="milestone"]'
+    );
+
+    const milestoneHeader =
+      milestoneCreate?.closest?.("div.header.row.item") ?? null;
+
+    if (milestoneCreate && milestoneHeader) {
+      // Avoid duplicates across rerenders.
+      const existingCustom = milestoneHeader.querySelector(
+        ".sta-milestone-create-placeholder"
+      );
+      if (!existingCustom) {
+        // Remove the original Foundry create control.
+        try {
+          milestoneCreate.remove();
+        } catch (_) {
+          // ignore
+        }
+
+        const btn = document.createElement("a");
+        btn.className = "control sta-milestone-create-placeholder";
+        btn.title = "New Milestone / Arc";
+        btn.setAttribute("aria-label", "New Milestone / Arc");
+        btn.setAttribute("role", "button");
+        btn.tabIndex = 0;
+        btn.innerHTML = '<i class="fas fa-plus"></i>';
+
+        const onClick = async (ev) => {
+          ev?.preventDefault?.();
+          ev?.stopPropagation?.();
+
+          try {
+            openNewMilestoneArcDialog(actor);
+          } catch (_) {
+            // ignore
+          }
+        };
+
+        btn.addEventListener("click", onClick);
+        btn.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter" || ev.key === " ") onClick(ev);
+        });
+
+        milestoneHeader.appendChild(btn);
+      }
+    }
+  } catch (_) {
+    // ignore
+  }
+
   // Custom mode: do not reorder anything; rely on the sheet's default order
   // (which is typically based on Item.sort / manual dragging).
   if (sortMode === "custom") return;
-
-  const section = root?.querySelector?.("div.section.milestones");
-  if (!section) return;
 
   const activeEl =
     typeof document === "undefined" ? null : document.activeElement;
@@ -979,55 +1034,6 @@ export function applyMissionLogSorting(root, actor, mode) {
     // ignore
   }
 
-  // ----- Milestones UI tweak: replace default + with custom button -----
-  try {
-    const milestoneCreate = section.querySelector(
-      'a.control.create[data-type="milestone"]'
-    );
-    const milestoneHeader =
-      milestoneCreate?.closest?.("div.header.row.item") ?? null;
-
-    if (milestoneCreate && milestoneHeader) {
-      // Avoid duplicates across rerenders.
-      const existingCustom = milestoneHeader.querySelector(
-        ".sta-milestone-create-placeholder"
-      );
-      if (!existingCustom) {
-        // Remove the original Foundry create control.
-        try {
-          milestoneCreate.remove();
-        } catch (_) {
-          // ignore
-        }
-
-        const btn = document.createElement("a");
-        btn.className = "control sta-milestone-create-placeholder";
-        btn.title = "New Milestone / Arc";
-        btn.setAttribute("aria-label", "New Milestone / Arc");
-        btn.setAttribute("role", "button");
-        btn.tabIndex = 0;
-        btn.innerHTML = '<i class="fas fa-plus"></i>';
-
-        const onClick = async (ev) => {
-          ev?.preventDefault?.();
-          ev?.stopPropagation?.();
-
-          try {
-            openNewMilestoneArcDialog(actor);
-          } catch (_) {
-            // ignore
-          }
-        };
-
-        btn.addEventListener("click", onClick);
-        btn.addEventListener("keydown", (ev) => {
-          if (ev.key === "Enter" || ev.key === " ") onClick(ev);
-        });
-
-        milestoneHeader.appendChild(btn);
-      }
-    }
-  } catch (_) {
-    // ignore
-  }
+  // Removed: milestone button replacement code moved to the top of the function
+  // so it runs regardless of sort mode
 }

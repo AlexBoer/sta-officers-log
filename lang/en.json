@@ -23,11 +23,11 @@
       },
       "talentPickerCustomCompendium": {
         "name": "Talent Picker: Extra Compendium",
-        "hint": "GM only. Optional compendium pack id to include in the Talent picker (e.g. sta.talents-homebrew). Leave blank to disable."
+        "hint": "Optional compendium pack id to include in the Talent picker (e.g. module-name.talents-homebrew)."
       },
       "focusPickerCustomCompendium": {
         "name": "Focus Picker: Extra Compendium",
-        "hint": "GM only. Optional compendium pack id to include in the Focus picker (e.g. sta.focuses-homebrew). Leave blank to disable."
+        "hint": "Optional compendium pack id to include in the Focus picker (e.g. module-name.focuses-homebrew)."
       },
       "directives": {
         "name": "Mission Directives",
