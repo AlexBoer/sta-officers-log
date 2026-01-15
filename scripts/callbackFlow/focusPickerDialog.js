@@ -1,6 +1,6 @@
 import { MODULE_ID } from "../constants.js";
 import { t, tf } from "../i18n.js";
-import { getFocusPickerCustomCompendiumKey } from "../focusPickerSettings.js";
+import { getFocusPickerCustomCompendiumKeys } from "../focusPickerSettings.js";
 
 const Base = foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2
@@ -200,8 +200,7 @@ class FocusPickerApp extends Base {
     });
 
     return {
-      searchLabel:
-        t("sta-officers-log.dialog.focusPicker.search") ?? "Search",
+      searchLabel: t("sta-officers-log.dialog.focusPicker.search") ?? "Search",
       searchPlaceholder:
         t("sta-officers-log.dialog.focusPicker.searchPlaceholder") ??
         "Type to filter focuses…",
@@ -209,8 +208,7 @@ class FocusPickerApp extends Base {
         t("sta-officers-log.dialog.focusPicker.createCustom") ??
         "Create Custom Focus",
       emptyLabel:
-        t("sta-officers-log.dialog.focusPicker.none") ??
-        "No focuses found.",
+        t("sta-officers-log.dialog.focusPicker.none") ?? "No focuses found.",
       groups,
     };
   }
@@ -360,8 +358,10 @@ export async function promptFocusChoiceFromCompendium({
   const explicit = String(packKey ?? "").trim();
   if (explicit && !packKeys.includes(explicit)) packKeys.push(explicit);
 
-  const custom = getFocusPickerCustomCompendiumKey();
-  if (custom && !packKeys.includes(custom)) packKeys.push(custom);
+  const customPackKeys = getFocusPickerCustomCompendiumKeys();
+  for (const custom of customPackKeys) {
+    if (custom && !packKeys.includes(custom)) packKeys.push(custom);
+  }
 
   /** @type {any[]} */
   const allEntries = [];

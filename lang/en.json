@@ -27,11 +27,11 @@
       },
       "talentPickerCustomCompendium": {
         "name": "Talent Picker: Extra Compendium",
-        "hint": "Optional compendium pack id to include in the Talent picker (e.g. module-name.talents-homebrew)."
+        "hint": "Optional compendium pack id(s) to include in the Talent picker. You can provide multiple pack ids separated by commas (e.g. module-name.talents-homebrew, another-module.more-talents)."
       },
       "focusPickerCustomCompendium": {
         "name": "Focus Picker: Extra Compendium",
-        "hint": "Optional compendium pack id to include in the Focus picker (e.g. module-name.focuses-homebrew)."
+        "hint": "Optional compendium pack id(s) to include in the Focus picker. You can provide multiple pack ids separated by commas (e.g. module-name.focuses-homebrew, another-module.more-focuses)."
       },
       "directives": {
         "name": "Mission Directives",

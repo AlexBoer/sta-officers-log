@@ -1,27 +1,26 @@
 # STA Officers Log
 
-Tools for character development and mission/callback workflow in _Star Trek Adventures_ for Foundry VTT.
+Tools for character development in _Star Trek Adventures_ for Foundry VTT.
+
+- Players have a new button on their values, "Use Value", which does the following:
+  - Marks the current log item with the value's use.
+  - checks to see if a callback is possible and prompts the player to make the callback (not not)
+  - adjusts determination automatically, and links logs to the one they callback to.
+- The GM can start a new mission, which resets Determination and Stress on all character. Then, it creates log items on all main characters withe the mission's name.
+- Sorts and organizes logs by name, date, or into "chain-order" to visualize character arcs.
+- Adds supoosrt for mission directive to log items.
+- UI based milestone/arc benefit picker. Level up right in the VTT! Supports using focus and talent items from the compendium and checks for requirements.
 
 ## Requirements
 
 - Foundry VTT v13
-- STA system
-- SocketLib
+- Star Trek Adventures system (https://github.com/mkscho63/sta)
+- SocketLib (https://github.com/farling42/foundryvtt-socketlib)
 
-## What It Adds
+## Installation
 
-- A GM-driven “callback request” flow (prompt a specific player to make a callback)
-- Character sheet enhancements for logs/arcs (sorting, grouping, linking controls)
-- Buttons for the GM to start a new mission, or a new scene. New missions create logs for selected players to enable automatic log notekeeping.
-- "+" Button for milestones now opens a dialog that will apply the benefit for you. Focus and talent benefits pull from the STA compendium.
+- Currently not on the Public Foundry page yet.
+- **Manifest URL (for manual install):**
+  `https://github.com/AlexBoer/sta-officers-log/releases/latest/download/module.json`
 
-## Settings
-
-Most settings are exposed under **Module Settings → STA Officers Log**.
-
-- **Enable Sheet Enhancements** (client): toggles injected STA sheet UI tweaks
-- **Show Log Used Toggle** (client): Enable this setting to bring back to "used" toggle on log in the character sheet. By default, it is now hidden to prevent users from accidentally breaking log-chains.
-
-## Notes
-
-- The CSS in `styles/sta-style-enhance.css` is now scoped to `body.system-sta` to reduce unintended style bleed into non-STA worlds.
+After installation, enable **STA Officers Log** in your world’s **Manage Modules**.

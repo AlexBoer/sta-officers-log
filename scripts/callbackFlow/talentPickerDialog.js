@@ -1,6 +1,6 @@
 import { MODULE_ID } from "../constants.js";
 import { t, tf } from "../i18n.js";
-import { getTalentPickerCustomCompendiumKey } from "../focusPickerSettings.js";
+import { getTalentPickerCustomCompendiumKeys } from "../focusPickerSettings.js";
 import {
   ATTRIBUTE_KEYS,
   ATTRIBUTE_LABELS,
@@ -433,8 +433,10 @@ async function _collectTalentPickerEntries({
   const explicit = String(packKey ?? "").trim();
   if (explicit) addPack(explicit);
 
-  const custom = getTalentPickerCustomCompendiumKey();
-  if (custom) addPack(custom);
+  const customPackKeys = getTalentPickerCustomCompendiumKeys();
+  for (const custom of customPackKeys) {
+    if (custom) addPack(custom);
+  }
 
   const errors = [];
   const allEntries = [];
@@ -463,7 +465,9 @@ async function _collectTalentPickerEntries({
   for (const entry of extraPriorityEntries ?? []) {
     applyPriority(entry?.[0], entry?.[1]);
   }
-  if (custom) applyPriority(custom, 4);
+  for (const custom of customPackKeys) {
+    if (custom) applyPriority(custom, 4);
+  }
   if (explicit) applyPriority(explicit, 4);
 
   const getPriority = (key) => priorityMap.get(key) ?? 3;
