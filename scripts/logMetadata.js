@@ -1,4 +1,8 @@
-import { getValueItems } from "./values.js";
+import {
+  getValueItems,
+  getValueStateArray,
+  isValueInvokedState,
+} from "./values.js";
 import { MODULE_ID } from "./constants.js";
 import { isLogUsed } from "./mission.js";
 import { isCallbackTargetCompatibleWithValue } from "./callbackEligibility.js";
@@ -107,11 +111,9 @@ export function hasEligibleCallbackTargetForValueId(
       if (callbackTargetIds.has(logId)) continue;
       if (isLogUsed(log)) continue;
 
-      const state = String(log.system?.valueStates?.[vId] ?? "unused");
-      if (!state || state === "unused") continue;
-
-      // Must be an invoked state (positive/negative/challenged)
-      if (!["positive", "negative", "challenged"].includes(state)) continue;
+      const stateArray = getValueStateArray(log, vId);
+      const invokedStates = stateArray.filter((s) => isValueInvokedState(s));
+      if (invokedStates.length === 0) continue;
 
       const primary = getPrimaryValueIdForLog(actor, log, valueItems);
       const chainOk = isCallbackTargetCompatibleWithValue({

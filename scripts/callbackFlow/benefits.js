@@ -1272,9 +1272,7 @@ export async function applyNonArcMilestoneBenefitInternal(
         }
       }
 
-      const chosen = await promptFocusChoiceFromCompendium({
-        packKey: "sta.focuses-core",
-      });
+      const chosen = await promptFocusChoiceFromCompendium();
       if (!chosen) return { applied: false };
 
       // Custom focus: preserve the previous behavior (blank focus item).

@@ -45,7 +45,7 @@ function _normalizeIndexEntries(indexLike) {
 }
 
 async function _getFocusIndexEntries({ packKey }) {
-  const key = String(packKey ?? "sta.focuses-core");
+  const key = String(packKey ?? "sta.items-2e");
   const pack = game.packs?.get?.(key) ?? null;
   if (!pack) return { entries: [], error: `Missing compendium pack: ${key}` };
 
@@ -347,13 +347,21 @@ class FocusPickerApp extends Base {
   }
 }
 
-export async function promptFocusChoiceFromCompendium({
-  packKey = "sta.focuses-core",
-} = {}) {
-  // Always include the two STA packs, plus:
+export async function promptFocusChoiceFromCompendium({ packKey = "" } = {}) {
+  // STA v2.4.6+: focuses are stored in sta.items-1e / sta.items-2e.
+  // Backward-compat (STA v2.4.5): focuses were stored in sta.focuses-core / sta.focuses.
+  // Always include the STA defaults, plus:
   // - optional explicit packKey passed by caller
   // - optional GM-configured extra pack
-  const packKeys = ["sta.focuses-core", "sta.focuses"];
+  //
+  // NOTE: Order matters. We de-dupe by name and let later packs win.
+  // Place 2e after 1e so 2e overrides on collisions.
+  const packKeys = [
+    "sta.focuses-core",
+    "sta.focuses",
+    "sta.items-1e",
+    "sta.items-2e",
+  ];
 
   const explicit = String(packKey ?? "").trim();
   if (explicit && !packKeys.includes(explicit)) packKeys.push(explicit);
@@ -368,14 +376,29 @@ export async function promptFocusChoiceFromCompendium({
   /** @type {string[]} */
   const errors = [];
 
+  // Avoid warning spam in mixed STA versions: only warn for missing
+  // explicit/custom packs (not the default candidates).
+  const missingShouldWarn = new Set(
+    [
+      explicit || null,
+      ...(Array.isArray(customPackKeys) ? customPackKeys : []),
+    ].filter(Boolean)
+  );
+
   for (const key of packKeys) {
+    const pack = game.packs?.get?.(key) ?? null;
+    if (!pack) {
+      if (missingShouldWarn.has(key)) {
+        errors.push(`Missing compendium pack: ${key}`);
+      }
+      continue;
+    }
+
     const { entries, error } = await _getFocusIndexEntries({ packKey: key });
     if (error) errors.push(error);
     if (entries?.length) allEntries.push(...entries);
   }
 
-  // Warn about missing packs, but don't block if at least one pack exists.
-  // (Some worlds may have only one of these packs present.)
   for (const msg of errors) ui.notifications?.warn?.(msg);
 
   // Remove duplicates by focus name (case-insensitive). Later packs win.
@@ -395,7 +418,7 @@ export async function promptFocusChoiceFromCompendium({
   const focuses = Array.from(byName.values());
 
   if (!focuses.length) {
-    ui.notifications?.warn?.("No focuses found in the focuses compendium.");
+    ui.notifications?.warn?.("No focuses found in the available compendiums.");
     return null;
   }
 

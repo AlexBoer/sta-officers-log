@@ -1,5 +1,12 @@
 import { MODULE_ID } from "../../constants.js";
-import { STA_DEFAULT_ICON, escapeHTML } from "../../values.js";
+import {
+  STA_DEFAULT_ICON,
+  escapeHTML,
+  getStaDefaultIcon,
+  getValueStateArray,
+  isValueInvokedState,
+  mergeValueStateArray,
+} from "../../values.js";
 import { isLogUsed } from "../../mission.js";
 import { isCallbackTargetCompatibleWithValue } from "../../callbackEligibility.js";
 import { t } from "../../i18n.js";
@@ -48,12 +55,10 @@ async function _syncLogImgToValue(actor, log, valueId) {
 
   // If no value is selected, restore STA default.
   if (!vId) {
-    if (STA_DEFAULT_ICON && log.img !== STA_DEFAULT_ICON) {
+    const def = getStaDefaultIcon?.() || STA_DEFAULT_ICON;
+    if (def && String(log.img ?? "") !== String(def)) {
       try {
-        await log.update(
-          { img: STA_DEFAULT_ICON },
-          { render: false, renderSheet: false }
-        );
+        await log.update({ img: def }, { render: false, renderSheet: false });
       } catch (_) {
         // ignore
       }
@@ -828,7 +833,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
               const valueItem = valueId ? actor.items.get(valueId) : null;
               return valueItem?.type === "value" && valueItem?.img
                 ? String(valueItem.img)
-                : STA_DEFAULT_ICON;
+                : getStaDefaultIcon?.() || STA_DEFAULT_ICON;
             })();
       if (desiredImg && String(log.img ?? "") !== String(desiredImg)) {
         update.img = desiredImg;
@@ -908,10 +913,16 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
   // --- Add Directive button (inline in the system value-state table header) ---
   const installAddDirectiveButton = () => {
-    const anyRadio = sheetRoot.querySelector(
-      'input[type="radio"][name^="system.valueStates."]'
-    );
-    const firstRow = anyRadio?.closest?.(".row") ?? null;
+    const anyStateInput =
+      sheetRoot.querySelector(
+        'input[type="checkbox"][name^="system.valueStates."][data-action="onSelectValue"]'
+      ) ||
+      sheetRoot.querySelector(
+        'input[type="checkbox"][name^="system.valueStates."]'
+      ) ||
+      sheetRoot.querySelector('input[name^="system.valueStates."]');
+
+    const firstRow = anyStateInput?.closest?.(".row") ?? null;
     const rowsParent = firstRow?.parentElement ?? null;
     if (!rowsParent) return;
 
@@ -1013,14 +1024,18 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       const key = makeDirectiveKeyFromText(cleaned);
       if (!valueId || !key) return;
 
-      const curState = String(
-        log?.system?.valueStates?.[String(valueId)] ?? "unused"
-      );
-      const nextState = curState === "unused" ? "positive" : curState;
+      const curStates = getValueStateArray(log, valueId);
+      const hasInvoked = curStates.some((s) => isValueInvokedState(String(s)));
+      const nextState = hasInvoked ? null : "positive";
 
-      const update = {
-        [`system.valueStates.${valueId}`]: nextState,
-      };
+      const update = {};
+      if (nextState) {
+        const existingRaw = log?.system?.valueStates?.[String(valueId)];
+        update[`system.valueStates.${valueId}`] = mergeValueStateArray(
+          existingRaw,
+          nextState
+        );
+      }
 
       try {
         const existing = log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
@@ -1067,14 +1082,20 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   // --- Inline invoked directives in the value state list ---
 
   const installInlineInvokedDirectiveRows = () => {
-    const states = log?.system?.valueStates ?? {};
     const invoked = [];
-    for (const [valueId, state] of Object.entries(states)) {
+    const states = log?.system?.valueStates ?? {};
+    for (const valueId of Object.keys(states)) {
       if (!isDirectiveValueId(valueId)) continue;
-      if (String(state) === "unused") continue;
+
+      const stateArr = getValueStateArray(log, valueId);
+      const invokedState = stateArr.find((s) => isValueInvokedState(String(s)));
+      if (!invokedState) continue;
+
+      const stateSet = new Set(stateArr.map((s) => String(s)));
       invoked.push({
         valueId: String(valueId),
-        state: String(state),
+        state: String(invokedState),
+        stateSet,
         text: getDirectiveTextForValueId(log, valueId),
       });
     }
@@ -1089,10 +1110,16 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     );
 
     // Find the system-provided value-state rows.
-    const anyRadio = sheetRoot.querySelector(
-      'input[type="radio"][name^="system.valueStates."]'
-    );
-    const firstRow = anyRadio?.closest?.(".row") ?? null;
+    const anySystemStateInput =
+      sheetRoot.querySelector(
+        'input[type="checkbox"][name^="system.valueStates."][data-action="onSelectValue"]'
+      ) ||
+      sheetRoot.querySelector(
+        'input[type="checkbox"][name^="system.valueStates."]'
+      ) ||
+      sheetRoot.querySelector('input[name^="system.valueStates."]');
+
+    const firstRow = anySystemStateInput?.closest?.(".row") ?? null;
     const rowsParent = firstRow?.parentElement ?? null;
     if (!rowsParent) return;
 
@@ -1112,8 +1139,11 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     const valueStateRows = Array.from(rowsParent.children).filter((el) => {
       if (!(el instanceof HTMLElement)) return false;
       if (!el.classList.contains("row")) return false;
+      if (el.classList.contains("sta-directive-value-row")) return false;
       return Boolean(
-        el.querySelector('input[type="radio"][name^="system.valueStates."]')
+        el.querySelector(
+          'input[type="checkbox"][name^="system.valueStates."]'
+        ) || el.querySelector('input[name^="system.valueStates."]')
       );
     });
 
@@ -1154,42 +1184,65 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
       row.appendChild(nameCol);
 
-      const buildRadio = (value) => {
+      const buildCheckbox = (value) => {
         const col = document.createElement("div");
         col.className = "col-radio";
+
+        const label = document.createElement("label");
         const input = document.createElement("input");
-        input.type = "radio";
+        input.type = "checkbox";
         input.name = `system.valueStates.${d.valueId}`;
         input.value = value;
-        if (String(d.state) === String(value)) input.checked = true;
-        col.appendChild(input);
-        return input;
+
+        const set = d.stateSet instanceof Set ? d.stateSet : new Set();
+        if (set.has(String(value))) input.checked = true;
+
+        label.appendChild(input);
+        col.appendChild(label);
+
+        return { input, col };
       };
 
-      const unusedRadio = buildRadio("unused");
-      const posRadio = buildRadio("positive");
-      const negRadio = buildRadio("negative");
-      const chalRadio = buildRadio("challenged");
-      row.appendChild(unusedRadio.closest(".col-radio"));
-      row.appendChild(posRadio.closest(".col-radio"));
-      row.appendChild(negRadio.closest(".col-radio"));
-      row.appendChild(chalRadio.closest(".col-radio"));
+      const unused = buildCheckbox("unused");
+      const pos = buildCheckbox("positive");
+      const neg = buildCheckbox("negative");
+      const chal = buildCheckbox("challenged");
+
+      const allInputs = [unused.input, pos.input, neg.input, chal.input];
+
+      row.appendChild(unused.col);
+      row.appendChild(pos.col);
+      row.appendChild(neg.col);
+      row.appendChild(chal.col);
 
       const onStateChange = async (ev) => {
         const input = ev?.currentTarget;
         if (!(input instanceof HTMLInputElement)) return;
-        if (!input.checked) return;
-        const next = String(input.value ?? "unused");
+
+        const checked = allInputs
+          .filter((i) => i instanceof HTMLInputElement && i.checked)
+          .map((i) => String(i.value ?? ""))
+          .filter(Boolean);
+
+        let payload = Array.from(new Set(checked));
+        if (!payload.length) payload = ["unused"];
+
+        // If any invoked state is present, drop "unused".
+        if (payload.some((v) => v !== "unused")) {
+          payload = payload.filter((v) => v !== "unused");
+          if (!payload.length) payload = ["unused"];
+        }
+
         try {
           await log.update(
-            { [`system.valueStates.${d.valueId}`]: next },
+            { [`system.valueStates.${d.valueId}`]: payload },
             { render: false, renderSheet: false }
           );
         } catch (_) {
           // ignore
         }
 
-        if (next === "unused") {
+        if (payload.length === 1 && payload[0] === "unused") {
           try {
             row.remove();
           } catch (_) {
@@ -1204,7 +1257,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         }
       };
 
-      for (const r of [unusedRadio, posRadio, negRadio, chalRadio]) {
+      for (const r of allInputs) {
         r.addEventListener("change", (ev) => {
           try {
             ev?.stopPropagation?.();
@@ -1226,8 +1279,9 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         const newId = makeDirectiveValueIdFromText(newText);
         if (!newId) return;
 
-        const currentStates = log?.system?.valueStates ?? {};
-        const oldState = String(currentStates?.[oldId] ?? "unused");
+        const oldStates = getValueStateArray(log, oldId);
+        const invoked = oldStates.filter((s) => isValueInvokedState(String(s)));
+        const oldState = invoked.length ? String(invoked[0]) : "unused";
         if (oldState === "unused") return;
 
         const oldKey = getDirectiveKeyFromValueId(oldId);
@@ -1236,8 +1290,8 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         const update = {};
 
         if (newId !== oldId) {
-          update[`system.valueStates.${oldId}`] = "unused";
-          update[`system.valueStates.${newId}`] = oldState;
+          update[`system.valueStates.${oldId}`] = ["unused"];
+          update[`system.valueStates.${newId}`] = [oldState];
 
           try {
             const curPrimary = String(
@@ -1325,7 +1379,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         const oldKey = getDirectiveKeyFromValueId(oldId);
 
         const update = {
-          [`system.valueStates.${oldId}`]: "unused",
+          [`system.valueStates.${oldId}`]: ["unused"],
         };
 
         // If this directive is referenced by log metadata, clear it.
@@ -1345,7 +1399,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
             update[`flags.${MODULE_ID}.arcInfo`] = null;
 
             // Restore default icon.
-            if (STA_DEFAULT_ICON) update.img = STA_DEFAULT_ICON;
+            update.img = getStaDefaultIcon?.() || STA_DEFAULT_ICON;
           }
         } catch (_) {
           // ignore

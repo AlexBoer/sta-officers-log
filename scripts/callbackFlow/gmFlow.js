@@ -13,6 +13,9 @@ import {
   escapeHTML,
   getValueIconPathForValueId,
   getValueItems,
+  normalizeValueStateArray,
+  isValueInvokedState,
+  mergeValueStateArray,
 } from "../values.js";
 import {
   directiveIconPath,
@@ -37,8 +40,11 @@ function buildInvokedValues(actor, log) {
   const valueStates = log.system?.valueStates ?? {};
   const rows = [];
 
-  for (const [valueId, state] of Object.entries(valueStates)) {
-    if (state === "unused") continue;
+  for (const [valueId, rawState] of Object.entries(valueStates)) {
+    const stateArray = normalizeValueStateArray(rawState);
+    const invoked = stateArray.filter((s) => isValueInvokedState(String(s)));
+    if (invoked.length === 0) continue;
+    const state = String(invoked[0]);
 
     if (isDirectiveValueId(valueId)) {
       const name = getDirectiveTextForValueId(log, valueId);
@@ -368,9 +374,13 @@ async function applyCallbackUpdates(
     const currentLogUpdates = [];
 
     // Update value state
+    const existingRaw = currentLog.system?.valueStates?.[String(valueId)];
     currentLogUpdates.push(
       currentLog.update({
-        [`system.valueStates.${valueId}`]: valueState,
+        [`system.valueStates.${valueId}`]: mergeValueStateArray(
+          existingRaw,
+          valueState
+        ),
       })
     );
 

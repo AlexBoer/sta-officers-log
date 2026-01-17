@@ -1,8 +1,8 @@
 // Shared callback-target eligibility helpers.
-// Intentionally small: this is used by both the callback prompt UI and manual log-link controls.
+// this is used by both the callback prompt UI and manual log-link controls.
 
 /**
- * Returns whether a target log can be associated with a given value for callback-chain purposes.
+ * Returns whether a target log can be associated with a given value for a callback.
  *
  * Rules:
  * - If no value is selected, do not restrict.

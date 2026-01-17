@@ -31,20 +31,36 @@ const SPECIES_TALENT_NAMES = new Set(
   ].map((name) => name.toLowerCase())
 );
 
+// STA v2.4.6+: talents are stored in sta.items-1e / sta.items-2e.
+// Backward-compatible (STA v2.4.5): talents were stored across multiple packs.
+//
+// NOTE: Order matters. When de-duping by name, later packs win.
+// Place 2e after 1e so 2e overrides on collisions.
 export const TALENT_BASE_PACKS = [
+  // STA v2.4.5 legacy packs (crew)
+  "sta.species-talents-core",
   "sta.general-talents-core",
   "sta.discipline-talents-core",
-  "sta.species-talents-core",
   "sta.talents-crew",
+  // STA v2.4.6+ consolidated packs
+  "sta.items-1e",
+  "sta.items-2e",
 ];
 
 export const SHIP_TALENT_BASE_PACKS = [
+  // STA v2.4.5 legacy packs (ship)
   "sta.starship-talents-core",
   "sta.talents-starship",
+  // STA v2.4.6+ consolidated packs
+  "sta.items-1e",
+  "sta.items-2e",
 ];
 
-const TALENT_CREW_PACK = "sta.talents-crew";
+// Kept for weighting: when present, prefer 2e as the "tie-break" source.
+const TALENT_CREW_PACK = "sta.items-2e";
 
+// Takes a image and returns a key and a lebla for a cateogry
+// eg. engineering-talent.svg -> {key, label: "Engineering"}
 function _deriveTalentCategoryFromImg(img, talentName) {
   const name = String(talentName ?? "")
     .trim()
@@ -84,6 +100,7 @@ export async function loadTalentPickerTalents(options = {}) {
   return _collectTalentPickerEntries(options);
 }
 
+// Just a wrapper around _deriveTalentCategoryFromImg for talent entries.
 function _deriveCategoryFromEntry(entry) {
   return _deriveTalentCategoryFromImg(entry?.img, entry?.name);
 }
@@ -216,6 +233,7 @@ export function bindTalentPickerInteractions(
       .trim()
       .toLowerCase();
     const showEligibleOnly = Boolean(eligibleToggle?.checked);
+
     for (const li of listItems) {
       const name = String(li.dataset.name ?? "");
       const match = !q || name.includes(q);
@@ -271,7 +289,9 @@ export function bindTalentPickerInteractions(
     const desc = await _getTalentDescription(String(entry?.uuid ?? ""));
     await foundry.applications.api.DialogV2.wait({
       window: { title },
-      content: desc || "<p>No description available.</p>",
+      content: `<div class="sta-talent-preview-dialog">${
+        desc || "<p>No description available.</p>"
+      }</div>`,
       buttons: [
         {
           action: "close",
@@ -336,6 +356,7 @@ export function bindTalentPickerInteractions(
   return { applyFilter };
 }
 
+// ensures the index of Talents is an array.
 function _normalizeIndexEntries(indexLike) {
   if (!indexLike) return [];
   if (Array.isArray(indexLike)) return indexLike;
@@ -363,7 +384,10 @@ async function _getTalentIndexEntries({ packKey = "" } = {}) {
 
   try {
     if (typeof pack.getIndex === "function") {
-      await pack.getIndex({ fields: ["name", "img", "type", "uuid"] });
+      // Include folder so we can filter Crew vs Starship in consolidated packs.
+      await pack.getIndex({
+        fields: ["name", "img", "type", "uuid", "folder"],
+      });
     }
   } catch (_) {
     // ignore - we can still try pack.index
@@ -371,6 +395,97 @@ async function _getTalentIndexEntries({ packKey = "" } = {}) {
 
   const entries = _normalizeIndexEntries(pack.index);
   return { entries, error: null };
+}
+
+function _matchTalentFolderKindFromName(name) {
+  const lower = String(name ?? "")
+    .trim()
+    .toLowerCase();
+  if (!lower) return null;
+  if (/(^|\b)crew(\b|$)/i.test(lower)) return "crew";
+  if (/(^|\b)star\s*ship(\b|$)/i.test(lower)) return "starship";
+  if (/(^|\b)starship(\b|$)/i.test(lower)) return "starship";
+  if (lower === "ship" || /(^|\b)ship(\b|$)/i.test(lower)) return "starship";
+  return null;
+}
+
+function _classifyTalentFolder(pack, folderId) {
+  const id = folderId ? String(folderId) : "";
+  if (!pack || !id) return null;
+
+  const folders = pack.folders;
+  const getFolder = (fid) => {
+    try {
+      if (!folders) return null;
+      if (typeof folders.get === "function") return folders.get(fid) ?? null;
+      if (folders instanceof Map) return folders.get(fid) ?? null;
+    } catch (_) {
+      // ignore
+    }
+    return null;
+  };
+
+  let cur = id;
+  for (let i = 0; i < 12 && cur; i++) {
+    const f = getFolder(cur);
+    if (!f) break;
+
+    const kind = _matchTalentFolderKindFromName(f?.name);
+    if (kind) return kind;
+
+    const parent = f?.folder;
+    cur = parent ? String(parent) : "";
+  }
+
+  return null;
+}
+
+function _packKeyFromUuid(uuid) {
+  const raw = String(uuid ?? "");
+  const prefix = "Compendium.";
+  if (!raw.startsWith(prefix)) return "";
+  const rest = raw.slice(prefix.length);
+  const parts = rest.split(".");
+  if (parts.length < 2) return "";
+  parts.pop();
+  return parts.join(".");
+}
+
+function _isConsolidatedTalentPackKey(packKey) {
+  const key = String(packKey ?? "")
+    .trim()
+    .toLowerCase();
+  return key.endsWith("items-1e") || key.endsWith("items-2e");
+}
+
+function _classifyTalentFolderFromDocument(doc) {
+  let cur = doc?.folder ?? null;
+  for (let i = 0; i < 12 && cur; i++) {
+    const kind = _matchTalentFolderKindFromName(cur?.name);
+    if (kind) return kind;
+    cur = cur?.folder ?? null;
+  }
+  return null;
+}
+
+const EXCLUDED_SHIP_TALENT_NAMES = new Set(
+  [
+    "aging relic",
+    "deluxe galley",
+    "dependable workhorse",
+    "hope ship",
+    "legendary",
+    "prototype",
+    "survivor of (x)",
+  ].map((n) => n.toLowerCase())
+);
+
+function _isExcludedShipTalentName(name) {
+  const raw = String(name ?? "").trim();
+  if (!raw) return false;
+  const lower = raw.toLowerCase();
+  if (EXCLUDED_SHIP_TALENT_NAMES.has(lower)) return true;
+  return false;
 }
 
 async function _getTalentDocumentByUuid(uuid) {
@@ -393,14 +508,13 @@ function _extractTalentItemData(document) {
   return data;
 }
 
-async function _getTalentDescription(uuid) {
-  const doc = await _getTalentDocumentByUuid(uuid);
-  if (!doc) return null;
+function _extractTalentDescription(document) {
+  if (!document) return null;
 
   const rawDescription =
-    foundry.utils.getProperty(doc, "system.description.value") ??
-    foundry.utils.getProperty(doc, "system.description") ??
-    doc?.system?.description ??
+    foundry.utils.getProperty(document, "system.description.value") ??
+    foundry.utils.getProperty(document, "system.description") ??
+    document?.system?.description ??
     "";
   if (!rawDescription) return null;
   if (typeof rawDescription === "string") return rawDescription;
@@ -413,12 +527,63 @@ async function _getTalentDescription(uuid) {
   return null;
 }
 
+function _isCharacterCreationOnlyTalentDescription(rawDescription) {
+  const html = String(rawDescription ?? "");
+  if (!html) return false;
+
+  // Normalize some common HTML block/line separators into newlines first,
+  // so we can interpret "same line" more reliably.
+  let normalized = html
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*\/\s*p\s*>/gi, "\n")
+    .replace(/<\s*\/\s*li\s*>/gi, "\n")
+    .replace(/&nbsp;/gi, " ");
+
+  // Prefer Foundry's HTML->text routine when available.
+  try {
+    if (
+      globalThis.TextEditor &&
+      typeof TextEditor.getTextContent === "function"
+    ) {
+      normalized = TextEditor.getTextContent(normalized);
+    } else {
+      normalized = normalized.replace(/<[^>]*>/g, " ");
+    }
+  } catch (_) {
+    normalized = normalized.replace(/<[^>]*>/g, " ");
+  }
+
+  const lines = String(normalized)
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  for (const line of lines) {
+    if (
+      /requirement\s*:/i.test(line) &&
+      /during character creation/i.test(line)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function _getTalentDescription(uuid) {
+  const doc = await _getTalentDocumentByUuid(uuid);
+  if (!doc) return null;
+
+  return _extractTalentDescription(doc);
+}
+
 async function _collectTalentPickerEntries({
   packKey = "",
   basePackKeys = [],
   extraPackKeys = [],
   priorityEntries = [],
   extraPriorityEntries = [],
+  folderKind = "", // "crew" | "starship" | "" (no filtering)
 } = {}) {
   const packs = [];
   const addPack = (key) => {
@@ -441,10 +606,48 @@ async function _collectTalentPickerEntries({
   const errors = [];
   const allEntries = [];
 
+  // Avoid warning spam in mixed STA versions: only warn for missing
+  // explicit/custom packs (not the default candidates).
+  const missingShouldWarn = new Set(
+    [
+      explicit || null,
+      ...(Array.isArray(customPackKeys) ? customPackKeys : []),
+    ].filter(Boolean)
+  );
+
+  const wantedKind = String(folderKind ?? "")
+    .trim()
+    .toLowerCase();
+
   for (const key of packs) {
+    const pack = game.packs?.get?.(key) ?? null;
+    if (!pack) {
+      if (missingShouldWarn.has(key)) {
+        errors.push(`Missing compendium pack: ${key}`);
+      }
+      continue;
+    }
+
     const { entries, error } = await _getTalentIndexEntries({ packKey: key });
     if (error) errors.push(error);
-    if (entries?.length) allEntries.push({ key, entries });
+    if (entries?.length) {
+      // If the pack is consolidated (items-1e/items-2e), filter by folder lineage.
+      // For legacy packs we usually already have crew-vs-ship separation by pack.
+      const isConsolidated =
+        key.endsWith("items-1e") || key.endsWith("items-2e");
+      if (!wantedKind || !isConsolidated) {
+        allEntries.push({ key, entries });
+      } else {
+        const filtered = entries.filter((e) => {
+          if (String(e?.type ?? "").toLowerCase() !== "talent") return false;
+          const kind = _classifyTalentFolder(pack, e?.folder);
+          // If we can't classify, keep it (safer than hiding content unexpectedly).
+          if (!kind) return true;
+          return kind === wantedKind;
+        });
+        allEntries.push({ key, entries: filtered });
+      }
+    }
   }
 
   const priorityMap = new Map();
@@ -481,6 +684,10 @@ async function _collectTalentPickerEntries({
       const name = String(entry?.name ?? "").trim();
       if (!name) continue;
 
+      if (wantedKind === "starship" && _isExcludedShipTalentName(name)) {
+        continue;
+      }
+
       const key = name.toLowerCase();
       const existing = byName.get(key);
       if (existing && existing.priority > priority) continue;
@@ -491,6 +698,7 @@ async function _collectTalentPickerEntries({
           name,
           img: entry?.img ?? null,
           uuid: entry?.uuid ?? null,
+          folder: entry?.folder ?? null,
         },
       });
     }
@@ -499,7 +707,27 @@ async function _collectTalentPickerEntries({
   let talents = Array.from(byName.values()).map((item) => item.value);
   talents = await Promise.all(
     talents.map(async (talent) => {
+      const packKey = _packKeyFromUuid(talent.uuid);
+      const isConsolidated = _isConsolidatedTalentPackKey(packKey);
       const doc = await _getTalentDocumentByUuid(talent.uuid);
+      const rawDescription = _extractTalentDescription(doc);
+      if (
+        wantedKind === "crew" &&
+        _isCharacterCreationOnlyTalentDescription(rawDescription)
+      ) {
+        return null;
+      }
+
+      if (wantedKind && isConsolidated) {
+        const kindFromDoc = _classifyTalentFolderFromDocument(doc);
+        let kind = kindFromDoc;
+        if (!kind) {
+          const pack = packKey ? game.packs?.get?.(packKey) ?? null : null;
+          kind = _classifyTalentFolder(pack, talent.folder);
+        }
+        if (kind !== wantedKind) return null;
+      }
+
       return {
         ...talent,
         talenttype: doc?.system?.talenttype ?? null,
@@ -507,6 +735,8 @@ async function _collectTalentPickerEntries({
       };
     })
   );
+
+  talents = talents.filter(Boolean);
 
   return { talents, errors };
 }
@@ -638,6 +868,7 @@ export async function promptTalentChoiceFromCompendium({
     extraPackKeys: [TALENT_CREW_PACK],
     priorityEntries: TALENT_BASE_PACKS.map((key, idx) => [key, idx + 1]),
     extraPriorityEntries: [[TALENT_CREW_PACK, 5]],
+    folderKind: "crew",
   });
 }
 
@@ -650,9 +881,18 @@ export async function promptShipTalentChoiceFromCompendium({
     packKey,
     basePackKeys: SHIP_TALENT_BASE_PACKS,
     priorityEntries: SHIP_TALENT_BASE_PACKS.map((key, idx) => [key, idx + 1]),
+    folderKind: "starship",
   });
 }
 
+/**************************************************
+ *              TALENT REQUIREMENTS               *
+ *************************************************/
+
+// Retrieves a numeric property from an object, or null if not found/invalid.
+// Used for grabbing attribute/discipline values from an actor.
+// obj: should be an actor
+// path: string path to the property (e.g., "system.attributes.strength.value")
 const getNumeric = (obj, path) => {
   const v = foundry.utils.getProperty(obj, path);
   if (v === 0 || v) {

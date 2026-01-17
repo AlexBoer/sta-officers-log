@@ -8,7 +8,12 @@ import {
   getPrimaryValueIdForLog,
   hasEligibleCallbackTargetForValueId,
 } from "./logMetadata.js";
-import { getValueItems } from "./values.js";
+import {
+  getValueItems,
+  mergeValueStateArray,
+  normalizeValueStateArray,
+  isValueInvokedState,
+} from "./values.js";
 import {
   DIRECTIVE_VALUE_ID_PREFIX,
   directiveIconPath,
@@ -46,7 +51,8 @@ function _hasEligibleCallbackTargetWithAnyInvokedDirective(
       const states = log.system?.valueStates ?? {};
       for (const [id, state] of Object.entries(states)) {
         if (!String(id).startsWith(DIRECTIVE_VALUE_ID_PREFIX)) continue;
-        if (["positive", "negative", "challenged"].includes(String(state))) {
+        const stateArray = normalizeValueStateArray(state);
+        if (stateArray.some((s) => isValueInvokedState(String(s)))) {
           return true;
         }
       }
@@ -282,8 +288,13 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     const missionLog = missionLogId ? actor.items.get(missionLogId) : null;
     if (missionLog) {
       const valueState = usage === "challenge" ? "challenged" : "negative";
+      const existingRaw =
+        missionLog.system?.valueStates?.[String(valueItem.id)];
       await missionLog.update({
-        [`system.valueStates.${valueItem.id}`]: valueState,
+        [`system.valueStates.${valueItem.id}`]: mergeValueStateArray(
+          existingRaw,
+          valueState
+        ),
       });
     }
 
@@ -382,8 +393,13 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     const missionLog = missionLogId ? actor.items.get(missionLogId) : null;
     if (missionLog) {
       const valueState = usage === "challenge" ? "challenged" : "negative";
+      const existingRaw =
+        missionLog.system?.valueStates?.[String(directiveValueId)];
       await missionLog.update({
-        [`system.valueStates.${directiveValueId}`]: valueState,
+        [`system.valueStates.${directiveValueId}`]: mergeValueStateArray(
+          existingRaw,
+          valueState
+        ),
       });
 
       // Store mapping for display

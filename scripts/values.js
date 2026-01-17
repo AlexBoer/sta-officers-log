@@ -1,14 +1,31 @@
-import { MODULE_ID, VALUE_ICON_COUNT, valueIconPath } from "./constants.js";
+import {
+  MODULE_ID,
+  VALUE_ICON_COUNT,
+  valueIconPath,
+  STA_DEFAULT_ICON_FALLBACK,
+  STA_DEFAULT_ICON_LEGACY,
+  getStaDefaultIcon,
+} from "./constants.js";
 import { t, tf } from "./i18n.js";
 import { syncAllMilestoneIconsOnActor } from "./milestoneIcons.js";
 import { directiveIconPath, isDirectiveValueId } from "./directives.js";
 
-export const STA_DEFAULT_ICON =
-  "systems/sta/assets/icons/VoyagerCombadgeIcon.png";
+// Kept for backward compatibility with older code paths.
+// Prefer using getStaDefaultIcon() when setting new icons.
+export const STA_DEFAULT_ICON = STA_DEFAULT_ICON_FALLBACK;
+
+export { getStaDefaultIcon };
 
 function _isDefaultOrBlankImg(img) {
   const s = String(img ?? "");
-  return !s || s === STA_DEFAULT_ICON;
+  const cur = getStaDefaultIcon();
+  return (
+    !s ||
+    s === cur ||
+    s === STA_DEFAULT_ICON_FALLBACK ||
+    s === STA_DEFAULT_ICON_LEGACY ||
+    s === "icons/svg/item-bag.svg"
+  );
 }
 
 export function escapeHTML(s) {
@@ -19,6 +36,40 @@ export function getValueItems(actor) {
   // STA commonly uses type "value"
   const values = actor.items.filter((i) => i.type === "value");
   return values;
+}
+
+// STA v2.4.6 stores log.system.valueStates[valueId] as an array of strings.
+// Older versions stored a single string.
+export function normalizeValueStateArray(raw) {
+  if (Array.isArray(raw)) return raw.map((v) => String(v)).filter(Boolean);
+  if (typeof raw === "string") {
+    const s = raw.trim();
+    return s ? [s] : [];
+  }
+  return [];
+}
+
+export function getValueStateArray(logOrSystem, valueId) {
+  const system = logOrSystem?.system ? logOrSystem.system : logOrSystem;
+  const states = system?.valueStates ?? {};
+  const raw = states?.[String(valueId)];
+  const arr = normalizeValueStateArray(raw);
+  return arr.length ? arr : ["unused"];
+}
+
+export function isValueInvokedState(state) {
+  return state === "positive" || state === "negative" || state === "challenged";
+}
+
+export function mergeValueStateArray(existingRaw, stateToAdd) {
+  const next = String(stateToAdd ?? "").trim();
+  if (!next || next === "unused") return ["unused"];
+
+  const arr = normalizeValueStateArray(existingRaw).filter(
+    (s) => s !== "unused"
+  );
+  if (!arr.includes(next)) arr.push(next);
+  return arr.length ? arr : [next];
 }
 
 const _valueIconMapCache = new WeakMap();
@@ -103,7 +154,7 @@ export async function labelValuesOnActor(actor) {
     const desiredImg =
       valueItem?.type === "value" && valueItem?.img
         ? String(valueItem.img)
-        : STA_DEFAULT_ICON;
+        : getStaDefaultIcon();
 
     if (desiredImg && String(log.img ?? "") !== desiredImg) {
       logUpdates.push({ _id: log.id, img: desiredImg });

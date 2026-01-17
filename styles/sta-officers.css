@@ -1,3 +1,24 @@
+/* =============================================================================
+ * STA Officers Log — Styles
+ * Organized by window / surface area
+ * =============================================================================
+/*
+ * Sections:
+ *  - Callback Request / Callbacks UI (.sta-callbacks, .sta-callback-*)
+ *  - STA System Tracker injection (#tracker-container …)
+ *  - Dialogs (confirm delete, talent preview, choose benefit, use value)
+ *  - Actor Sheet injections (values/milestones sections)
+ *  - Item Sheet injections (log sheet inline controls)
+ *  - Focus Picker window (.sta-officers-log.focus-picker …)
+ *  - Ship Talent Swap dialog (.sta-ship-talent-swap …)
+ *  - Context menu
+ */
+/* ============================================================================= */
+
+/* =============================================================================
+ * CALLBACK REQUEST / CALLBACKS UI
+ * ============================================================================= */
+
 .sta-callbacks .sta-callbacks-loglist {
   display: flex;
   flex-direction: column;
@@ -218,6 +239,14 @@
   align-items: center;
 }
 
+/* Collapsed: show the full label in the title row */
+.sta-callbacks-arc-group.is-collapsed .sta-callbacks-arc-title .sta-arc-collapse-label {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
 /* Match the collapse button styling used inside rows */
 .sta-callbacks-arc-title .sta-arc-collapse-btn {
   display: inline-flex;
@@ -249,6 +278,14 @@
   cursor: pointer;
 }
 
+.sta-callbacks-arc-title .sta-arc-title-edit:hover {
+  opacity: 1;
+}
+
+/* =============================================================================
+ * STA SYSTEM TRACKER (injected buttons)
+ * ============================================================================= */
+
 /* STA system tracker: Officers Log buttons injected by this module */
 .tracker-container .icon-container .sta-tracker-button-columns {
   display: flex;
@@ -265,6 +302,7 @@
   align-items: center;
   justify-content: flex-start;
   gap: 0.25rem;
+  padding-top: 5px; /* slight vertical spacing so the injected group aligns nicely */
 }
 
 .tracker-container .icon-container .sta-officers-log-divider {
@@ -303,9 +341,14 @@
   color:#89CFF0;
 }
 
-.sta-callbacks-arc-title .sta-arc-title-edit:hover {
-  opacity: 1;
+.tracker-container .combadge {
+    height: 1.3em;
+    width: 1.3em;
 }
+
+/* =============================================================================
+ * DIALOGS (DialogV2 / ApplicationV2)
+ * ============================================================================= */
 
 /* Confirm-delete replacement should behave like the native delete control */
 .sta-confirm-delete {
@@ -326,6 +369,22 @@
   margin: 0.75em 0;
 }
 
+/* Talent preview DialogV2: keep it compact (Foundry otherwise fit-contents very wide) */
+.sta-talent-preview-dialog {
+  box-sizing: border-box;
+  width: min(560px, 92vw);
+  max-width: 92vw;
+  max-height: min(70vh, 720px);
+  overflow: auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.sta-talent-preview-dialog img {
+  max-width: 100%;
+  height: auto;
+}
+
 /* Make dialog buttons equal width and full height */
 .sta-officers-log .sta-callbacks-buttons .dialog-button,
 .sta-officers-log .sta-benefit-buttons .dialog-button {
@@ -344,6 +403,9 @@
   gap: 0.35rem;
 }
 
+/* =============================================================================
+ * SHARED CONTROLS (used across multiple windows)
+ * ============================================================================= */
 
 .sta-values-title-with-button {
   display: flex;
@@ -415,6 +477,45 @@
 .sta-choose-milestone-btn:hover {
   border-color: rgba(250, 223, 71, 0.7);
 } 
+
+/* =============================================================================
+ * ACTOR SHEET (Values / Milestones injections)
+ * ============================================================================= */
+
+/* Character sheet: draggable divider to resize Character Log list height */
+div.section.milestones > .staol-log-resizer {
+  height: 8px;
+  margin: 2px 0 6px 0;
+  cursor: row-resize;
+  touch-action: none;
+  will-change: transform;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  position: relative;
+}
+
+div.section.milestones > .staol-log-resizer::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 2px;
+}
+
+div.section.milestones > .staol-log-resizer:hover {
+  background: rgba(250, 223, 71, 0.10);
+  border-color: rgba(250, 223, 71, 0.35);
+}
+
+body.staol-resize-dragging {
+  user-select: none;
+  cursor: row-resize;
+}
 
 /* Keep injected text actions inside the STA sheet columns */
 div.section.values li.row.entry a.value-used.control.toggle,
@@ -508,6 +609,56 @@ div.section.milestones li.row.entry .sta-current-mission-indicator {
     color: goldenrod;
 }
 
+/* Chain-sort: visually nest subsequent logs in a callback chain */
+.sta-callbacks-chain-child {
+  padding-left: 20px;
+}
+
+/* Completed Arc visualization and collapse helpers on sheet log rows */
+div.section.milestones li.row.entry.sta-callbacks-arc-start {
+  border-top: 2px solid var(--color-border-light-primary);
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  margin-top: 0.25rem;
+}
+
+div.section.milestones li.row.entry.sta-callbacks-arc-end {
+  border-bottom: 2px solid var(--color-border-light-primary);
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  margin-bottom: 0.25rem;
+}
+
+div.section.milestones li.row.entry.sta-callbacks-arc-collapsed {
+  border-bottom: 2px solid var(--color-border-light-primary);
+  border-radius: 8px;
+}
+
+div.section.milestones li.row.entry .sta-arc-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  height: 22px;
+  margin-right: 0.2rem;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+div.section.milestones li.row.entry .sta-arc-collapse-btn:hover {
+  opacity: 1;
+}
+
+/* Prevent long log names from running under the Arc label / controls */
+div.section.milestones li.row.entry[data-item-type="log"] .item-name,
+div.section.milestones li.row.entry[data-item-type="log"] .item-name h4,
+div.section.milestones li.row.entry[data-item-type="log"] .item-name a {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* New Milestone/Arc dialog: visually indicate a locked/disabled tab header */
 .sta-officers-log .sta-new-milestone-arc nav.tabs .item.disabled,
 .sta-officers-log .sta-new-milestone-arc nav.tabs .item[aria-disabled="true"] {
@@ -515,6 +666,10 @@ div.section.milestones li.row.entry .sta-current-mission-indicator {
   cursor: not-allowed;
   pointer-events: none;
 }
+
+/* =============================================================================
+ * FOCUS PICKER WINDOW
+ * ============================================================================= */
 
 /* Focus picker: searchable compendium list */
 .sta-officers-log.focus-picker .sta-focus-picker {
@@ -699,6 +854,11 @@ div.section.milestones li.row.entry .sta-current-mission-indicator {
 }
 
 
+/* =============================================================================
+ * ITEM SHEETS (Log sheet injections)
+ * ============================================================================= */
+
+
 /* Log sheet: inline callback link controls */
 .sta-officers-log .item-sheet .sta-log-link-controls {
   display: flex;
@@ -837,6 +997,10 @@ div.section.milestones li.row.entry .sta-current-mission-indicator {
 .sta-officers-log.focus-picker .sta-focus-picker-preview:hover {
   background: rgba(255, 255, 255, 0.1);
 }
+
+/* =============================================================================
+ * SHIP TALENT SWAP DIALOG
+ * ============================================================================= */
 
 .sta-ship-talent-swap {
   display: flex;
@@ -1003,73 +1167,6 @@ div.section.milestones li.row.entry .sta-current-mission-indicator {
   margin-bottom: 0.15rem;
 }
 
-/* Chain-sort: visually nest subsequent logs in a callback chain */
-.sta-callbacks-chain-child {
-  padding-left: 20px;
-}
-
-/* Chain-sort: completed Arc visualization (box + collapse)
-div.section.milestones li.row.entry.sta-callbacks-arc-start,
-div.section.milestones li.row.entry.sta-callbacks-arc-middle,
-div.section.milestones li.row.entry.sta-callbacks-arc-end {
-  border-left: 2px solid var(--color-border-light-primary);
-  border-right: 2px solid var(--color-border-light-primary);
-  background: var(--color-bg-option, transparent);
-  padding-left: 6px;
-} */
-
-div.section.milestones li.row.entry.sta-callbacks-arc-start {
-  border-top: 2px solid var(--color-border-light-primary);
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-  margin-top: 0.25rem;
-}
-
-div.section.milestones li.row.entry.sta-callbacks-arc-end {
-  border-bottom: 2px solid var(--color-border-light-primary);
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 8px;
-  margin-bottom: 0.25rem;
-}
-
-div.section.milestones li.row.entry.sta-callbacks-arc-collapsed {
-  border-bottom: 2px solid var(--color-border-light-primary);
-  border-radius: 8px;
-}
-
-div.section.milestones li.row.entry .sta-arc-collapse-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  height: 22px;
-  margin-right: 0.2rem;
-  opacity: 0.9;
-  white-space: nowrap;
-}
-
-div.section.milestones li.row.entry .sta-arc-collapse-btn:hover {
-  opacity: 1;
-}
-
-/* Collapsed: show the full label in the title row */
-.sta-callbacks-arc-group.is-collapsed .sta-callbacks-arc-title .sta-arc-collapse-label {
-  max-width: none;
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
-}
-
-/* Prevent long log names from running under the Arc label / controls */
-div.section.milestones li.row.entry[data-item-type="log"] .item-name,
-div.section.milestones li.row.entry[data-item-type="log"] .item-name h4,
-div.section.milestones li.row.entry[data-item-type="log"] .item-name a {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* Benefit selection dialogs: stack buttons vertically (DialogV2 / Foundry v13) */
 .window-app.choose-benefit .window-content footer.form-footer,
 .window-app.choose-benefit .window-content .form-footer,
@@ -1179,14 +1276,4 @@ div.section.milestones li.row.entry[data-item-type="log"] .item-name a {
 .sta-officers-log-context-menu:hover {
     border: solid rgb(246, 248, 97) 1px;
     background: rgb(59, 59, 59);
-}
-
-.tracker-container .icon-container .sta-tracker-button-group {
-  padding-top: 5px;
-}
-
-
-.tracker-container .combadge {
-    height: 1.3em;
-    width: 1.3em;
 }

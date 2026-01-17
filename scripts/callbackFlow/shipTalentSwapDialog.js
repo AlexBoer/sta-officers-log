@@ -274,6 +274,7 @@ export async function promptShipTalentSwapDialog({ ship = null } = {}) {
   const { talents, errors } = await loadTalentPickerTalents({
     basePackKeys: SHIP_TALENT_BASE_PACKS,
     priorityEntries: SHIP_TALENT_BASE_PACKS.map((key, idx) => [key, idx + 1]),
+    folderKind: "starship",
   });
 
   for (const msg of errors ?? []) {

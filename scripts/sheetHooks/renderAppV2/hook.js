@@ -12,9 +12,10 @@ import {
 } from "../../valueChallenged.js";
 import {
   labelValuesOnActor,
-  STA_DEFAULT_ICON,
+  getStaDefaultIcon,
   getValueIconPathForValueId,
   escapeHTML,
+  mergeValueStateArray,
 } from "../../values.js";
 import {
   createMilestoneItem,
@@ -66,11 +67,12 @@ import {
   shouldShowLogUsedToggle,
 } from "../../clientSettings.js";
 
-import {
-  hasEligibleCallbackTargetForValueId,
-} from "../../logMetadata.js";
+import { installCharacterLogListResizer } from "./logListResizer.js";
+
+import { hasEligibleCallbackTargetForValueId } from "../../logMetadata.js";
 
 let _staCallbacksHelperMilestoneUpdateHookInstalled = false;
+let _staCallbacksHelperItemSheetRenderHookInstalled = false;
 const _staNormalizingLogIds = new Set();
 const _staNormalizingActorIds = new Set();
 const _staLogMetaDetailsOpenByLogId = new Map(); // logId -> boolean
@@ -1568,7 +1570,7 @@ export function installRenderApplicationV2Hook() {
                               return valueItem?.type === "value" &&
                                 valueItem?.img
                                 ? String(valueItem.img)
-                                : STA_DEFAULT_ICON;
+                                : getStaDefaultIcon();
                             })();
                       if (
                         desiredImg &&
@@ -1783,6 +1785,53 @@ export function installRenderApplicationV2Hook() {
     });
   }
 
+  // Compatibility: some environments still emit classic document-sheet hooks for item sheets.
+  // Installing this fallback keeps our Log item sheet UI (including the "Edit Log Data" section)
+  // working even if renderApplicationV2 isn't fired for that sheet.
+  if (!_staCallbacksHelperItemSheetRenderHookInstalled) {
+    _staCallbacksHelperItemSheetRenderHookInstalled = true;
+
+    Hooks.on("renderItemSheet", (app, html) => {
+      try {
+        if (!areSheetEnhancementsEnabled()) return;
+
+        const item =
+          app?.object ??
+          app?.item ??
+          (typeof getItemFromApp === "function" ? getItemFromApp(app) : null);
+        if (!item) return;
+
+        const root =
+          html instanceof HTMLElement
+            ? html
+            : Array.isArray(html) && html[0] instanceof HTMLElement
+            ? html[0]
+            : html?.[0] instanceof HTMLElement
+            ? html[0]
+            : typeof html?.get === "function" &&
+              html.get(0) instanceof HTMLElement
+            ? html.get(0)
+            : null;
+        if (!(root instanceof HTMLElement)) return;
+
+        if (item?.type === "log") {
+          try {
+            const actor = getActorFromAppOrItem(app, item);
+            if (actor?.type === "character") {
+              installInlineLogChainLinkControls(root, actor, item);
+            }
+          } catch (_) {
+            // ignore
+          }
+
+          installLogMetaCollapsible(root, item);
+        }
+      } catch (_) {
+        // ignore
+      }
+    });
+  }
+
   Hooks.on("renderApplicationV2", (app, root /* HTMLElement */, _context) => {
     // Ensure our custom context menu never survives a rerender.
     try {
@@ -1976,6 +2025,13 @@ export function installRenderApplicationV2Hook() {
 
     applyMissionLogSorting(root, actor, getMissionLogSortModeForActor(actor));
 
+    // Character sheet UX: allow resizing the Character Log list height.
+    try {
+      installCharacterLogListResizer(root);
+    } catch (_) {
+      // ignore
+    }
+
     // Logs: add a show-source icon button to flash the incoming-callback source.
     try {
       installCallbackSourceButtons(root, actor);
@@ -2150,8 +2206,13 @@ export function installRenderApplicationV2Hook() {
           if (!logDoc) return;
 
           // Record invoked directive on the mission log
+          const existingRaw =
+            logDoc.system?.valueStates?.[String(directiveValueId)];
           await logDoc.update({
-            [`system.valueStates.${directiveValueId}`]: valueState,
+            [`system.valueStates.${directiveValueId}`]: mergeValueStateArray(
+              existingRaw,
+              valueState
+            ),
           });
 
           // Store a mapping so later UI can display the directive name.
@@ -2356,8 +2417,13 @@ export function installRenderApplicationV2Hook() {
             ? actor.items.get(String(currentMissionLogId))
             : null;
           if (currentLog) {
+            const existingRaw =
+              currentLog.system?.valueStates?.[String(valueItem.id)];
             await currentLog.update({
-              [`system.valueStates.${valueItem.id}`]: valueState,
+              [`system.valueStates.${valueItem.id}`]: mergeValueStateArray(
+                existingRaw,
+                valueState
+              ),
             });
           }
 
@@ -2400,8 +2466,13 @@ export function installRenderApplicationV2Hook() {
             ? actor.items.get(String(currentMissionLogId))
             : null;
           if (currentLog) {
+            const existingRaw =
+              currentLog.system?.valueStates?.[String(valueItem.id)];
             await currentLog.update({
-              [`system.valueStates.${valueItem.id}`]: "positive",
+              [`system.valueStates.${valueItem.id}`]: mergeValueStateArray(
+                existingRaw,
+                "positive"
+              ),
             });
           }
 

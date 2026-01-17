@@ -314,53 +314,85 @@ export function applyMissionLogSorting(root, actor, mode) {
     return;
   }
 
+  // STA v2.4.6+: Logs and Milestones are each inside their own
+  // ".item-list-scrollable" container under the same section.
+  // If present, we must reorder logs within that container (not the section root),
+  // otherwise entries get moved out of their scrollable list.
+  const scrollableLists = Array.from(
+    section.querySelectorAll(":scope > .item-list-scrollable")
+  ).filter((el) => el instanceof HTMLElement);
+
+  const logListScrollable =
+    scrollableLists.find((el) =>
+      el.querySelector('li.row.entry[data-item-type="log"]')
+    ) ?? null;
+
+  const logContainer = logListScrollable ?? section;
+
   const logEntryEls = Array.from(
-    section.querySelectorAll('li.row.entry[data-item-type="log"]')
+    logContainer.querySelectorAll('li.row.entry[data-item-type="log"]')
   );
   if (!logEntryEls.length) return;
 
-  // The STA sheet renders both the Character Log and Milestones under the same
-  // "milestones" section. Logs must stay between the Character Log header row
-  // and the Milestones/Arcs title.
-  const logTitleEl = section.querySelector(
-    ":scope > div.title.sta-values-title-with-button"
-  );
-  const logHeaderEl = section.querySelector(
-    ":scope > div.title.sta-values-title-with-button + div.header.row.item"
-  );
+  // Try to locate the Log header row (used for some UI tweaks and as a
+  // fallback insertion anchor in older sheet layouts).
+  const topTitles = Array.from(
+    section.querySelectorAll(":scope > div.title")
+  ).filter((el) => el instanceof HTMLElement);
 
-  // Find the first title *after* the log header/title (this is the start of the
-  // Milestones / Arcs area). We intentionally do not rely on localized text.
+  const logTitleEl =
+    section.querySelector(":scope > div.title.sta-values-title-with-button") ??
+    topTitles[0] ??
+    null;
+
+  const logHeaderEl = (() => {
+    const next = logTitleEl?.nextElementSibling ?? null;
+    if (next?.matches?.("div.header.row.item")) return next;
+    const first = section.querySelector(":scope > div.header.row.item");
+    return first?.matches?.("div.header.row.item") ? first : null;
+  })();
+
+  // Old layout (no scrollable wrapper): logs and milestones share a parent.
+  // New layout: we already have a dedicated insertion parent.
   let milestoneTitleEl = null;
-  const walkStart = logHeaderEl ?? logTitleEl ?? null;
-  if (walkStart) {
-    let node = walkStart.nextElementSibling;
-    while (node) {
-      if (node.matches?.("div.title") && node !== logTitleEl) {
-        milestoneTitleEl = node;
-        break;
+  let milestoneHeaderEl = null;
+  let firstMilestoneEntryEl = null;
+
+  let insertionParent = logContainer;
+
+  if (!logListScrollable) {
+    // Find the first title *after* the log header/title (this is the start of the
+    // Milestones / Arcs area). We intentionally do not rely on localized text.
+    const walkStart = logHeaderEl ?? logTitleEl ?? null;
+    if (walkStart) {
+      let node = walkStart.nextElementSibling;
+      while (node) {
+        if (node.matches?.("div.title") && node !== logTitleEl) {
+          milestoneTitleEl = node;
+          break;
+        }
+        node = node.nextElementSibling;
       }
-      node = node.nextElementSibling;
     }
+
+    milestoneHeaderEl = milestoneTitleEl
+      ? milestoneTitleEl.nextElementSibling?.matches?.("div.header.row.item")
+        ? milestoneTitleEl.nextElementSibling
+        : null
+      : null;
+
+    firstMilestoneEntryEl = section.querySelector(
+      'li.row.entry[data-item-type="milestone"]'
+    );
+
+    insertionParent =
+      milestoneTitleEl?.parentElement ??
+      milestoneHeaderEl?.parentElement ??
+      firstMilestoneEntryEl?.parentElement ??
+      logHeaderEl?.parentElement ??
+      logTitleEl?.parentElement ??
+      section;
   }
-
-  const milestoneHeaderEl = milestoneTitleEl
-    ? milestoneTitleEl.nextElementSibling?.matches?.("div.header.row.item")
-      ? milestoneTitleEl.nextElementSibling
-      : null
-    : null;
-
-  const firstMilestoneEntryEl = section.querySelector(
-    'li.row.entry[data-item-type="milestone"]'
-  );
-
-  const insertionParent =
-    milestoneTitleEl?.parentElement ??
-    milestoneHeaderEl?.parentElement ??
-    firstMilestoneEntryEl?.parentElement ??
-    logHeaderEl?.parentElement ??
-    logTitleEl?.parentElement ??
-    section;
 
   // If we wrapped logs previously, unwrap them before any reordering.
   _unwrapArcGroups(insertionParent);
