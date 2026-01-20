@@ -1,3 +1,20 @@
+{{#if hasUnlinkedTokenWarning}}
+<div class="sta-unlinked-token-warning" style="background: #ffebee; border: 1px solid #f44336; border-radius: 4px; padding: 8px 12px; margin-bottom: 12px;">
+  <p style="color: #c62828; font-weight: bold; margin: 0 0 6px 0;">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    {{localize "sta-officers-log.unlinkedToken.warningTitle"}}
+  </p>
+  <p style="color: #c62828; margin: 0 0 6px 0; font-size: 0.9em;">
+    {{localize "sta-officers-log.unlinkedToken.missionDialogWarning"}}
+  </p>
+  <ul style="color: #c62828; margin: 0; padding-left: 20px; font-size: 0.9em;">
+    {{#each unlinkedTokenWarnings}}
+      <li><strong>{{userName}}</strong> → {{actorName}}</li>
+    {{/each}}
+  </ul>
+</div>
+{{/if}}
+
 <div class="form-group">
   <label>{{localize "sta-officers-log.dialog.newMission.missionTitle"}}</label>
   <input
@@ -18,77 +35,77 @@
 
 <hr>
 
-<fieldset>
-  <legend>{{localize "sta-officers-log.dialog.newMission.resetOptions"}}</legend>
+<div class="sta-new-mission-columns">
+  <fieldset class="sta-new-mission-reset-options">
+    <legend>{{localize "sta-officers-log.dialog.newMission.resetOptions"}}</legend>
 
-  <div class="form-group">
-    <label class="checkbox">
-      <input type="checkbox" name="resetCallbacks" checked />
-      {{localize "sta-officers-log.dialog.newMission.resetCallbacks"}}
-    </label>
-  </div>
+    <div class="form-group">
+      <label class="checkbox">
+        <input type="checkbox" name="resetCallbacks" checked />
+        {{localize "sta-officers-log.dialog.newMission.resetCallbacks"}}
+      </label>
+    </div>
 
-  <div class="form-group">
-    <label class="checkbox">
-      <input type="checkbox" name="resetDetermination" checked />
-      {{localize "sta-officers-log.dialog.newMission.resetDetermination"}}
-    </label>
-  </div>
+    <div class="form-group">
+      <label class="checkbox">
+        <input type="checkbox" name="resetDetermination" checked />
+        {{localize "sta-officers-log.dialog.newMission.resetDetermination"}}
+      </label>
+    </div>
 
-  <div class="form-group">
-    <label class="checkbox">
-      <input type="checkbox" name="resetStress" checked />
-      {{localize "sta-officers-log.dialog.newMission.resetStress"}}
-    </label>
-  </div>
+    <div class="form-group">
+      <label class="checkbox">
+        <input type="checkbox" name="resetStress" checked />
+        {{localize "sta-officers-log.dialog.newMission.resetStress"}}
+      </label>
+    </div>
 
-  <div class="form-group">
-    <label class="checkbox">
-      <input type="checkbox" name="resetShipStats" checked />
-      {{localize "sta-officers-log.dialog.newMission.resetShipStats"}}
-    </label>
-  </div>
+    <div class="form-group">
+      <label class="checkbox">
+        <input type="checkbox" name="resetShipStats" checked />
+        {{localize "sta-officers-log.dialog.newMission.resetShipStats"}}
+      </label>
+    </div>
 
-  <div class="form-group">
-    <label class="checkbox">
-      <input type="checkbox" name="resetScars" checked />
-      {{localize "sta-officers-log.dialog.newMission.resetScars"}}
-    </label>
-  </div>
+    <div class="form-group">
+      <label class="checkbox">
+        <input type="checkbox" name="resetScars" checked />
+        {{localize "sta-officers-log.dialog.newMission.resetScars"}}
+      </label>
+    </div>
 
-  <div class="form-group">
-    <label class="checkbox">
-      <input type="checkbox" name="createMissionLogs" checked />
-      {{localize "sta-officers-log.dialog.newMission.createLogs"}}
-    </label>
-    <p class="hint">{{localize "sta-officers-log.dialog.newMission.createLogsHint"}}</p>
-  </div>
-</fieldset>
+    <div class="form-group">
+      <label class="checkbox">
+        <input type="checkbox" name="createMissionLogs" checked />
+        {{localize "sta-officers-log.dialog.newMission.createLogs"}}
+      </label>
+      <p class="hint">{{localize "sta-officers-log.dialog.newMission.createLogsHint"}}</p>
+    </div>
+  </fieldset>
 
-<hr>
+  <fieldset class="sta-new-mission-participants">
+    <legend>{{localize "sta-officers-log.dialog.newMission.participants"}}</legend>
+    <p class="hint">{{localize "sta-officers-log.dialog.newMission.participantsHint"}}</p>
 
-<fieldset>
-  <legend>{{localize "sta-officers-log.dialog.newMission.participants"}}</legend>
-  <p class="hint">{{localize "sta-officers-log.dialog.newMission.participantsHint"}}</p>
-
-  {{#if hasPlayers}}
-    {{#each players}}
-      <div class="form-group">
-        <label class="checkbox">
-          <input
-            type="checkbox"
-            name="p_{{id}}"
-            {{#if checked}}checked{{/if}}
-            {{#unless hasChar}}disabled{{/unless}}
-          />
-          {{name}}
-          {{#unless hasChar}}
-            <span class="hint" style="opacity:.8">({{localize "sta-officers-log.dialog.newMission.noAssignedCharacter"}})</span>
-          {{/unless}}
-        </label>
-      </div>
-    {{/each}}
-  {{else}}
-    <p class="hint">{{localize "sta-officers-log.dialog.newMission.noUsersHint"}}</p>
-  {{/if}}
-</fieldset>
+    {{#if hasPlayers}}
+      {{#each players}}
+        <div class="form-group">
+          <label class="checkbox">
+            <input
+              type="checkbox"
+              name="p_{{id}}"
+              {{#if checked}}checked{{/if}}
+              {{#unless hasChar}}disabled{{/unless}}
+            />
+            {{name}}
+            {{#unless hasChar}}
+              <span class="hint" style="opacity:.8">({{localize "sta-officers-log.dialog.newMission.noAssignedCharacter"}})</span>
+            {{/unless}}
+          </label>
+        </div>
+      {{/each}}
+    {{else}}
+      <p class="hint">{{localize "sta-officers-log.dialog.newMission.noUsersHint"}}</p>
+    {{/if}}
+  </fieldset>
+</div>

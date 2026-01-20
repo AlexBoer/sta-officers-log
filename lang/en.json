@@ -68,8 +68,8 @@
       "usedTooltip": "Mark this Scar as used.",
       "useScar": "Use Scar",
       "useScarTooltip": "Use this Scar (requires GM approval).",
-      "fatigueLabel": "Fatigue",
-      "fatigueTooltip": "Mark this Trait as a Fatigue trait."
+      "fatiguedLabel": "Fatigued",
+      "fatiguedTooltip": "Mark this Trait as a Fatigue trait (auto-created when stress is maxed)."
     },
     "sceneControls": {
       "title": "STA"
@@ -152,7 +152,7 @@
       "useTrauma": {
         "title": "Use Trauma: {value}",
         "prompt": "How are you using {value}?",
-        "positiveDesc": "<strong>Use it to help you succeed.</strong><ul><li>-1 Determination</li><li>+1 Stress</li><li>Before rolling for a free critical success</li><li>After rolling to reroll any dice.</li></ul>",
+        "positiveDesc": "<strong>Use it to help you succeed.</strong><ul><li>-1 Determination</li><li>+{stress} Stress</li><li>Before rolling for a free critical success</li><li>After rolling to reroll any dice.</li></ul>",
         "negativeDesc": "<strong>Comply with a trauma in a way that makes things more complicated.</strong><ul><li>+1 Determination</li><li>-2 Stress</li><li>Cause a Complication</li><li>Increase Stress recovery by increasing the potency of the complication (1:1).</li></ul>",
         "challengeDesc": "<strong>Change who you are.</strong><ul><li>Stress is set to maximum.</li><li>Trauma becomes Challenged.</li><li>Trauma is not rewritten. At the start a of a new mission, the Trauma is restored.</li></ul>",
         "gmTitle": "Approve Trauma Use",
@@ -355,6 +355,12 @@
       "cancel": "Cancel",
       "title": "Delete",
       "body": "Are you sure you want to delete this item?"
+    },
+    "unlinkedToken": {
+      "warningTitle": "Unlinked Token Warning",
+      "warningMessage": "This token is not linked to its world actor. Changes made here (including deletions) will not persist. Enable 'Link Actor Data' in the token's prototype settings.",
+      "missionDialogWarning": "The following player characters have unlinked prototype tokens. Changes made to these characters may not persist correctly:",
+      "deleteWarning": "Warning: This character sheet is from an unlinked token. The deletion may not persist."
     },
     "errors": {
       "socketNotAvailable": "SocketLib socket not available. Is the module initialized on GM and player?",

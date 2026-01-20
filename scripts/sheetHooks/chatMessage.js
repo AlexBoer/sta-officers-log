@@ -4,6 +4,7 @@ import {
 } from "../callbackFlow.js";
 import { MODULE_ID } from "../constants.js";
 import { AUTO_CALLBACK_ON_DETERMINATION_ROLL_SETTING } from "../mission.js";
+import { isTraitFatigue } from "./renderAppV2/itemFlags.js";
 
 // Hook to detect when a Determination roll is made in chat and prompt the user to use a callback.
 // Also checks if the character is fatigued and adds a note to the chat message.
@@ -18,12 +19,9 @@ export function installCreateChatMessageHook() {
       const actor = speakerActorId ? game.actors?.get?.(speakerActorId) : null;
 
       if (actor) {
-        // Check for "fatigued" trait or injury item (case-insensitive, partial match)
+        // Check for trait with isFatigue flag set to true
         const isFatigued = actor.items.some((item) => {
-          const itemName = String(item.name ?? "").toLowerCase();
-          const isTraitOrInjury =
-            item.type === "trait" || item.type === "injury";
-          return itemName.includes("fatigued") && isTraitOrInjury;
+          return item.type === "trait" && isTraitFatigue(item);
         });
 
         if (isFatigued) {

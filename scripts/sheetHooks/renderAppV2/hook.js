@@ -22,6 +22,7 @@ import {
   wasLogCreatedWithTrauma,
   setLogCreatedWithTraumaFlag,
   getLogIconPathForValue,
+  getValueItems,
 } from "../../values.js";
 import {
   createMilestoneItem,
@@ -32,11 +33,7 @@ import {
   sendCallbackPromptToUser,
 } from "../../callbackFlow.js";
 
-import {
-  ATTRIBUTE_KEYS,
-  DISCIPLINE_KEYS,
-  ATTRIBUTE_LABELS,
-} from "../../callbackFlow/dialogs.js";
+import { ATTRIBUTE_KEYS, DISCIPLINE_KEYS } from "../../callbackFlow/dialogs.js";
 import {
   DIRECTIVE_VALUE_ID_PREFIX,
   directiveIconPath,
@@ -62,7 +59,12 @@ import {
 import { filterMilestoneAssociatedLogOptions } from "./milestoneLinks.js";
 import { syncMilestoneImgFromLog } from "../../milestoneIcons.js";
 import { installInlineLogChainLinkControls } from "./logLinkControls.js";
-import { setTraitScarFlag, isTraitScar } from "./itemFlags.js";
+import {
+  setTraitScarFlag,
+  isTraitScar,
+  setTraitFatigueFlag,
+  isTraitFatigue,
+} from "./itemFlags.js";
 import { installConfirmDeleteControls } from "./confirmDelete.js";
 import {
   applyMissionLogSorting,
@@ -80,6 +82,7 @@ import {
 import { installCharacterLogListResizer } from "./logListResizer.js";
 
 import { hasEligibleCallbackTargetForValueId } from "../../logMetadata.js";
+import { findFatiguedTrait } from "../stressHook.js";
 
 let _staCallbacksHelperMilestoneUpdateHookInstalled = false;
 let _staCallbacksHelperItemSheetRenderHookInstalled = false;
@@ -1194,11 +1197,6 @@ function installSupportingBenefitCaps(root) {
 }
 
 function installTraitScarCheckbox(root, item) {
-  // Only show scar checkbox if Scar rules are enabled
-  if (!areScarRulesEnabled()) {
-    return;
-  }
-
   try {
     if (!(root instanceof HTMLElement)) return;
     if (!item || item.type !== "trait") return;
@@ -1229,6 +1227,12 @@ function installTraitScarCheckbox(root, item) {
       );
       if (usedSwitch instanceof HTMLInputElement) {
         usedSwitch.checked = item.getFlag?.(MODULE_ID, "isScarUsed") ?? false;
+      }
+      const fatiguedSwitch = existingControl.querySelector(
+        ".sta-trait-fatigued-switch",
+      );
+      if (fatiguedSwitch instanceof HTMLInputElement) {
+        fatiguedSwitch.checked = isTraitFatigue(item);
       }
       return;
     }
@@ -1271,6 +1275,36 @@ function installTraitScarCheckbox(root, item) {
     usedLabelWrapper.appendChild(usedLabelSpan);
     control.appendChild(usedLabelWrapper);
 
+    // Add divider before Fatigued checkbox
+    const divider = document.createElement("span");
+    divider.className = "sta-trait-checkbox-divider";
+    divider.textContent = "|";
+    control.appendChild(divider);
+
+    // Add the "Fatigued" toggle switch
+    const fatiguedTooltipText =
+      t("sta-officers-log.traits.fatiguedTooltip") ??
+      "Mark this trait as a Fatigued trait (auto-created when stress is maxed).";
+    const fatiguedLabelText =
+      t("sta-officers-log.traits.fatiguedLabel") ?? "Fatigued";
+
+    const fatiguedLabelWrapper = document.createElement("label");
+    fatiguedLabelWrapper.className = "checkbox sta-trait-fatigued-field";
+    fatiguedLabelWrapper.title = fatiguedTooltipText;
+
+    const fatiguedSwitch = document.createElement("input");
+    fatiguedSwitch.type = "checkbox";
+    fatiguedSwitch.className = "sta-trait-fatigued-switch";
+    fatiguedSwitch.checked = isTraitFatigue(item);
+    fatiguedSwitch.title = fatiguedTooltipText;
+
+    const fatiguedLabelSpan = document.createElement("span");
+    fatiguedLabelSpan.textContent = fatiguedLabelText;
+
+    fatiguedLabelWrapper.appendChild(fatiguedSwitch);
+    fatiguedLabelWrapper.appendChild(fatiguedLabelSpan);
+    control.appendChild(fatiguedLabelWrapper);
+
     quantityRow.appendChild(control);
 
     const onChange = async () => {
@@ -1297,86 +1331,27 @@ function installTraitScarCheckbox(root, item) {
       }
     };
 
-    checkbox.addEventListener("change", onChange);
-    usedSwitch.addEventListener("change", onUsedChange);
-  } catch (_) {
-    // ignore
-  }
-}
-
-function installTraitFatigueCheckbox(root, item) {
-  try {
-    if (!(root instanceof HTMLElement)) return;
-    if (!item || item.type !== "trait") return;
-
-    const quantityInput = root.querySelector('input[name="system.quantity"]');
-    if (!(quantityInput instanceof HTMLInputElement)) return;
-    const quantityRow = quantityInput.closest("div.row");
-    if (!(quantityRow instanceof HTMLElement)) return;
-
-    const existingControl = quantityRow.querySelector(
-      ".sta-trait-fatigue-control",
-    );
-    const tooltipText =
-      t("sta-officers-log.traits.fatigueTooltip") ??
-      "Mark this trait as a Fatigue trait.";
-    const labelText = t("sta-officers-log.traits.fatigueLabel") ?? "Fatigue";
-
-    let checkbox;
-    if (existingControl instanceof HTMLElement) {
-      checkbox = existingControl.querySelector(".sta-trait-fatigue-checkbox");
-      if (checkbox instanceof HTMLInputElement) {
-        checkbox.checked = item.getFlag?.(MODULE_ID, "isFatigue") ?? false;
-      }
-      return;
-    }
-
-    const control = document.createElement("div");
-    control.className = "sta-trait-fatigue-control";
-
-    const labelWrapper = document.createElement("label");
-    labelWrapper.className = "checkbox sta-trait-fatigue-field";
-    labelWrapper.title = tooltipText;
-
-    checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.className = "sta-trait-fatigue-checkbox";
-    checkbox.checked = item.getFlag?.(MODULE_ID, "isFatigue") ?? false;
-    checkbox.title = tooltipText;
-
-    const labelSpan = document.createElement("span");
-    labelSpan.textContent = labelText;
-
-    labelWrapper.appendChild(checkbox);
-    labelWrapper.appendChild(labelSpan);
-    control.appendChild(labelWrapper);
-
-    quantityRow.appendChild(control);
-
-    const onChange = async () => {
-      checkbox.disabled = true;
+    const onFatiguedChange = async () => {
+      fatiguedSwitch.disabled = true;
       try {
-        await item.setFlag(MODULE_ID, "isFatigue", checkbox.checked);
+        await setTraitFatigueFlag(item, fatiguedSwitch.checked);
       } catch (err) {
-        console.error(`${MODULE_ID} | trait fatigue toggle failed`, err);
-        checkbox.checked = item.getFlag?.(MODULE_ID, "isFatigue") ?? false;
+        console.error(`${MODULE_ID} | trait fatigued toggle failed`, err);
+        fatiguedSwitch.checked = isTraitFatigue(item);
       } finally {
-        checkbox.disabled = false;
+        fatiguedSwitch.disabled = false;
       }
     };
 
     checkbox.addEventListener("change", onChange);
+    usedSwitch.addEventListener("change", onUsedChange);
+    fatiguedSwitch.addEventListener("change", onFatiguedChange);
   } catch (_) {
     // ignore
   }
 }
 
 function installValueTraumaCheckbox(root, item) {
-  // Only show trauma checkbox if Trauma rules are enabled
-  if (!areTraumaRulesEnabled()) {
-    return;
-  }
-
   try {
     if (!(root instanceof HTMLElement)) return;
     if (!item || item.type !== "value") return;
@@ -1466,54 +1441,6 @@ function installValueTraumaCheckbox(root, item) {
     };
 
     checkbox.addEventListener("change", onChange);
-  } catch (_) {
-    // ignore
-  }
-}
-
-function applyFatigueAttributeStyles(root, actor) {
-  try {
-    if (!(root instanceof HTMLElement)) return;
-    if (!actor || actor.type !== "character") return;
-
-    // Get the fatigued attribute from actor flags
-    const fatiguedAttribute = actor.getFlag?.(MODULE_ID, "fatiguedAttribute");
-    if (!fatiguedAttribute) return;
-
-    // Find the fatigued trait to get its name
-    const fatiguedTrait = Array.from(actor.items ?? []).find(
-      (item) =>
-        item?.type === "trait" &&
-        item.getFlag?.(MODULE_ID, "isFatigue") === true,
-    );
-    if (!fatiguedTrait) return;
-
-    const traitName = fatiguedTrait.name;
-    const attributeLabel = ATTRIBUTE_LABELS[fatiguedAttribute];
-
-    // Find the attribute selector checkbox and disable it
-    const selectorCheckbox = root.querySelector(
-      `input.selector.attribute[id="${fatiguedAttribute}.selector"]`,
-    );
-    if (selectorCheckbox instanceof HTMLInputElement) {
-      selectorCheckbox.disabled = true;
-      selectorCheckbox.classList.add("sta-fatigued-attribute");
-    }
-
-    // Find the attribute label and add strikethrough styling
-    const attributeRow = root
-      .querySelector(
-        `input.selector.attribute[id="${fatiguedAttribute}.selector"]`,
-      )
-      ?.closest("div.row-right");
-
-    if (attributeRow instanceof HTMLElement) {
-      const labelElement = attributeRow.querySelector("div.list-entry");
-      if (labelElement instanceof HTMLElement) {
-        labelElement.classList.add("sta-fatigued-attribute-label");
-        labelElement.title = `${traitName}: Fail all rolls using ${attributeLabel}`;
-      }
-    }
   } catch (_) {
     // ignore
   }
@@ -2253,6 +2180,28 @@ export function installRenderApplicationV2Hook() {
         // ignore
       }
     });
+
+    // Re-render the parent character sheet when a log or milestone item sheet is closed.
+    // This ensures changes made in the item sheet are immediately reflected on the character sheet.
+    Hooks.on("closeItemSheet", (app) => {
+      try {
+        const item =
+          app?.object ??
+          app?.item ??
+          (typeof getItemFromApp === "function" ? getItemFromApp(app) : null);
+        if (!item) return;
+
+        const itemType = item?.type;
+        if (itemType !== "log" && itemType !== "milestone") return;
+
+        const actor = getActorFromAppOrItem(app, item);
+        if (!actor?.id || actor?.type !== "character") return;
+
+        refreshOpenSheet(actor.id);
+      } catch (_) {
+        // ignore
+      }
+    });
   }
 
   Hooks.on("renderApplicationV2", (app, root /* HTMLElement */, _context) => {
@@ -2269,8 +2218,6 @@ export function installRenderApplicationV2Hook() {
         root.dataset.staShowLogUsedToggle = shouldShowLogUsedToggle()
           ? "1"
           : "0";
-        // Apply fatigue attribute styling for STA character sheets
-        applyFatigueAttributeStyles(root, app.actor);
       }
     } catch (_) {
       // ignore
@@ -2310,12 +2257,9 @@ export function installRenderApplicationV2Hook() {
         }
 
         if (actor) {
-          // Check if character is fatigued (case-insensitive, partial match)
+          // Check if character has a trait with isFatigue flag set to true
           const isFatigued = actor.items.some((item) => {
-            const itemName = String(item.name ?? "").toLowerCase();
-            const isTraitOrInjury =
-              item.type === "trait" || item.type === "injury";
-            return itemName.includes("fatigued") && isTraitOrInjury;
+            return item.type === "trait" && isTraitFatigue(item);
           });
 
           if (isFatigued) {
@@ -2393,7 +2337,6 @@ export function installRenderApplicationV2Hook() {
       const item = getItemFromApp(app);
       if (item?.type === "trait") {
         installTraitScarCheckbox(root, item);
-        installTraitFatigueCheckbox(root, item);
       } else if (item?.type === "value") {
         installValueTraumaCheckbox(root, item);
       }
@@ -2406,6 +2349,46 @@ export function installRenderApplicationV2Hook() {
 
     const actor = app.actor;
     if (!actor || actor.type !== "character") return;
+
+    // Mark fatigued attribute checkbox as disabled on the character sheet
+    // Only if a fatigued trait actually exists (not just orphaned flags)
+    try {
+      const fatiguedTrait = findFatiguedTrait(actor);
+      const fatiguedAttribute = actor.getFlag?.(MODULE_ID, "fatiguedAttribute");
+
+      // Clean up orphaned flags if no trait exists but flags are set
+      if (!fatiguedTrait && fatiguedAttribute) {
+        console.log(
+          `${MODULE_ID} | Cleaning up orphaned fatigue flags for ${actor.name}`,
+        );
+        void actor.unsetFlag?.(MODULE_ID, "fatiguedAttribute");
+        void actor.unsetFlag?.(MODULE_ID, "fatiguedTraitUuid");
+      }
+
+      if (fatiguedTrait && fatiguedAttribute) {
+        // Find the attribute checkbox and label and mark them as fatigued
+        const attrCheckbox = root.querySelector(
+          `input.selector.attribute[name="system.attributes.${fatiguedAttribute}.selected"]`,
+        );
+        if (attrCheckbox) {
+          attrCheckbox.classList.add("sta-fatigued-attribute");
+          attrCheckbox.disabled = true;
+          attrCheckbox.title =
+            "This attribute is fatigued - all tasks using it automatically fail.";
+
+          // Find the label - it's the .list-entry sibling in the same .row-right parent
+          const rowParent = attrCheckbox.closest(".row-right");
+          const attrLabel = rowParent?.querySelector(".list-entry");
+          if (attrLabel) {
+            attrLabel.classList.add("sta-fatigued-attribute-label");
+            attrLabel.title =
+              "This attribute is fatigued - all tasks using it automatically fail.";
+          }
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
 
     // Add a "Visualize Story" button to the Character Logs title (when present)
     const anyLogEntry = root.querySelector(
@@ -2647,20 +2630,6 @@ export function installRenderApplicationV2Hook() {
           );
         }
 
-        const toggleCustomDirectiveInput = [
-          "(() => {",
-          "const form = this.form;",
-          "const customGroup = form?.querySelector('[data-sta-directive-custom]');",
-          "const customInput = form?.elements?.directiveText;",
-          "const shouldShow = this.value === '__other__';",
-          "if (customGroup) customGroup.style.display = shouldShow ? '' : 'none';",
-          "if (customInput) {",
-          "  customInput.disabled = !shouldShow;",
-          "  if (shouldShow) customInput.focus();",
-          "}",
-          "})()",
-        ].join(" ");
-
         const pick = await foundry.applications.api.DialogV2.wait({
           window: { title: t("sta-officers-log.dialog.useDirective.title") },
           content: `
@@ -2669,14 +2638,12 @@ export function installRenderApplicationV2Hook() {
                 t("sta-officers-log.dialog.useDirective.pick"),
               )}</label>
               <div class="form-fields">
-                <select name="directiveKey" onchange="${toggleCustomDirectiveInput}">
-                  <option value="" selected disabled hidden>${escapeHTML(
-                    t("sta-officers-log.dialog.useDirective.pick"),
-                  )}</option>
+                <select name="directiveKey">
+                  <option value="" selected disabled></option>
+                  ${directiveOptions.join("")}
                   <option value="__other__">${escapeHTML(
                     t("sta-officers-log.dialog.useDirective.other"),
                   )}</option>
-                  ${directiveOptions.join("")}
                 </select>
               </div>
             </div>
@@ -2703,6 +2670,27 @@ export function installRenderApplicationV2Hook() {
               </p>
             </div>
           `,
+          render: (event, dialog) => {
+            const html = dialog.element;
+            const select = html?.querySelector('select[name="directiveKey"]');
+            const customGroup = html?.querySelector(
+              "[data-sta-directive-custom]",
+            );
+            const customInput = html?.querySelector(
+              'input[name="directiveText"]',
+            );
+            if (select) {
+              select.addEventListener("change", () => {
+                const shouldShow = select.value === "__other__";
+                if (customGroup)
+                  customGroup.style.display = shouldShow ? "" : "none";
+                if (customInput) {
+                  customInput.disabled = !shouldShow;
+                  if (shouldShow) customInput.focus();
+                }
+              });
+            }
+          },
           buttons: [
             {
               action: "ok",

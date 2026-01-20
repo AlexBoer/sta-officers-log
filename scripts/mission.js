@@ -5,6 +5,8 @@ import {
   sanitizeDirectiveText,
   setMissionDirectives,
 } from "./directives.js";
+import { getPlayerCharactersWithUnlinkedPrototypeTokens } from "./sheetHooks/renderAppV2/sheetUtils.js";
+import { resetAllTraumaPositiveUseCounts } from "./values.js";
 
 export const GROUP_SHIP_ACTOR_SETTING = "groupShipActorId";
 export const AUTO_CALLBACK_ON_DETERMINATION_ROLL_SETTING =
@@ -300,6 +302,9 @@ export async function resetMissionCallbacks({ notify = true } = {}) {
     }
   }
   await Promise.allSettled(flagUpdates);
+
+  // Reset trauma positive use counts for cumulative stress tracking
+  await resetAllTraumaPositiveUseCounts();
 
   if (notify) {
     ui.notifications.info(t("sta-officers-log.notifications.callbacksReset"));
@@ -771,6 +776,10 @@ export async function promptNewMissionAndReset() {
     };
   });
 
+  // Check for player characters with unlinked prototype tokens
+  const unlinkedTokenWarnings =
+    getPlayerCharactersWithUnlinkedPrototypeTokens();
+
   const content = await foundry.applications.handlebars.renderTemplate(
     `modules/${MODULE_ID}/templates/new-mission.hbs`,
     {
@@ -778,11 +787,17 @@ export async function promptNewMissionAndReset() {
       directivesText: existingDirectives.join("\n"),
       hasPlayers: playersForTemplate.length > 0,
       players: playersForTemplate,
+      hasUnlinkedTokenWarning: unlinkedTokenWarnings.length > 0,
+      unlinkedTokenWarnings,
     },
   );
 
   const result = await foundry.applications.api.DialogV2.input({
-    window: { title: t("sta-officers-log.dialog.newMission.title") },
+    window: {
+      title: t("sta-officers-log.dialog.newMission.title"),
+      contentClasses: ["sta-new-mission-dialog"],
+    },
+    position: { width: 600 },
     modal: false,
     rejectClose: false,
     content,

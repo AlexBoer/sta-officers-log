@@ -3,16 +3,69 @@ import {
   getMissionLogSortModeForActor,
 } from "./logSorting.js";
 
+/**
+ * Returns true if this actor reference is from an unlinked token.
+ * Changes made to unlinked token actors do not persist to the world actor.
+ * @param {Actor} actor
+ * @returns {boolean}
+ */
+export function isUnlinkedTokenActor(actor) {
+  try {
+    if (!actor) return false;
+    // actor.isToken is true when the actor is a synthetic token actor
+    // actor.token?.actorLink being false means it's not linked to the world actor
+    if (actor.isToken === true) {
+      const tokenDoc = actor.token ?? null;
+      if (tokenDoc && tokenDoc.actorLink === false) {
+        return true;
+      }
+    }
+    return false;
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
+ * Checks if any player-assigned characters have unlinked prototype tokens.
+ * Returns an array of { userId, userName, actorId, actorName } for misconfigured actors.
+ * @returns {Array<{userId: string, userName: string, actorId: string, actorName: string}>}
+ */
+export function getPlayerCharactersWithUnlinkedPrototypeTokens() {
+  const results = [];
+  try {
+    const users = Array.from(game.users ?? []);
+    for (const u of users) {
+      if (u.isGM) continue;
+      const char = u.character;
+      if (!char || char.type !== "character") continue;
+      // Check prototype token (the default token settings for this actor)
+      const prototypeToken = char.prototypeToken ?? null;
+      if (prototypeToken && prototypeToken.actorLink === false) {
+        results.push({
+          userId: u.id,
+          userName: u.name ?? u.id,
+          actorId: char.id,
+          actorName: char.name ?? char.id,
+        });
+      }
+    }
+  } catch (_) {
+    // ignore
+  }
+  return results;
+}
+
 export function getUserIdForCharacterActor(actor) {
   if (!actor) return null;
   // Prefer the (non-GM) user whose assigned character is this actor.
   const users = Array.from(game.users ?? []);
   const assignedNonGM = users.find(
-    (u) => !u.isGM && u.character && u.character.id === actor.id
+    (u) => !u.isGM && u.character && u.character.id === actor.id,
   );
   if (assignedNonGM) return assignedNonGM.id;
   const assignedAny = users.find(
-    (u) => u.character && u.character.id === actor.id
+    (u) => u.character && u.character.id === actor.id,
   );
   return assignedAny?.id ?? null;
 }
@@ -23,7 +76,7 @@ export function canCurrentUserChangeActor(actor) {
     if (typeof actor.isOwner === "boolean") return actor.isOwner;
     return !!actor.testUserPermission?.(
       game.user,
-      CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+      CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
     );
   } catch (_) {
     return false;

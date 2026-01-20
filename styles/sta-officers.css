@@ -628,6 +628,22 @@ div.section.milestones li.row.entry .sta-current-mission-indicator {
   margin-right: 0.25rem;
 }
 
+.sta-trait-checkbox-divider {
+  color: var(--color-border-light-primary, #888);
+  margin: 0 0.35rem;
+  font-weight: bold;
+  user-select: none;
+}
+
+.sta-trait-fatigued-field {
+  margin: 0;
+  cursor: pointer;
+}
+
+.sta-trait-fatigued-field input {
+  margin-right: 0.25rem;
+}
+
 .sta-value-trauma-control {
   display: flex;
   align-items: center;
@@ -1379,6 +1395,33 @@ div.section.milestones li.row.entry[data-item-type="log"] .item-name a {
 
 .talent-loading-dialog .dialog-buttons {
   display: none;
+}
+
+/* =============================================================================
+ * NEW MISSION DIALOG
+ * ============================================================================= */
+
+/* Ensure dialog content scrolls if too tall */
+.sta-new-mission-dialog {
+  overflow: auto;
+}
+
+/* Side-by-side layout for reset options and participants */
+.sta-new-mission-columns {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.sta-new-mission-columns > fieldset {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.sta-new-mission-participants {
+  max-height: 280px;
+  overflow: auto;
 }
 
 /* =============================================================================

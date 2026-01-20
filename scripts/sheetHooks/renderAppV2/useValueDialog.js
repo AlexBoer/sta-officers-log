@@ -97,6 +97,7 @@ export async function promptUseValueChoice({
   valueName,
   canChoosePositive = true,
   isTrauma = false,
+  traumaStressAmount = 1,
 }) {
   return new Promise((resolve) => {
     const app = new UseValueApp({
@@ -112,11 +113,11 @@ export async function promptUseValueChoice({
         {
           action: "positive",
           title: t("sta-officers-log.dialog.useValue.positiveTitle"),
-          description: t(
-            isTrauma
-              ? "sta-officers-log.dialog.useTrauma.positiveDesc"
-              : "sta-officers-log.dialog.useValue.positiveDesc",
-          ),
+          description: isTrauma
+            ? tf("sta-officers-log.dialog.useTrauma.positiveDesc", {
+                stress: traumaStressAmount,
+              })
+            : t("sta-officers-log.dialog.useValue.positiveDesc"),
           disabled: !canChoosePositive,
           buttonLabel: canChoosePositive ? null : "No Determination!",
         },
