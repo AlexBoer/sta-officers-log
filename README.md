@@ -6,9 +6,11 @@ Tools for character development in _Star Trek Adventures_ for Foundry VTT.
   - Marks the current log item with the value's use.
   - checks to see if a callback is possible and prompts the player to make the callback (not not)
   - adjusts determination automatically, and links logs to the one they callback to.
+  - supports setting a value to be a "Trauma" and handles stress tracking from trauma usage automatically. 
 - The GM can start a new mission, which resets Determination and Stress on all character. Then, it creates log items on all main characters withe the mission's name.
 - Sorts and organizes logs by name, date, or into "chain-order" to visualize character arcs.
-- Adds supoosrt for mission directive to log items.
+- Adds support for Scars in te 23rd Century Campaign guide.
+- Adds support for mission directive to log items.
 - UI based milestone/arc benefit picker. Level up right in the VTT! Supports using focus and talent items from the compendium and checks for requirements.
 
 ## Requirements
