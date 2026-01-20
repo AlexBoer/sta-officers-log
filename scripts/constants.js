@@ -23,7 +23,7 @@ export function getStaDefaultIcon() {
     // Some systems expose defaults in CONFIG (defensive lookup).
     const cfgStaDefault = fu?.getProperty?.(
       globalThis?.CONFIG,
-      "sta.defaultImage"
+      "sta.defaultImage",
     );
     if (typeof cfgStaDefault === "string" && cfgStaDefault.trim()) {
       return cfgStaDefault.trim();
@@ -33,7 +33,7 @@ export function getStaDefaultIcon() {
     // prefer that over our hard-coded fallback.
     const itemDefault = fu?.getProperty?.(
       globalThis?.CONFIG,
-      "Item.documentClass.DEFAULT_ICON"
+      "Item.documentClass.DEFAULT_ICON",
     );
     if (
       typeof itemDefault === "string" &&
@@ -54,4 +54,8 @@ export const VALUE_ICON_EXT = "webp";
 
 export function valueIconPath(n) {
   return `modules/${MODULE_ID}/assets/ValueIcons/V${n}.${VALUE_ICON_EXT}`;
+}
+
+export function traumaIconPath(n) {
+  return `modules/${MODULE_ID}/assets/ValueIcons/T${n}.${VALUE_ICON_EXT}`;
 }

@@ -1,6 +1,7 @@
 import { t } from "../i18n.js";
 import { escapeHTML } from "../values.js";
 import { getGroupShipActorId } from "../mission.js";
+import { MODULE_ID } from "../constants.js";
 import {
   ATTRIBUTE_KEYS,
   DISCIPLINE_KEYS,
@@ -51,6 +52,20 @@ function _getGroupShipActor() {
   return game.actors?.get?.(id) ?? null;
 }
 
+async function _promptRenameTrauma(currentName) {
+  return _promptText({
+    title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
+    label: t(
+      "sta-officers-log.dialog.chooseMilestoneBenefit.arcRemoveTraumaRenameLabel",
+    ),
+    name: "traumaNewName",
+    placeholder:
+      t(
+        "sta-officers-log.dialog.chooseMilestoneBenefit.arcRemoveTraumaRenamePlaceholder",
+      ) ?? currentName,
+  });
+}
+
 function _isSupportingActor(actor) {
   const sheetClass =
     actor?.getFlag?.("core", "sheetClass") ??
@@ -88,7 +103,7 @@ function _getEligibleSupportingCharacters() {
   }
 
   eligible.sort((x, y) =>
-    String(x?.name ?? "").localeCompare(String(y?.name ?? ""))
+    String(x?.name ?? "").localeCompare(String(y?.name ?? "")),
   );
   return eligible;
 }
@@ -133,7 +148,7 @@ async function _handleShipPermissionFallback({
     ]);
 
     ui.notifications.info(
-      `Ship benefit queued for GM to apply: ${label}. The GM will be notified when they log in.`
+      `Ship benefit queued for GM to apply: ${label}. The GM will be notified when they log in.`,
     );
 
     return {
@@ -161,8 +176,8 @@ async function _handleShipPermissionFallback({
             <p><strong>${escapeHTML(label)}</strong></p>
             <p><em>${escapeHTML(
               t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.manualConfirmHint"
-              )
+                "sta-officers-log.dialog.chooseMilestoneBenefit.manualConfirmHint",
+              ),
             )}</em></p>
           `,
   });
@@ -190,7 +205,7 @@ async function _handleShipPermissionFallback({
 
 export async function applyArcMilestoneBenefit(
   actor,
-  { initialAction = null } = {}
+  { initialAction = null, traumaValueId = null } = {},
 ) {
   const isSingleAction = initialAction != null;
   let pendingAction = initialAction != null ? String(initialAction) : null;
@@ -199,6 +214,36 @@ export async function applyArcMilestoneBenefit(
     const action = pendingAction ?? (await _promptArcBenefitType());
     pendingAction = null;
     if (!action || action === "cancel") return { applied: false };
+
+    // Handle removeTrauma action
+    if (action === "removeTrauma") {
+      if (!traumaValueId) {
+        ui.notifications?.error("No trauma value specified.");
+        return { applied: false };
+      }
+
+      const traumaItem = actor.items.get(traumaValueId);
+      if (!traumaItem || traumaItem.type !== "value") {
+        ui.notifications?.error("Trauma value not found.");
+        return { applied: false };
+      }
+
+      // Prompt for new name
+      const newName = await _promptRenameTrauma(traumaItem.name ?? "");
+      if (!newName) return { applied: false };
+
+      // Update the item: rename and clear isTrauma flag
+      await traumaItem.update({ name: newName });
+      await traumaItem.setFlag(MODULE_ID, "isTrauma", false);
+
+      return {
+        applied: true,
+        action: "arcRemoveTrauma",
+        traumaValueId,
+        oldName: traumaItem.name,
+        newName,
+      };
+    }
 
     if (action === "attr") {
       const optionsHtml =
@@ -216,7 +261,7 @@ export async function applyArcMilestoneBenefit(
             : "";
           const label = ATTRIBUTE_LABELS[k] ?? k;
           return `<option value="${k}"${dis}>${escapeHTML(label)}${escapeHTML(
-            suffix
+            suffix,
           )}</option>`;
         }).join("");
 
@@ -225,7 +270,7 @@ export async function applyArcMilestoneBenefit(
         picked = await _promptSelect({
           title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
           label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.pickAttribute"
+            "sta-officers-log.dialog.chooseMilestoneBenefit.pickAttribute",
           ),
           name: "attributeKey",
           optionsHtml,
@@ -243,13 +288,13 @@ export async function applyArcMilestoneBenefit(
       const { path, value } = _getFirstExistingNumeric(actor, paths);
       if (!path) {
         ui.notifications?.error(
-          t("sta-officers-log.dialog.chooseMilestoneBenefit.pathMissing")
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.pathMissing"),
         );
         return { applied: false };
       }
       if (value >= 12) {
         ui.notifications?.warn(
-          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyMax")
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyMax"),
         );
         return { applied: false };
       }
@@ -271,7 +316,7 @@ export async function applyArcMilestoneBenefit(
             : "";
           const label = DISCIPLINE_LABELS[k] ?? k;
           return `<option value="${k}"${dis}>${escapeHTML(label)}${escapeHTML(
-            suffix
+            suffix,
           )}</option>`;
         }).join("");
 
@@ -280,7 +325,7 @@ export async function applyArcMilestoneBenefit(
         picked = await _promptSelect({
           title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
           label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.pickDiscipline"
+            "sta-officers-log.dialog.chooseMilestoneBenefit.pickDiscipline",
           ),
           name: "disciplineKey",
           optionsHtml,
@@ -295,13 +340,13 @@ export async function applyArcMilestoneBenefit(
       const { path, value } = _getFirstExistingNumeric(actor, paths);
       if (!path) {
         ui.notifications?.error(
-          t("sta-officers-log.dialog.chooseMilestoneBenefit.pathMissing")
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.pathMissing"),
         );
         return { applied: false };
       }
       if (value >= 5) {
         ui.notifications?.warn(
-          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyMax")
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyMax"),
         );
         return { applied: false };
       }
@@ -327,7 +372,7 @@ export async function applyArcMilestoneBenefit(
       const ship = _getGroupShipActor();
       if (!ship) {
         ui.notifications?.warn?.(
-          "No Group Ship selected. Configure it in Module Settings."
+          "No Group Ship selected. Configure it in Module Settings.",
         );
         return { applied: false };
       }
@@ -341,14 +386,14 @@ export async function applyArcMilestoneBenefit(
           : "";
         const label = SHIP_SYSTEM_LABELS[k] ?? k;
         return `<option value="${k}"${sel}${dis}>${escapeHTML(
-          label
+          label,
         )}${escapeHTML(suffix)}</option>`;
       }).join("");
 
       const picked = await _promptSelect({
         title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
         label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.arcPickShipSystem"
+          "sta-officers-log.dialog.chooseMilestoneBenefit.arcPickShipSystem",
         ),
         name: "shipSystemKey",
         optionsHtml,
@@ -358,7 +403,7 @@ export async function applyArcMilestoneBenefit(
       const key = String(picked);
       if (_getStaSelectionFlag(actor, `system.${key}`)) {
         ui.notifications?.warn(
-          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved")
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved"),
         );
         return { applied: false };
       }
@@ -422,7 +467,7 @@ export async function applyArcMilestoneBenefit(
       const ship = _getGroupShipActor();
       if (!ship) {
         ui.notifications?.warn?.(
-          "No Group Ship selected. Configure it in Module Settings."
+          "No Group Ship selected. Configure it in Module Settings.",
         );
         return { applied: false };
       }
@@ -436,14 +481,14 @@ export async function applyArcMilestoneBenefit(
           : "";
         const label = SHIP_DEPARTMENT_LABELS[k] ?? k;
         return `<option value="${k}"${sel}${dis}>${escapeHTML(
-          label
+          label,
         )}${escapeHTML(suffix)}</option>`;
       }).join("");
 
       const picked = await _promptSelect({
         title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
         label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.arcPickShipDepartment"
+          "sta-officers-log.dialog.chooseMilestoneBenefit.arcPickShipDepartment",
         ),
         name: "shipDepartmentKey",
         optionsHtml,
@@ -453,7 +498,7 @@ export async function applyArcMilestoneBenefit(
       const key = String(picked);
       if (_getStaSelectionFlag(actor, `department.${key}`)) {
         ui.notifications?.warn(
-          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved")
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved"),
         );
         return { applied: false };
       }
@@ -506,7 +551,7 @@ export async function applyArcMilestoneBenefit(
       } catch (err) {
         console.error(
           "sta-officers-log | arc ship department update failed",
-          err
+          err,
         );
         ui.notifications?.error?.("Failed to update the Group Ship.");
         return { applied: false };
@@ -525,7 +570,7 @@ export async function applyArcMilestoneBenefit(
       const ship = _getGroupShipActor();
       if (!ship) {
         ui.notifications?.warn?.(
-          "No Group Ship selected. Configure it in Module Settings."
+          "No Group Ship selected. Configure it in Module Settings.",
         );
         return { applied: false };
       }
@@ -551,7 +596,7 @@ export async function applyArcMilestoneBenefit(
           title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
           html: `
             <p><strong>${t(
-              "sta-officers-log.dialog.chooseMilestoneBenefit.arcAddShipTalent"
+              "sta-officers-log.dialog.chooseMilestoneBenefit.arcAddShipTalent",
             )}</strong></p>
             <p><strong>Group Ship:</strong> ${escapeHTML(ship.name ?? "")}</p>
             <p>You don't have permission to update the Group Ship.</p>
@@ -559,8 +604,8 @@ export async function applyArcMilestoneBenefit(
             <p><strong>${escapeHTML(chosen.name)}</strong></p>
             <p><em>${escapeHTML(
               t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.manualConfirmHint"
-              )
+                "sta-officers-log.dialog.chooseMilestoneBenefit.manualConfirmHint",
+              ),
             )}</em></p>
           `,
         });
@@ -623,7 +668,7 @@ export async function applyNonArcMilestoneBenefit(actor, options = {}) {
 
 export async function applyNonArcMilestoneBenefitInternal(
   actor,
-  { initialAction = null } = {}
+  { initialAction = null } = {},
 ) {
   const isSingleAction = initialAction != null;
   let pendingAction = initialAction != null ? String(initialAction) : null;
@@ -637,7 +682,7 @@ export async function applyNonArcMilestoneBenefitInternal(
       const supportingActors = _getEligibleSupportingCharacters();
       if (!supportingActors.length) {
         ui.notifications?.warn?.(
-          "No editable Supporting Characters found. Make sure the actor uses the STA Supporting Sheet and that you have Owner permissions."
+          "No editable Supporting Characters found. Make sure the actor uses the STA Supporting Sheet and that you have Owner permissions.",
         );
         return { applied: false };
       }
@@ -646,7 +691,7 @@ export async function applyNonArcMilestoneBenefitInternal(
         .map((a, idx) => {
           const sel = idx === 0 ? " selected" : "";
           return `<option value="${escapeHTML(a.id)}"${sel}>${escapeHTML(
-            a.name ?? a.id
+            a.name ?? a.id,
           )}</option>`;
         })
         .join("");
@@ -662,8 +707,8 @@ export async function applyNonArcMilestoneBenefitInternal(
             <div data-sta-callbacks-supporting-benefit="1"></div>
             <p><strong>${escapeHTML(
               t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.giveToSupportingCharacter"
-              )
+                "sta-officers-log.dialog.chooseMilestoneBenefit.giveToSupportingCharacter",
+              ),
             )}</strong></p>
             <div class="form-group">
               <label>Supporting Character</label>
@@ -677,7 +722,7 @@ export async function applyNonArcMilestoneBenefitInternal(
             {
               action: "attr",
               label: t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.increaseAttribute"
+                "sta-officers-log.dialog.chooseMilestoneBenefit.increaseAttribute",
               ),
               default: true,
               callback: (_event, button) => ({
@@ -689,7 +734,7 @@ export async function applyNonArcMilestoneBenefitInternal(
             {
               action: "disc",
               label: t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.increaseDiscipline"
+                "sta-officers-log.dialog.chooseMilestoneBenefit.increaseDiscipline",
               ),
               callback: (_event, button) => ({
                 supportingActorId:
@@ -700,7 +745,7 @@ export async function applyNonArcMilestoneBenefitInternal(
             {
               action: "focus",
               label: t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.addFocus"
+                "sta-officers-log.dialog.chooseMilestoneBenefit.addFocus",
               ),
               callback: (_event, button) => ({
                 supportingActorId:
@@ -711,7 +756,7 @@ export async function applyNonArcMilestoneBenefitInternal(
             {
               action: "talent",
               label: t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.addTalent"
+                "sta-officers-log.dialog.chooseMilestoneBenefit.addTalent",
               ),
               callback: (_event, button) => ({
                 supportingActorId:
@@ -745,14 +790,14 @@ export async function applyNonArcMilestoneBenefitInternal(
         const supportingActor = game.actors?.get?.(supportingActorId) ?? null;
         if (!supportingActor) {
           ui.notifications?.warn?.(
-            "That Supporting Character no longer exists."
+            "That Supporting Character no longer exists.",
           );
           continue;
         }
 
         const appliedToSupporting = await applyNonArcMilestoneBenefit(
           supportingActor,
-          { initialAction: benefitAction }
+          { initialAction: benefitAction },
         );
         if (!appliedToSupporting?.applied) return { applied: false };
 
@@ -772,7 +817,7 @@ export async function applyNonArcMilestoneBenefitInternal(
       const ship = _getGroupShipActor();
       if (!ship) {
         ui.notifications?.warn?.(
-          "No Group Ship selected. Configure it in Module Settings."
+          "No Group Ship selected. Configure it in Module Settings.",
         );
         return { applied: false };
       }
@@ -794,8 +839,8 @@ export async function applyNonArcMilestoneBenefitInternal(
           html: `
             <p><strong>${escapeHTML(
               t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.changeShipStats"
-              )
+                "sta-officers-log.dialog.chooseMilestoneBenefit.changeShipStats",
+              ),
             )}</strong></p>
             <p><strong>Group Ship:</strong> ${escapeHTML(ship.name ?? "")}</p>
             <p>You don't have permission to update the Group Ship.</p>
@@ -807,8 +852,8 @@ export async function applyNonArcMilestoneBenefitInternal(
             </ul>
             <p><em>${escapeHTML(
               t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.manualConfirmHint"
-              )
+                "sta-officers-log.dialog.chooseMilestoneBenefit.manualConfirmHint",
+              ),
             )}</em></p>
           `,
         });
@@ -834,8 +879,8 @@ export async function applyNonArcMilestoneBenefitInternal(
             <div data-sta-callbacks-dialog="choose-benefit"></div>
             <p><strong>${escapeHTML(
               t(
-                "sta-officers-log.dialog.chooseMilestoneBenefit.changeShipStats"
-              )
+                "sta-officers-log.dialog.chooseMilestoneBenefit.changeShipStats",
+              ),
             )}</strong></p>
             <p><strong>Group Ship:</strong> ${escapeHTML(ship.name ?? "")}</p>
             <p>Choose what to decrease/remove and what to increase/add.</p>
@@ -885,7 +930,7 @@ export async function applyNonArcMilestoneBenefitInternal(
               k;
             const sel = selected ? " selected" : "";
             return `<option value="${escapeHTML(k)}"${sel}>${escapeHTML(
-              label
+              label,
             )}</option>`;
           };
 
@@ -917,20 +962,20 @@ export async function applyNonArcMilestoneBenefitInternal(
             const decPath = `system.systems.${dec}.value`;
             const incPath = `system.systems.${inc}.value`;
             const decCur = Number(
-              foundry.utils.getProperty(ship, decPath) ?? 0
+              foundry.utils.getProperty(ship, decPath) ?? 0,
             );
             const incCur = Number(
-              foundry.utils.getProperty(ship, incPath) ?? 0
+              foundry.utils.getProperty(ship, incPath) ?? 0,
             );
 
             const updates = {
               [decPath]: Math.max(
                 0,
-                (Number.isFinite(decCur) ? decCur : 0) - 1
+                (Number.isFinite(decCur) ? decCur : 0) - 1,
               ),
               [incPath]: Math.min(
                 5,
-                (Number.isFinite(incCur) ? incCur : 0) + 1
+                (Number.isFinite(incCur) ? incCur : 0) + 1,
               ),
             };
 
@@ -964,7 +1009,7 @@ export async function applyNonArcMilestoneBenefitInternal(
               k;
             const sel = selected ? " selected" : "";
             return `<option value="${escapeHTML(k)}"${sel}>${escapeHTML(
-              label
+              label,
             )}</option>`;
           };
 
@@ -996,16 +1041,16 @@ export async function applyNonArcMilestoneBenefitInternal(
             const decPath = `system.departments.${dec}.value`;
             const incPath = `system.departments.${inc}.value`;
             const decCur = Number(
-              foundry.utils.getProperty(ship, decPath) ?? 0
+              foundry.utils.getProperty(ship, decPath) ?? 0,
             );
             const incCur = Number(
-              foundry.utils.getProperty(ship, incPath) ?? 0
+              foundry.utils.getProperty(ship, incPath) ?? 0,
             );
 
             const updates = {
               [decPath]: Math.max(
                 0,
-                (Number.isFinite(decCur) ? decCur : 0) - 1
+                (Number.isFinite(decCur) ? decCur : 0) - 1,
               ),
               [incPath]: (Number.isFinite(incCur) ? incCur : 0) + 1,
             };
@@ -1015,7 +1060,7 @@ export async function applyNonArcMilestoneBenefitInternal(
             } catch (err) {
               console.error(
                 "sta-officers-log | ship department swap failed",
-                err
+                err,
               );
               ui.notifications?.error?.("Failed to update the Group Ship.");
               return { applied: false };
@@ -1033,14 +1078,14 @@ export async function applyNonArcMilestoneBenefitInternal(
 
         if (shipAction === "talentSwap") {
           const talents = (ship.items ?? []).filter(
-            (i) => i?.type === "talent" || i?.type === "shipTalent"
+            (i) => i?.type === "talent" || i?.type === "shipTalent",
           );
 
           if (!talents.length) {
             const again = await foundry.applications.api.DialogV2.wait({
               window: {
                 title: t(
-                  "sta-officers-log.dialog.chooseMilestoneBenefit.title"
+                  "sta-officers-log.dialog.chooseMilestoneBenefit.title",
                 ),
                 classes: ["choose-benefit"],
               },
@@ -1053,14 +1098,14 @@ export async function applyNonArcMilestoneBenefitInternal(
                 {
                   action: "back",
                   label: t(
-                    "sta-officers-log.dialog.chooseMilestoneBenefit.back"
+                    "sta-officers-log.dialog.chooseMilestoneBenefit.back",
                   ),
                   default: true,
                 },
                 {
                   action: "cancel",
                   label: t(
-                    "sta-officers-log.dialog.chooseMilestoneBenefit.cancel"
+                    "sta-officers-log.dialog.chooseMilestoneBenefit.cancel",
                   ),
                 },
               ],
@@ -1144,11 +1189,11 @@ export async function applyNonArcMilestoneBenefitInternal(
           const suffix = atMax
             ? ` (${t("sta-officers-log.dialog.chooseMilestoneBenefit.max")})`
             : improved
-            ? ` (${t("sta-officers-log.dialog.chooseMilestoneBenefit.used")})`
-            : "";
+              ? ` (${t("sta-officers-log.dialog.chooseMilestoneBenefit.used")})`
+              : "";
           const label = ATTRIBUTE_LABELS[k] ?? k;
           return `<option value="${k}"${dis}>${escapeHTML(label)}${escapeHTML(
-            suffix
+            suffix,
           )}</option>`;
         }).join("");
 
@@ -1157,7 +1202,7 @@ export async function applyNonArcMilestoneBenefitInternal(
         picked = await _promptSelect({
           title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
           label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.pickAttribute"
+            "sta-officers-log.dialog.chooseMilestoneBenefit.pickAttribute",
           ),
           name: "attributeKey",
           optionsHtml,
@@ -1170,7 +1215,7 @@ export async function applyNonArcMilestoneBenefitInternal(
       const key = String(picked);
       if (_getStaSelectionFlag(actor, `attributes.${key}`)) {
         ui.notifications?.warn(
-          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved")
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved"),
         );
         return { applied: false };
       }
@@ -1181,13 +1226,13 @@ export async function applyNonArcMilestoneBenefitInternal(
       const { path, value } = _getFirstExistingNumeric(actor, paths);
       if (!path) {
         ui.notifications?.error(
-          t("sta-officers-log.dialog.chooseMilestoneBenefit.pathMissing")
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.pathMissing"),
         );
         return { applied: false };
       }
       if (value >= 11) {
         ui.notifications?.warn(
-          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyMax")
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyMax"),
         );
         return { applied: false };
       }
@@ -1209,11 +1254,11 @@ export async function applyNonArcMilestoneBenefitInternal(
           const suffix = atMax
             ? ` (${t("sta-officers-log.dialog.chooseMilestoneBenefit.max")})`
             : improved
-            ? ` (${t("sta-officers-log.dialog.chooseMilestoneBenefit.used")})`
-            : "";
+              ? ` (${t("sta-officers-log.dialog.chooseMilestoneBenefit.used")})`
+              : "";
           const label = DISCIPLINE_LABELS[k] ?? k;
           return `<option value="${k}"${dis}>${escapeHTML(label)}${escapeHTML(
-            suffix
+            suffix,
           )}</option>`;
         }).join("");
 
@@ -1222,7 +1267,7 @@ export async function applyNonArcMilestoneBenefitInternal(
         picked = await _promptSelect({
           title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
           label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.pickDiscipline"
+            "sta-officers-log.dialog.chooseMilestoneBenefit.pickDiscipline",
           ),
           name: "disciplineKey",
           optionsHtml,
@@ -1235,7 +1280,7 @@ export async function applyNonArcMilestoneBenefitInternal(
       const key = String(picked);
       if (_getStaSelectionFlag(actor, `discipline.${key}`)) {
         ui.notifications?.warn(
-          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved")
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyImproved"),
         );
         return { applied: false };
       }
@@ -1243,13 +1288,13 @@ export async function applyNonArcMilestoneBenefitInternal(
       const { path, value } = _getFirstExistingNumeric(actor, paths);
       if (!path) {
         ui.notifications?.error(
-          t("sta-officers-log.dialog.chooseMilestoneBenefit.pathMissing")
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.pathMissing"),
         );
         return { applied: false };
       }
       if (value >= 4) {
         ui.notifications?.warn(
-          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyMax")
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyMax"),
         );
         return { applied: false };
       }
@@ -1262,11 +1307,11 @@ export async function applyNonArcMilestoneBenefitInternal(
     if (action === "focus") {
       if (_isSupportingActor(actor)) {
         const focusCount = (actor.items ?? []).filter(
-          (i) => i?.type === "focus"
+          (i) => i?.type === "focus",
         ).length;
         if (focusCount >= 6) {
           ui.notifications?.warn?.(
-            "Supporting Characters cannot have more than six focuses."
+            "Supporting Characters cannot have more than six focuses.",
           );
           return { applied: false };
         }
@@ -1316,11 +1361,11 @@ export async function applyNonArcMilestoneBenefitInternal(
     if (action === "talent") {
       if (_isSupportingActor(actor)) {
         const talentCount = (actor.items ?? []).filter(
-          (i) => i?.type === "talent" || i?.type === "shipTalent"
+          (i) => i?.type === "talent" || i?.type === "shipTalent",
         ).length;
         if (talentCount >= 4) {
           ui.notifications?.warn?.(
-            "Supporting Characters cannot have more than four talents."
+            "Supporting Characters cannot have more than four talents.",
           );
           return { applied: false };
         }
@@ -1436,6 +1481,10 @@ export function formatChosenBenefitLabel(applied) {
       return applied.name
         ? `New Ship Talent (ask GM to apply): ${applied.name}`
         : "New Ship Talent (ask GM to apply)";
+    case "arcRemoveTrauma":
+      return applied.newName
+        ? `Remove Trauma: ${applied.newName}`
+        : "Remove Trauma";
     default:
       return String(applied.action ?? "");
   }

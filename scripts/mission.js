@@ -109,7 +109,7 @@ export function registerMissionSettings() {
       type: Boolean,
       // Default OFF: this behavior can be noisy and is system/chat-template dependent.
       default: false,
-    }
+    },
   );
 }
 
@@ -165,7 +165,7 @@ export function getCurrentMissionLogIdForUser(userId) {
   const ownedActor = game.actors?.find(
     (a) =>
       a.type === "character" &&
-      a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+      a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
   );
 
   if (ownedActor) {
@@ -190,7 +190,7 @@ export async function setMissionLogForUser(userId, logId) {
     game.actors?.find(
       (a) =>
         a.type === "character" &&
-        a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+        a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
     ) ??
     null;
 
@@ -199,12 +199,12 @@ export async function setMissionLogForUser(userId, logId) {
       await actor.setFlag(
         MODULE_ID,
         "currentMissionLogId",
-        logId ? String(logId) : null
+        logId ? String(logId) : null,
       );
     } catch (err) {
       console.warn(
         `${MODULE_ID} | Failed to set currentMissionLogId flag on actor:`,
-        err
+        err,
       );
     }
   }
@@ -245,7 +245,7 @@ export function hasUsedCallbackThisMission(userId) {
   const actor = game.actors?.find(
     (a) =>
       a.type === "character" &&
-      a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+      a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
   );
 
   if (actor) {
@@ -270,7 +270,7 @@ export async function setUsedCallbackThisMission(userId, used) {
   const actor = game.actors?.find(
     (a) =>
       a.type === "character" &&
-      a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+      a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
   );
 
   if (actor) {
@@ -279,7 +279,7 @@ export async function setUsedCallbackThisMission(userId, used) {
     } catch (err) {
       console.warn(
         `${MODULE_ID} | Failed to set usedCallbackThisMission flag on actor:`,
-        err
+        err,
       );
     }
   }
@@ -295,7 +295,7 @@ export async function resetMissionCallbacks({ notify = true } = {}) {
     } catch (err) {
       console.warn(
         `${MODULE_ID} | Failed to reset usedCallbackThisMission flag on actor:`,
-        err
+        err,
       );
     }
   }
@@ -315,7 +315,7 @@ export async function resetDetermination({ notify = true } = {}) {
   await Promise.allSettled(updates);
   if (notify) {
     ui.notifications.info(
-      t("sta-officers-log.notifications.allDeterminationReset")
+      t("sta-officers-log.notifications.allDeterminationReset"),
     );
   }
 }
@@ -348,8 +348,8 @@ export async function resetShipReadiness({ notify = true } = {}) {
     const resetTo = Number.isFinite(shieldsMax)
       ? shieldsMax
       : Number.isFinite(shieldsValue)
-      ? shieldsValue
-      : 0;
+        ? shieldsValue
+        : 0;
 
     if (type === "starship") {
       updates.push(
@@ -357,7 +357,7 @@ export async function resetShipReadiness({ notify = true } = {}) {
           "system.reservepower": true,
           "system.shields.value": resetTo,
           "system.shaken": false,
-        })
+        }),
       );
     } else {
       // Small craft: shields only (no reserve power).
@@ -368,8 +368,34 @@ export async function resetShipReadiness({ notify = true } = {}) {
   await Promise.allSettled(updates);
   if (notify) {
     ui.notifications.info(
-      t("sta-officers-log.notifications.allShipReadinessReset")
+      t("sta-officers-log.notifications.allShipReadinessReset"),
     );
+  }
+}
+
+export async function resetScarUsed({ notify = true } = {}) {
+  const flagUpdates = [];
+  for (const actor of game.actors ?? []) {
+    if (actor.type !== "character") continue;
+    const items = actor.items ?? [];
+    for (const item of items) {
+      if (item.type !== "trait") continue;
+      const isScar = item.getFlag?.(MODULE_ID, "isScar") ?? false;
+      if (!isScar) continue;
+      try {
+        flagUpdates.push(item.unsetFlag(MODULE_ID, "isScarUsed"));
+      } catch (err) {
+        console.warn(
+          `${MODULE_ID} | Failed to reset isScarUsed flag on trait item:`,
+          err,
+        );
+      }
+    }
+  }
+  await Promise.allSettled(flagUpdates);
+
+  if (notify) {
+    ui.notifications.info(t("sta-officers-log.notifications.scarsReset"));
   }
 }
 
@@ -552,7 +578,7 @@ export async function ensureNewSceneMacro() {
   const existing = (game.macros ?? []).find(
     (m) =>
       m?.name === name &&
-      (m?.type ?? m?.command ? "script" : m?.type) !== "chat"
+      ((m?.type ?? m?.command) ? "script" : m?.type) !== "chat",
   );
 
   try {
@@ -595,7 +621,7 @@ async function addMissionLogToUser(user, missionTitle) {
     0,
     ...actor.items
       .filter((i) => i.type === "log")
-      .map((i) => Number(i.sort ?? 0))
+      .map((i) => Number(i.sort ?? 0)),
   );
 
   const directivesSnapshot = getMissionDirectives();
@@ -619,7 +645,7 @@ async function addMissionLogToUser(user, missionTitle) {
 
 export async function addParticipantToCurrentMission(
   userId,
-  { createLog = true } = {}
+  { createLog = true } = {},
 ) {
   if (!game.user.isGM)
     return ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
@@ -627,13 +653,13 @@ export async function addParticipantToCurrentMission(
   const user = game.users.get(userId);
   if (!user || user.isGM)
     return ui.notifications.warn(
-      t("sta-officers-log.notifications.invalidUser")
+      t("sta-officers-log.notifications.invalidUser"),
     );
   if (!user.character)
     return ui.notifications.warn(
       tf("sta-officers-log.notifications.userNoCharacter", {
         user: user.name,
-      })
+      }),
     );
 
   const title = (game.settings.get(MODULE_ID, "missionTitle") ?? "").trim();
@@ -641,13 +667,13 @@ export async function addParticipantToCurrentMission(
 
   // 1) Add to participants list
   const participants = new Set(
-    game.settings.get(MODULE_ID, "missionParticipants") ?? []
+    game.settings.get(MODULE_ID, "missionParticipants") ?? [],
   );
   participants.add(userId);
   await game.settings.set(
     MODULE_ID,
     "missionParticipants",
-    Array.from(participants)
+    Array.from(participants),
   );
 
   // 2) Ensure they can still callback this mission
@@ -666,7 +692,7 @@ export async function addParticipantToCurrentMission(
         })
       : tf("sta-officers-log.notifications.addedToMission", {
           user: user.name,
-        })
+        }),
   );
 }
 
@@ -676,7 +702,7 @@ export async function promptAddParticipant() {
     return ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
 
   const participants = new Set(
-    game.settings.get(MODULE_ID, "missionParticipants") ?? []
+    game.settings.get(MODULE_ID, "missionParticipants") ?? [],
   );
   const users = game.users.filter((u) => !u.isGM);
 
@@ -685,7 +711,7 @@ export async function promptAddParticipant() {
 
   if (!available.length) {
     return ui.notifications.warn(
-      t("sta-officers-log.notifications.allPlayersAlreadyInMission")
+      t("sta-officers-log.notifications.allPlayersAlreadyInMission"),
     );
   }
 
@@ -701,7 +727,7 @@ export async function promptAddParticipant() {
         id: u.id,
         name: u.name ?? "",
       })),
-    }
+    },
   );
 
   const result = await foundry.applications.api.DialogV2.input({
@@ -730,7 +756,7 @@ export async function promptNewMissionAndReset() {
 
   const currentTitle = game.settings.get(MODULE_ID, "missionTitle") ?? "";
   const prevParticipants = new Set(
-    game.settings.get(MODULE_ID, "missionParticipants") ?? []
+    game.settings.get(MODULE_ID, "missionParticipants") ?? [],
   );
 
   const players = game.users.filter((u) => !u.isGM);
@@ -752,7 +778,7 @@ export async function promptNewMissionAndReset() {
       directivesText: existingDirectives.join("\n"),
       hasPlayers: playersForTemplate.length > 0,
       players: playersForTemplate,
-    }
+    },
   );
 
   const result = await foundry.applications.api.DialogV2.input({
@@ -772,6 +798,7 @@ export async function promptNewMissionAndReset() {
   const doResetDetermination = Boolean(result.resetDetermination);
   const doResetStress = Boolean(result.resetStress);
   const doResetShipStats = Boolean(result.resetShipStats);
+  const doResetScars = Boolean(result.resetScars);
   const createMissionLogs = Boolean(result.createMissionLogs);
 
   // Update mission directives (persist until GM edits again)
@@ -791,6 +818,7 @@ export async function promptNewMissionAndReset() {
   if (doResetDetermination) await resetDetermination({ notify: false });
   if (doResetStress) await resetStress({ notify: false });
   if (doResetShipStats) await resetShipReadiness({ notify: false });
+  if (doResetScars) await resetScarUsed({ notify: false });
 
   // Determine selected participants
   const selectedUserIds = players

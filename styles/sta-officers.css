@@ -482,8 +482,9 @@
  * ACTOR SHEET (Values / Milestones injections)
  * ============================================================================= */
 
-/* Character sheet: draggable divider to resize Character Log list height */
-div.section.milestones > .staol-log-resizer {
+/* Character sheet: draggable divider to resize Character Log/Milestones list height */
+div.section.milestones > .staol-log-resizer,
+div.section.milestones > .staol-milestone-resizer {
   height: 8px;
   margin: 2px 0 6px 0;
   cursor: row-resize;
@@ -495,7 +496,8 @@ div.section.milestones > .staol-log-resizer {
   position: relative;
 }
 
-div.section.milestones > .staol-log-resizer::after {
+div.section.milestones > .staol-log-resizer::after,
+div.section.milestones > .staol-milestone-resizer::after {
   content: "";
   position: absolute;
   left: 10px;
@@ -507,7 +509,8 @@ div.section.milestones > .staol-log-resizer::after {
   border-radius: 2px;
 }
 
-div.section.milestones > .staol-log-resizer:hover {
+div.section.milestones > .staol-log-resizer:hover,
+div.section.milestones > .staol-milestone-resizer:hover {
   background: rgba(250, 223, 71, 0.10);
   border-color: rgba(250, 223, 71, 0.35);
 }
@@ -597,6 +600,7 @@ div.section.milestones li.row.entry .sta-current-mission-indicator {
     padding: 0.1rem 0.45rem;
     border: thin solid white;
     border-radius: 10px;
+    white-space: nowrap;
 }
 
 .sta-inline-sheet-btn.is-disabled {
@@ -607,6 +611,36 @@ div.section.milestones li.row.entry .sta-current-mission-indicator {
 .sta-inline-sheet-btn:hover {
     border-color:goldenrod;
     color: goldenrod;
+}
+
+.sta-trait-scar-control {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sta-trait-scar-control .checkbox {
+  margin: 0;
+  cursor: pointer;
+}
+
+.sta-trait-scar-control .checkbox input {
+  margin-right: 0.25rem;
+}
+
+.sta-value-trauma-control {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sta-value-trauma-control .checkbox {
+  margin: 0;
+  cursor: pointer;
+}
+
+.sta-value-trauma-control .checkbox input {
+  margin-right: 0.25rem;
 }
 
 /* Chain-sort: visually nest subsequent logs in a callback chain */
@@ -873,6 +907,20 @@ div.section.milestones li.row.entry[data-item-type="log"] .item-name a {
   width: 100%;
 }
 
+.item-sheet .sta-directive-value-row .sta-directive-inline-text:read-only,
+.sta-directive-value-row .sta-directive-inline-text:read-only {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--color-text-primary);
+  padding: 0;
+  height: auto;
+  font-size: inherit;
+  font-family: inherit;
+  line-height: 1.25;
+  cursor: default;
+}
+
 .item-sheet .sta-directive-name-cell,
 .sta-directive-name-cell {
   display: flex;
@@ -891,8 +939,26 @@ div.section.milestones li.row.entry[data-item-type="log"] .item-name a {
   color: var(--color-text-light-6);
 }
 
+.item-sheet .sta-directive-edit-btn,
+.sta-directive-edit-btn {
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  padding: 0.15rem 0.35rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-text-light-6);
+}
+
 .item-sheet .sta-directive-remove-btn:hover,
 .sta-directive-remove-btn:hover {
+  color: var(--color-text-light-1);
+}
+
+.item-sheet .sta-directive-edit-btn:hover,
+.sta-directive-edit-btn:hover,
+.item-sheet .sta-directive-value-row.sta-directive-editing .sta-directive-edit-btn,
+.sta-directive-value-row.sta-directive-editing .sta-directive-edit-btn {
   color: var(--color-text-light-1);
 }
 
@@ -1276,4 +1342,58 @@ div.section.milestones li.row.entry[data-item-type="log"] .item-name a {
 .sta-officers-log-context-menu:hover {
     border: solid rgb(246, 248, 97) 1px;
     background: rgb(59, 59, 59);
+}
+
+/* Talent picker loading dialog */
+.talent-loading-dialog .sta-talent-loading-dialog {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 220px;
+  min-height: 60px;
+  font-size: var(--font-size-14);
+  color: var(--color-text-light-primary);
+}
+
+.talent-loading-dialog .sta-talent-loading-message {
+  margin: 0;
+}
+
+.talent-loading-dialog .sta-talent-loading-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  animation: sta-talent-loading-spin 0.75s linear infinite;
+}
+
+@keyframes sta-talent-loading-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.talent-loading-dialog .dialog-buttons {
+  display: none;
+}
+
+/* =============================================================================
+ * FATIGUED ATTRIBUTE STYLING
+ * ============================================================================= */
+
+/* Disable fatigued attribute checkbox */
+input.selector.attribute.sta-fatigued-attribute {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Cross out fatigued attribute label */
+.sta-fatigued-attribute-label {
+  text-decoration: line-through;
+  opacity: 0.6;
+  cursor: not-allowed;
 }

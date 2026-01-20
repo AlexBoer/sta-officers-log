@@ -16,6 +16,8 @@ import {
   normalizeValueStateArray,
   isValueInvokedState,
   mergeValueStateArray,
+  isValueTrauma,
+  setLogCreatedWithTraumaFlag,
 } from "../values.js";
 import {
   directiveIconPath,
@@ -23,7 +25,6 @@ import {
   getDirectiveKeyFromValueId,
   getDirectiveTextForValueId,
   getMissionDirectives,
-  isDirectiveChallenged,
   isDirectiveValueId,
   makeDirectiveValueIdFromText,
 } from "../directives.js";
@@ -70,7 +71,7 @@ function buildValuesPayload(
   actor,
   directiveValueIds = [],
   logsPayload = [],
-  completedArcEndLogIds = new Set()
+  completedArcEndLogIds = new Set(),
 ) {
   const values = getValueItems(actor).slice();
 
@@ -130,7 +131,6 @@ function buildValuesPayload(
     return {
       id: directiveValueId,
       name,
-      disabled: isDirectiveChallenged(actor, key),
     };
   });
 
@@ -181,7 +181,7 @@ async function applyCallbackUpdates(
   response,
   targetUser,
   actorDoc,
-  { suppressRewardErrors = false } = {}
+  { suppressRewardErrors = false } = {},
 ) {
   const chosenLog = actorDoc.items.get(response.logId);
   if (!chosenLog) {
@@ -197,7 +197,7 @@ async function applyCallbackUpdates(
     console.error(
       "Chosen value not found on actor:",
       response.valueId,
-      actorDoc
+      actorDoc,
     );
     return;
   }
@@ -226,17 +226,17 @@ async function applyCallbackUpdates(
 
     if (!allowed) {
       ui.notifications?.warn?.(
-        "Another player already used that log for a callback. Choose another log."
+        "Another player already used that log for a callback. Choose another log.",
       );
       return;
     }
   } catch (err) {
     console.warn(
       "sta-officers-log | Callback rejected: unable to validate callback target uniqueness.",
-      err
+      err,
     );
     ui.notifications?.warn?.(
-      "Callback rejected: unable to validate callback target uniqueness."
+      "Callback rejected: unable to validate callback target uniqueness.",
     );
     return;
   }
@@ -248,12 +248,12 @@ async function applyCallbackUpdates(
       const primary = getPrimaryValueIdForLog(
         actorDoc,
         chosenLog,
-        getValueItems(actorDoc)
+        getValueItems(actorDoc),
       );
       const chosenValueId = String(response.valueId ?? "");
       if (primary && chosenValueId && String(primary) !== chosenValueId) {
         ui.notifications?.warn(
-          `Callback rejected: ${chosenLog.name} is in a different primary-value chain.`
+          `Callback rejected: ${chosenLog.name} is in a different primary-value chain.`,
         );
         return;
       }
@@ -261,10 +261,10 @@ async function applyCallbackUpdates(
   } catch (err) {
     console.warn(
       "sta-officers-log | Callback rejected: unable to validate chain rules.",
-      err
+      err,
     );
     ui.notifications?.warn(
-      "Callback rejected: unable to validate chain rules."
+      "Callback rejected: unable to validate chain rules.",
     );
     return;
   }
@@ -280,8 +280,8 @@ async function applyCallbackUpdates(
   const valueImg = isDirectiveValueId(valueId)
     ? directiveIconPath()
     : chosenValue?.img
-    ? String(chosenValue.img)
-    : "";
+      ? String(chosenValue.img)
+      : "";
 
   // Consolidate database operations into 3 atomic groups for better reliability
 
@@ -295,12 +295,12 @@ async function applyCallbackUpdates(
     if (failed.length) {
       console.error(
         "sta-officers-log | Group 1 updates had failures:",
-        failed.map((f) => f.reason)
+        failed.map((f) => f.reason),
       );
     }
   }
 
-  // Group 2: Chosen log updates (mark used, primary value, image)
+  // Group 2: Chosen log updates (mark used, primary value, image, trauma flag)
   const chosenLogUpdates = [];
 
   // Mark log as used
@@ -308,11 +308,18 @@ async function applyCallbackUpdates(
 
   // Set primary value if not already set
   const existingPrimary = String(
-    chosenLog.getFlag?.(MODULE_ID, "primaryValueId") ?? ""
+    chosenLog.getFlag?.(MODULE_ID, "primaryValueId") ?? "",
   );
   if (!existingPrimary) {
     chosenLogUpdates.push(
-      chosenLog.setFlag(MODULE_ID, "primaryValueId", valueId)
+      chosenLog.setFlag(MODULE_ID, "primaryValueId", valueId),
+    );
+    // Record whether this log was created with a trauma as its primary value.
+    // This flag persists so logs keep their V# or T# prefix even if the value's
+    // trauma status later changes.
+    const valueIsTrauma = chosenValue ? isValueTrauma(chosenValue) : false;
+    chosenLogUpdates.push(
+      setLogCreatedWithTraumaFlag(chosenLog, valueIsTrauma),
     );
   }
 
@@ -331,7 +338,7 @@ async function applyCallbackUpdates(
     if (failed.length) {
       console.error(
         "sta-officers-log | Group 2 updates had failures:",
-        failed.map((f) => f.reason)
+        failed.map((f) => f.reason),
       );
     }
   }
@@ -352,7 +359,7 @@ async function applyCallbackUpdates(
       if (failed.length) {
         console.error(
           "sta-officers-log | Group 3 (phase 1) updates had failures:",
-          failed.map((f) => f.reason)
+          failed.map((f) => f.reason),
         );
       }
     }
@@ -379,14 +386,24 @@ async function applyCallbackUpdates(
       currentLog.update({
         [`system.valueStates.${valueId}`]: mergeValueStateArray(
           existingRaw,
-          valueState
+          valueState,
         ),
-      })
+      }),
     );
 
     // Set primary value flag
     currentLogUpdates.push(
-      currentLog.setFlag(MODULE_ID, "primaryValueId", valueId)
+      currentLog.setFlag(MODULE_ID, "primaryValueId", valueId),
+    );
+
+    // Record whether this log was created with a trauma as its primary value.
+    // This flag persists so logs keep their V# or T# prefix even if the value's
+    // trauma status later changes.
+    const currentLogValueIsTrauma = chosenValue
+      ? isValueTrauma(chosenValue)
+      : false;
+    currentLogUpdates.push(
+      setLogCreatedWithTraumaFlag(currentLog, currentLogValueIsTrauma),
     );
 
     // Set arc info if applicable
@@ -402,7 +419,7 @@ async function applyCallbackUpdates(
         valueId,
         valueImg,
         arc: arcInfo,
-      })
+      }),
     );
 
     // Update image if needed
@@ -416,7 +433,7 @@ async function applyCallbackUpdates(
       if (failed.length) {
         console.error(
           "sta-officers-log | Group 3 (phase 2) updates had failures:",
-          failed.map((f) => f.reason)
+          failed.map((f) => f.reason),
         );
       }
     }
@@ -425,7 +442,7 @@ async function applyCallbackUpdates(
   ui.notifications.info(
     `${targetUser.name} made a callback${
       chosenLog?.name ? ` (${chosenLog.name})` : ""
-    }.`
+    }.`,
   );
 
   const rewardHtml = `
@@ -446,18 +463,18 @@ async function applyCallbackUpdates(
       await moduleSocket.executeAsUser(
         "showCallbackReward",
         targetUser.id,
-        rewardPayload
+        rewardPayload,
       );
     } catch (err) {
       if (!suppressRewardErrors) {
         console.error(
           "sta-officers-log | Failed sending callback reward notification:",
-          err
+          err,
         );
       } else {
         console.debug(
           "sta-officers-log | Suppressed reward notification error:",
-          err
+          err,
         );
       }
     }
@@ -479,7 +496,7 @@ async function orchestrateCallbackPrompt({
   if (hasUsedCallbackThisMission(targetUser.id)) {
     if (warnOnUsed) {
       ui.notifications.warn(
-        `${targetUser.name} already made a callback this mission.`
+        `${targetUser.name} already made a callback this mission.`,
       );
     }
     return;
@@ -508,13 +525,13 @@ async function orchestrateCallbackPrompt({
       i.type === "log" &&
       !isLogUsed(i) &&
       i.id !== missionLogId &&
-      !callbackTargetIds.has(String(i.id))
+      !callbackTargetIds.has(String(i.id)),
   );
 
   if (!unusedLogs.length) {
     if (warnOnNoLogs) {
       ui.notifications.warn(
-        `${targetUser.name} has no eligible logs to callback to.`
+        `${targetUser.name} has no eligible logs to callback to.`,
       );
     }
     return;
@@ -605,7 +622,7 @@ async function orchestrateCallbackPrompt({
     actor,
     Array.from(directiveValueIds),
     logsPayload,
-    completedArcEndLogIds
+    completedArcEndLogIds,
   );
 
   const bodyHtml = `
@@ -619,7 +636,7 @@ async function orchestrateCallbackPrompt({
   const requestId = foundry.utils.randomID();
 
   const dvs = ["positive", "negative", "challenged"].includes(
-    String(defaultValueState)
+    String(defaultValueState),
   )
     ? String(defaultValueState)
     : "positive";
@@ -677,7 +694,7 @@ async function orchestrateCallbackPrompt({
       ui.notifications.info(`${targetUser.name} skipped the callback.`);
     } else if (response?.action === "timeout") {
       ui.notifications.info(
-        `${targetUser.name} did not respond to the callback prompt.`
+        `${targetUser.name} did not respond to the callback prompt.`,
       );
     }
     return;
@@ -698,7 +715,7 @@ export async function sendCallbackPromptToUser(
     messageId = "",
     defaultValueId = "",
     defaultValueState = "positive",
-  } = {}
+  } = {},
 ) {
   // Allow GM to prompt any player, or a player to prompt themselves
   const isGMPrompting = game.user.isGM && targetUser.id !== game.user.id;
@@ -712,7 +729,7 @@ export async function sendCallbackPromptToUser(
   const actor = targetUser.character;
   if (!actor) {
     ui.notifications.warn(
-      `${targetUser.name} has no assigned character (User Configuration → Character).`
+      `${targetUser.name} has no assigned character (User Configuration → Character).`,
     );
     return;
   }
@@ -720,7 +737,7 @@ export async function sendCallbackPromptToUser(
   // If GM is prompting a different player, use socket RPC to show dialog on player's client
   if (isGMPrompting) {
     console.debug(
-      "[sta-officers-log] sendCallbackPromptToUser: GM is prompting a different player, using socket RPC"
+      "[sta-officers-log] sendCallbackPromptToUser: GM is prompting a different player, using socket RPC",
     );
     const moduleSocket = getModuleSocket();
     console.debug("[sta-officers-log] moduleSocket:", {
@@ -737,7 +754,7 @@ export async function sendCallbackPromptToUser(
           messageId,
           defaultValueId,
           defaultValueState,
-        }
+        },
       );
       console.debug("[sta-officers-log] socket call completed successfully");
     } catch (err) {
@@ -767,7 +784,7 @@ export async function promptCallbackForUserId(
     messageId = "",
     defaultValueId = "",
     defaultValueState = "positive",
-  } = {}
+  } = {},
 ) {
   if (!game.user.isGM) return;
   const u = targetUserId ? game.users.get(String(targetUserId)) : null;
@@ -791,7 +808,7 @@ export async function promptCallbackForActorAsGM(
     messageId = "",
     defaultValueId = "",
     defaultValueState = "positive",
-  } = {}
+  } = {},
 ) {
   if (!game.user?.isGM) return;
   if (!actor || actor.type !== "character") return;
@@ -800,7 +817,7 @@ export async function promptCallbackForActorAsGM(
   const targetUser = userId ? game.users.get(userId) : null;
   if (!targetUser || targetUser.isGM) {
     ui.notifications?.warn(
-      "Cannot prompt for callback: no owning player user found for this character."
+      "Cannot prompt for callback: no owning player user found for this character.",
     );
     return;
   }
@@ -833,7 +850,7 @@ export async function openGMFlow() {
   const players = getActiveNonGMUsers();
   if (!players.length) {
     return ui.notifications.warn(
-      t("sta-officers-log.warnings.noActivePlayers")
+      t("sta-officers-log.warnings.noActivePlayers"),
     );
   }
 
@@ -842,7 +859,7 @@ export async function openGMFlow() {
     return ui.notifications.warn(
       tf("sta-officers-log.warnings.alreadyUsedThisMission", {
         user: players[0].name,
-      })
+      }),
     );
   }
 
@@ -855,7 +872,7 @@ export async function openGMFlow() {
 
     if (!available.length) {
       return ui.notifications.warn(
-        t("sta-officers-log.warnings.allActivePlayersUsed")
+        t("sta-officers-log.warnings.allActivePlayersUsed"),
       );
     }
 
@@ -870,8 +887,8 @@ export async function openGMFlow() {
       .map(
         (u) =>
           `<option value="${u.id}" disabled>${escapeHTML(
-            u.name
-          )} (already used)</option>`
+            u.name,
+          )} (already used)</option>`,
       )
       .join("");
 
@@ -885,7 +902,7 @@ export async function openGMFlow() {
             ${optionsUsed}
           </select>
           <p class="hint">${t(
-            "sta-officers-log.dialog.pickPlayer.usedHint"
+            "sta-officers-log.dialog.pickPlayer.usedHint",
           )}</p>
         </div>
       `,
@@ -910,7 +927,7 @@ export async function openGMFlow() {
     target = game.users.get(picked);
     if (!target?.active)
       return ui.notifications.warn(
-        t("sta-officers-log.warnings.userNotConnected")
+        t("sta-officers-log.warnings.userNotConnected"),
       );
 
     // Double-check (in case state changed while dialog was open)
@@ -918,7 +935,7 @@ export async function openGMFlow() {
       return ui.notifications.warn(
         tf("sta-officers-log.warnings.alreadyUsedThisMission", {
           user: target.name,
-        })
+        }),
       );
     }
   }
@@ -929,7 +946,7 @@ export async function openGMFlow() {
     ui.notifications.warn(
       tf("sta-officers-log.warnings.userNoCharacter", {
         user: target.name,
-      })
+      }),
     );
     return;
   }

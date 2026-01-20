@@ -58,14 +58,8 @@ export function getPrimaryValueIdForLog(actor, log, valueItems = null) {
     const arcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
     const arcVal = arcInfo?.valueId ? String(arcInfo.valueId) : "";
     if (arcVal) return arcVal;
-
-    // NOTE: We intentionally do NOT infer primary value from log.img.
-    // Value icons (V1..V8) are assigned based on the actor's Value list order.
-    // Creating/inserting/reordering Values will change that mapping, which would
-    // retroactively change inferred primaries and reshuffle existing chains.
-    //
+    
     // If we reach here, the log has no stable primary value recorded.
-    // Callers should treat this as "unknown" rather than guessing.
     void valueItems;
     void getValueItems;
     return "";

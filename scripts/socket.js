@@ -23,7 +23,7 @@ import {
 
 function _hasEligibleCallbackTargetWithAnyInvokedDirective(
   actor,
-  currentMissionLogId
+  currentMissionLogId,
 ) {
   try {
     if (!actor || actor.type !== "character") return false;
@@ -115,7 +115,7 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     const fn = api?.promptCallbackForUserId;
     if (typeof fn !== "function") {
       console.warn(
-        `${MODULE_ID} | promptCallbackForUserId API not available on GM client.`
+        `${MODULE_ID} | promptCallbackForUserId API not available on GM client.`,
       );
       return false;
     }
@@ -137,13 +137,12 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     }
 
     // Import directly and call the function
-    const { sendCallbackPromptToUser } = await import(
-      "./callbackFlow/gmFlow.js"
-    );
+    const { sendCallbackPromptToUser } =
+      await import("./callbackFlow/gmFlow.js");
 
     if (typeof sendCallbackPromptToUser !== "function") {
       console.error(
-        "[sta-officers-log] sendCallbackPromptToUser not found in gmFlow.js"
+        "[sta-officers-log] sendCallbackPromptToUser not found in gmFlow.js",
       );
       return;
     }
@@ -175,12 +174,12 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     // Mirror getUserIdForCharacterActor() from sheet utils to enforce per-actor mapping.
     const users = Array.from(game.users ?? []);
     const assignedNonGM = users.find(
-      (u) => !u.isGM && u.character && u.character.id === actor.id
+      (u) => !u.isGM && u.character && u.character.id === actor.id,
     );
     const expectedUserId = assignedNonGM
       ? assignedNonGM.id
-      : users.find((u) => u.character && u.character.id === actor.id)?.id ??
-        null;
+      : (users.find((u) => u.character && u.character.id === actor.id)?.id ??
+        null);
 
     if (!expectedUserId || String(expectedUserId) !== userId) return false;
 
@@ -235,6 +234,7 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
       return { approved: false, reason: "invalid-usage" };
     }
 
+    const isTrauma = msg.isTrauma === true;
     const requestingUserName = _formatUserName(msg.requestingUserId);
     const valueName = msg.valueName ?? valueItem.name ?? "";
     const actorName = msg.actorName ?? actor.name ?? "";
@@ -242,21 +242,28 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     const shouldAutoApprove =
       msg.autoApprove === true && msg.requestingUserId === game.user.id;
 
+    const gmTitle = isTrauma
+      ? t("sta-officers-log.dialog.useTrauma.gmTitle")
+      : t("sta-officers-log.dialog.useValue.gmTitle");
+    const gmHint = isTrauma
+      ? t("sta-officers-log.dialog.useTrauma.gmHint")
+      : t("sta-officers-log.dialog.useValue.gmHint");
+
     const approved = shouldAutoApprove
       ? true
       : (await foundry.applications.api.DialogV2.wait({
-          window: { title: t("sta-officers-log.dialog.useValue.gmTitle") },
+          window: { title: gmTitle },
           content: `
             <p><strong>${foundry.utils.escapeHTML(
-              requestingUserName
+              requestingUserName,
             )}</strong> requests to use <strong>${foundry.utils.escapeHTML(
-            valueName
-          )}</strong> on <strong>${foundry.utils.escapeHTML(
-            actorName
-          )}</strong> as <strong>${foundry.utils.escapeHTML(
-            usage
-          )}</strong>.</p>
-            <p>${t("sta-officers-log.dialog.useValue.gmHint")}</p>
+              valueName,
+            )}</strong> on <strong>${foundry.utils.escapeHTML(
+              actorName,
+            )}</strong> as <strong>${foundry.utils.escapeHTML(
+              usage,
+            )}</strong>.</p>
+            <p>${gmHint}</p>
           `,
           buttons: [
             {
@@ -280,6 +287,13 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
       await setValueChallenged(valueItem, true);
     }
 
+    // Trauma negative: -2 stress
+    if (isTrauma && usage === "negative") {
+      const current = Number(actor.system?.stress?.value ?? 0);
+      const newValue = Math.max(0, current - 2);
+      await actor.update({ "system.stress.value": newValue });
+    }
+
     // Record usage on the current mission log (if provided by the requester).
     // This drives callback eligibility via log.system.valueStates.
     const missionLogId = msg.currentMissionLogId
@@ -293,7 +307,7 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
       await missionLog.update({
         [`system.valueStates.${valueItem.id}`]: mergeValueStateArray(
           existingRaw,
-          valueState
+          valueState,
         ),
       });
     }
@@ -312,15 +326,66 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
             reason: "Value used",
             defaultValueId: valueItem.id,
             defaultValueState: valueState,
-          }
+          },
         );
       }
     } catch (err) {
       console.error(
         `${MODULE_ID} | failed to prompt callback after approval`,
-        err
+        err,
       );
     }
+
+    return { approved: true };
+  });
+
+  // --- RPC: Player -> GM (request approval for Scar usage) ---
+  moduleSocket.register("requestScarUseApproval", async (msg) => {
+    if (!game.user.isGM) return { approved: false, reason: "not-gm" };
+
+    const actor = msg.actorUuid ? await fromUuid(msg.actorUuid) : null;
+    if (!actor) return { approved: false, reason: "actor-missing" };
+
+    const traitItem = msg.traitItemId ? actor.items.get(msg.traitItemId) : null;
+    if (!traitItem || traitItem.type !== "trait") {
+      return { approved: false, reason: "trait-missing" };
+    }
+
+    const requestingUserName = _formatUserName(msg.requestingUserId);
+    const traitName = msg.traitName ?? traitItem.name ?? "";
+    const actorName = msg.actorName ?? actor.name ?? "";
+
+    const approved =
+      (await foundry.applications.api.DialogV2.wait({
+        window: { title: "Approve Scar Usage" },
+        content: `
+          <p><strong>${requestingUserName}</strong> requests to use the scar <strong>${foundry.utils.escapeHTML(
+            traitName,
+          )}</strong> on <strong>${foundry.utils.escapeHTML(
+            actorName,
+          )}</strong>.</p>
+          <p>If approved, ${foundry.utils.escapeHTML(
+            actorName,
+          )} gains +1 Determination.</p>
+        `,
+        buttons: [
+          {
+            action: "approve",
+            label: "Approve",
+            default: true,
+          },
+          {
+            action: "deny",
+            label: "Deny",
+          },
+        ],
+        rejectClose: false,
+        modal: false,
+      })) === "approve";
+
+    if (!approved) return { approved: false };
+
+    await gainDetermination(actor);
 
     return { approved: true };
   });
@@ -354,12 +419,12 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
           window: { title: t("sta-officers-log.dialog.useDirective.gmTitle") },
           content: `
             <p><strong>${requestingUserName}</strong> requests to use <strong>${foundry.utils.escapeHTML(
-            directiveText
-          )}</strong> on <strong>${foundry.utils.escapeHTML(
-            actorName
-          )}</strong> as <strong>${foundry.utils.escapeHTML(
-            usage
-          )}</strong>.</p>
+              directiveText,
+            )}</strong> on <strong>${foundry.utils.escapeHTML(
+              actorName,
+            )}</strong> as <strong>${foundry.utils.escapeHTML(
+              usage,
+            )}</strong>.</p>
             <p>${t("sta-officers-log.dialog.useDirective.gmHint")}</p>
           `,
           buttons: [
@@ -398,7 +463,7 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
       await missionLog.update({
         [`system.valueStates.${directiveValueId}`]: mergeValueStateArray(
           existingRaw,
-          valueState
+          valueState,
         ),
       });
 
@@ -441,13 +506,13 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
             reason: "Directive used",
             defaultValueId: directiveValueId,
             defaultValueState: valueState,
-          }
+          },
         );
       }
     } catch (err) {
       console.error(
         `${MODULE_ID} | failed to prompt callback after directive approval`,
-        err
+        err,
       );
     }
 

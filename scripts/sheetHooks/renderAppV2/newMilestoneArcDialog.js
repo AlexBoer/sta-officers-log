@@ -7,19 +7,28 @@ import {
 } from "../../callbackFlow.js";
 
 const Base = foundry.applications.api.HandlebarsApplicationMixin(
-  foundry.applications.api.ApplicationV2
+  foundry.applications.api.ApplicationV2,
 );
 
 class NewMilestoneArcApp extends Base {
   constructor(
-    { actor, initialTab = null, lockOtherTab = false, onApplied = null } = {},
-    options = {}
+    {
+      actor,
+      initialTab = null,
+      lockOtherTab = false,
+      onApplied = null,
+      traumaValueId = null,
+      traumaAllChallenged = false,
+    } = {},
+    options = {},
   ) {
     super(options);
     this._actor = actor ?? null;
     this._initialTab = initialTab ? String(initialTab) : null;
     this._lockOtherTab = lockOtherTab === true;
     this._onApplied = typeof onApplied === "function" ? onApplied : null;
+    this._traumaValueId = traumaValueId ? String(traumaValueId) : null;
+    this._traumaAllChallenged = traumaAllChallenged === true;
 
     // Also hint to Foundry's built-in tabs (when present).
     try {
@@ -66,37 +75,33 @@ class NewMilestoneArcApp extends Base {
         {
           action: "attr",
           label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.increaseAttribute"
+            "sta-officers-log.dialog.chooseMilestoneBenefit.increaseAttribute",
           ),
         },
         {
           action: "disc",
           label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.increaseDiscipline"
+            "sta-officers-log.dialog.chooseMilestoneBenefit.increaseDiscipline",
           ),
         },
         {
           action: "focus",
-          label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.addFocus"
-          ),
+          label: t("sta-officers-log.dialog.chooseMilestoneBenefit.addFocus"),
         },
         {
           action: "talent",
-          label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.addTalent"
-          ),
+          label: t("sta-officers-log.dialog.chooseMilestoneBenefit.addTalent"),
         },
         {
           action: "supporting",
           label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.giveToSupportingCharacter"
+            "sta-officers-log.dialog.chooseMilestoneBenefit.giveToSupportingCharacter",
           ),
         },
         {
           action: "ship",
           label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.changeShipStats"
+            "sta-officers-log.dialog.chooseMilestoneBenefit.changeShipStats",
           ),
         },
       ],
@@ -104,39 +109,56 @@ class NewMilestoneArcApp extends Base {
         {
           action: "attr",
           label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseAttribute"
+            "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseAttribute",
           ),
         },
         {
           action: "disc",
           label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseDiscipline"
+            "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseDiscipline",
           ),
         },
         {
           action: "value",
           label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.arcAddValue"
+            "sta-officers-log.dialog.chooseMilestoneBenefit.arcAddValue",
           ),
         },
         {
           action: "shipSystem",
           label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseShipSystem"
+            "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseShipSystem",
           ),
         },
         {
           action: "shipDepartment",
           label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseShipDepartment"
+            "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseShipDepartment",
           ),
         },
         {
           action: "shipTalent",
           label: t(
-            "sta-officers-log.dialog.chooseMilestoneBenefit.arcAddShipTalent"
+            "sta-officers-log.dialog.chooseMilestoneBenefit.arcAddShipTalent",
           ),
         },
+        // Conditionally add Remove Trauma if this arc is a trauma arc
+        ...(this._traumaValueId
+          ? [
+              {
+                action: "removeTrauma",
+                label: t(
+                  "sta-officers-log.dialog.chooseMilestoneBenefit.arcRemoveTrauma",
+                ),
+                disabled: !this._traumaAllChallenged,
+                tooltip: !this._traumaAllChallenged
+                  ? t(
+                      "sta-officers-log.dialog.chooseMilestoneBenefit.arcRemoveTraumaDisabledTooltip",
+                    )
+                  : null,
+              },
+            ]
+          : []),
       ],
     };
   }
@@ -210,10 +232,10 @@ class NewMilestoneArcApp extends Base {
         null;
 
       const tabButtons = Array.from(
-        nav?.querySelectorAll?.(".item[data-tab]") ?? []
+        nav?.querySelectorAll?.(".item[data-tab]") ?? [],
       );
       const tabPanels = Array.from(
-        root.querySelectorAll('.tab[data-group="primary"][data-tab]')
+        root.querySelectorAll('.tab[data-group="primary"][data-tab]'),
       );
 
       const activateTab = (tabName) => {
@@ -258,7 +280,7 @@ class NewMilestoneArcApp extends Base {
             ev.stopPropagation();
             ev.stopImmediatePropagation?.();
           },
-          true
+          true,
         );
       }
 
@@ -290,6 +312,7 @@ class NewMilestoneArcApp extends Base {
           group === "arc"
             ? await applyArcMilestoneBenefit(this._actor, {
                 initialAction: action,
+                traumaValueId: this._traumaValueId,
               })
             : await applyNonArcMilestoneBenefit(this._actor, {
                 initialAction: action,
@@ -323,13 +346,21 @@ class NewMilestoneArcApp extends Base {
 
 export function openNewMilestoneArcDialog(
   actor,
-  { initialTab = null, lockOtherTab = false, onApplied = null } = {}
+  {
+    initialTab = null,
+    lockOtherTab = false,
+    onApplied = null,
+    traumaValueId = null,
+    traumaAllChallenged = false,
+  } = {},
 ) {
   const app = new NewMilestoneArcApp({
     actor,
     initialTab,
     lockOtherTab,
     onApplied,
+    traumaValueId,
+    traumaAllChallenged,
   });
   app.render(true);
   return app;

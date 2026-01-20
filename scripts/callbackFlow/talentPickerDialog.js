@@ -9,7 +9,7 @@ import {
 } from "./dialogs.js";
 
 const Base = foundry.applications.api.HandlebarsApplicationMixin(
-  foundry.applications.api.ApplicationV2
+  foundry.applications.api.ApplicationV2,
 );
 
 const SPECIES_TALENT_NAMES = new Set(
@@ -28,7 +28,7 @@ const SPECIES_TALENT_NAMES = new Set(
     "Klingon",
     "Tellarite",
     "Trill",
-  ].map((name) => name.toLowerCase())
+  ].map((name) => name.toLowerCase()),
 );
 
 // STA v2.4.6+: talents are stored in sta.items-1e / sta.items-2e.
@@ -108,7 +108,7 @@ function _deriveCategoryFromEntry(entry) {
 export function prepareTalentPickerContext(
   talents = [],
   actor = null,
-  options = {}
+  options = {},
 ) {
   const showCustomButton = options.showCustomButton !== false;
   const groupsMap = new Map();
@@ -152,10 +152,8 @@ export function prepareTalentPickerContext(
       groupsMap.delete(key);
     }
   }
-  if (roleGroup.items.length) {
-    roleGroup.label = ROLE_GROUP_LABEL;
-    groupsMap.set(ROLE_GROUP_KEY, roleGroup);
-  }
+  // Always exclude role talents from the picker.
+  groupsMap.delete(ROLE_GROUP_KEY);
 
   const MISC_GROUP_KEY = "misc";
   const MISC_GROUP_LABEL = "Miscellaneous";
@@ -210,7 +208,7 @@ export function prepareTalentPickerContext(
 export function bindTalentPickerInteractions(
   root,
   talents = [],
-  { onChoose = null, onPreview = null, onCancel = null, onCustom = null } = {}
+  { onChoose = null, onPreview = null, onCancel = null, onCustom = null } = {},
 ) {
   if (!root) return { applyFilter: () => {} };
   if (root.dataset.staTalentPickerBound === "1") {
@@ -220,10 +218,10 @@ export function bindTalentPickerInteractions(
 
   const searchInput = root.querySelector('input[name="q"]');
   const listItems = Array.from(
-    root.querySelectorAll(".sta-focus-picker-item[data-name]")
+    root.querySelectorAll(".sta-focus-picker-item[data-name]"),
   );
   const groupEls = Array.from(
-    root.querySelectorAll(".sta-focus-picker-group[data-group]")
+    root.querySelectorAll(".sta-focus-picker-group[data-group]"),
   );
   const countEl = root.querySelector('[data-hook="foundCount"]');
   const eligibleToggle = root.querySelector('input[name="eligibleOnly"]');
@@ -248,14 +246,14 @@ export function bindTalentPickerInteractions(
 
     for (const g of groupEls) {
       const anyVisible = Array.from(
-        g.querySelectorAll(".sta-focus-picker-item")
+        g.querySelectorAll(".sta-focus-picker-item"),
       ).some((li) => li.style.display !== "none");
       g.style.display = anyVisible ? "" : "none";
     }
 
     if (countEl) {
       const visible = listItems.filter(
-        (li) => li.style.display !== "none"
+        (li) => li.style.display !== "none",
       ).length;
       const key = "sta-officers-log.dialog.talentPicker.found";
       const formatted = tf(key, { count: visible });
@@ -265,7 +263,7 @@ export function bindTalentPickerInteractions(
         const template = t(key) ?? "Found: {count}";
         countEl.textContent = String(template).replace(
           "{count}",
-          String(visible)
+          String(visible),
         );
       }
     }
@@ -477,7 +475,7 @@ const EXCLUDED_SHIP_TALENT_NAMES = new Set(
     "legendary",
     "prototype",
     "survivor of (x)",
-  ].map((n) => n.toLowerCase())
+  ].map((n) => n.toLowerCase()),
 );
 
 function _isExcludedShipTalentName(name) {
@@ -541,11 +539,12 @@ function _isCharacterCreationOnlyTalentDescription(rawDescription) {
 
   // Prefer Foundry's HTML->text routine when available.
   try {
-    if (
-      globalThis.TextEditor &&
-      typeof TextEditor.getTextContent === "function"
-    ) {
-      normalized = TextEditor.getTextContent(normalized);
+    const TextEditorImpl =
+      globalThis.foundry?.applications?.ux?.TextEditor?.implementation ??
+      globalThis.TextEditor ??
+      null;
+    if (TextEditorImpl && typeof TextEditorImpl.getTextContent === "function") {
+      normalized = TextEditorImpl.getTextContent(normalized);
     } else {
       normalized = normalized.replace(/<[^>]*>/g, " ");
     }
@@ -612,7 +611,7 @@ async function _collectTalentPickerEntries({
     [
       explicit || null,
       ...(Array.isArray(customPackKeys) ? customPackKeys : []),
-    ].filter(Boolean)
+    ].filter(Boolean),
   );
 
   const wantedKind = String(folderKind ?? "")
@@ -722,7 +721,7 @@ async function _collectTalentPickerEntries({
         const kindFromDoc = _classifyTalentFolderFromDocument(doc);
         let kind = kindFromDoc;
         if (!kind) {
-          const pack = packKey ? game.packs?.get?.(packKey) ?? null : null;
+          const pack = packKey ? (game.packs?.get?.(packKey) ?? null) : null;
           kind = _classifyTalentFolder(pack, talent.folder);
         }
         if (kind !== wantedKind) return null;
@@ -733,7 +732,7 @@ async function _collectTalentPickerEntries({
         talenttype: doc?.system?.talenttype ?? null,
         item: _extractTalentItemData(doc),
       };
-    })
+    }),
   );
 
   talents = talents.filter(Boolean);
@@ -744,7 +743,7 @@ async function _collectTalentPickerEntries({
 class TalentPickerApp extends Base {
   constructor(
     { talents = [], resolve = null, actor = null } = {},
-    options = {}
+    options = {},
   ) {
     super(options);
     this._talents = Array.isArray(talents) ? talents : [];
@@ -807,7 +806,7 @@ class TalentPickerApp extends Base {
         const uuid = String(entry?.uuid ?? "").trim();
         if (uuid && !talentItem) {
           const selectedTalent = this._talents.find(
-            (talent) => String(talent?.uuid ?? "") === uuid
+            (talent) => String(talent?.uuid ?? "") === uuid,
           );
           talentItem = talentItem ?? selectedTalent?.item ?? null;
           talentType = talentType ?? selectedTalent?.talenttype ?? null;
@@ -835,8 +834,41 @@ class TalentPickerApp extends Base {
     binding.applyFilter();
   }
 }
+
+function _createTalentPickerLoadingDialog() {
+  const title =
+    t("sta-officers-log.dialog.talentPicker.loadingTitle") ?? "Loading Talents";
+  const message =
+    t("sta-officers-log.dialog.talentPicker.loadingMessage") ??
+    "Loading talents from compendiums...";
+  return new foundry.applications.api.DialogV2({
+    window: { title },
+    classes: ["sta-officers-log", "talent-loading-dialog"],
+    content: `<div class="sta-talent-loading-dialog"><div class="sta-talent-loading-spinner" aria-hidden="true"></div><div class="sta-talent-loading-message">${message}</div></div>`,
+    buttons: [
+      {
+        action: "loading",
+        label: " ",
+        callback: () => false,
+      },
+    ],
+    default: "loading",
+    closeOnSubmit: false,
+    rejectClose: true,
+    modal: true,
+  });
+}
 async function _promptTalentPickerFromPackList(options = {}) {
-  const { talents, errors } = await loadTalentPickerTalents(options);
+  const loadingDialog = _createTalentPickerLoadingDialog();
+  await loadingDialog.render(true);
+  let loadResult;
+  try {
+    loadResult = await loadTalentPickerTalents(options);
+  } finally {
+    loadingDialog?.close();
+  }
+
+  const { talents, errors } = loadResult ?? { talents: [], errors: [] };
 
   for (const msg of errors ?? []) {
     ui.notifications?.warn?.(msg);
@@ -1059,7 +1091,7 @@ export function doesActorMeetTalentRequirements(actor, talentEntry) {
       const traits = getTraitNames(actor);
       if (traits.some((name) => name.includes(required))) return true;
       const speciesDetail = normalizeRequirementString(
-        foundry.utils.getProperty(actor, "system.details.species")
+        foundry.utils.getProperty(actor, "system.details.species"),
       );
       return speciesDetail.includes(required);
     }

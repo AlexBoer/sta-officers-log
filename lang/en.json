@@ -44,6 +44,14 @@
         "editorRules": "Directives are sanitized and limited to {max} characters each.",
         "save": "Save",
         "saved": "Mission directives saved."
+      },
+      "enableTraumaRules": {
+        "name": "Enable Trauma Rules",
+        "hint": "Enable the Trauma rules from the 23rd Century Campaign Guide. When disabled, the 'Trauma' checkbox on Values will be hidden."
+      },
+      "enableScarRules": {
+        "name": "Enable Scar Rules",
+        "hint": "Enable the Scar rules from the 23rd Century Campaign Guide. When disabled, the 'Scar' checkbox on Traits will be hidden."
       }
     },
     "tools": {
@@ -52,6 +60,16 @@
       "newScene": "STA: New Scene",
       "labelValues": "Label Values",
       "labelValuesTooltip": "Changes the icons of your Value items to indicate their order."
+    },
+    "traits": {
+      "scarLabel": "Scar",
+      "scarTooltip": "Mark this Trait as a scar.",
+      "usedLabel": "Used",
+      "usedTooltip": "Mark this Scar as used.",
+      "useScar": "Use Scar",
+      "useScarTooltip": "Use this Scar (requires GM approval).",
+      "fatigueLabel": "Fatigue",
+      "fatigueTooltip": "Mark this Trait as a Fatigue trait."
     },
     "sceneControls": {
       "title": "STA"
@@ -71,6 +89,7 @@
       "momentumNotFound": "Could not find an STA Momentum setting to decrement.",
       "newSceneDone": "New scene: Momentum -1. NPC Personal Threat refreshed.",
       "callbacksReset": "Callback usage reset for a new mission.",
+      "scarsReset": "All scars marked as unused.",
 
       "pendingShipBenefitsAllProcessed": "All pending ship benefits have been processed.",
       "pendingShipBenefitsAllRemoved": "All pending benefits removed.",
@@ -82,8 +101,12 @@
     "values": {
       "useValue": "Use Value",
       "useValueTooltip": "Use this Value.",
+      "useTrauma": "Use Trauma",
+      "useTraumaTooltip": "Use this Trauma.",
       "useDirective": "Use Directive",
-      "useDirectiveTooltip": "Use a Directive instead of a Value."
+      "useDirectiveTooltip": "Use a Directive instead of a Value.",
+      "traumaLabel": "Trauma",
+      "traumaTooltip": "Mark this Value as Trauma."
     },
     "milestones": {
       "chooseBenefit": "Choose Benefit",
@@ -94,7 +117,9 @@
       "chooseArcTooltip": "Choose an Arc benefit."
     },
     "logSheet": {
-      "arcComplete": "Arc Complete"
+      "arcComplete": "Arc Complete",
+      "createdWithTraumaLabel": "Created With Trauma",
+      "createdWithTraumaTooltip": "If checked, this log's icon will use the Trauma prefix (T#) instead of the Value prefix (V#) when values are relabeled."
     },
     "logs": {
       "currentMissionIndicator": "Current mission log",
@@ -112,7 +137,7 @@
         "positiveTitle": "Positively",
         "positiveDesc": "<strong>Use it to help you succeed.</strong><ul><li>-1 Determination</li><li>Before rolling for a free critical success</li><li>After rolling to reroll any dice.</li></ul>",
         "negativeTitle": "Negatively",
-        "negativeDesc": "<strong>Use it against yourself.</strong><ul><li>+1 Determination</li><li>Cause a Complication</li></ul>",
+        "negativeDesc": "<strong>Comply with a value in a way that makes things more complicated.</strong><ul><li>+1 Determination</li><li>Cause a Complication</li></ul>",
         "challengeTitle": "Challenged",
         "challengeDesc": "<strong>Change who you are.</strong><ul><li>+1 Determination</li><li>Value becomes Challenged.</li> <li>Rewrite the value at the end of the mission to remove the Challenged status.</li></ul>",
         "cancel": "Cancel",
@@ -123,6 +148,15 @@
         "gmHint": "Approving grants +1 Determination.",
         "gmApprove": "Approve",
         "gmDeny": "Deny"
+      },
+      "useTrauma": {
+        "title": "Use Trauma: {value}",
+        "prompt": "How are you using {value}?",
+        "positiveDesc": "<strong>Use it to help you succeed.</strong><ul><li>-1 Determination</li><li>+1 Stress</li><li>Before rolling for a free critical success</li><li>After rolling to reroll any dice.</li></ul>",
+        "negativeDesc": "<strong>Comply with a trauma in a way that makes things more complicated.</strong><ul><li>+1 Determination</li><li>-2 Stress</li><li>Cause a Complication</li><li>Increase Stress recovery by increasing the potency of the complication (1:1).</li></ul>",
+        "challengeDesc": "<strong>Change who you are.</strong><ul><li>Stress is set to maximum.</li><li>Trauma becomes Challenged.</li><li>Trauma is not rewritten. At the start a of a new mission, the Trauma is restored.</li></ul>",
+        "gmTitle": "Approve Trauma Use",
+        "gmHint": "Approving grants +1 Determination and -2 Stress."
       },
       "useDirective": {
         "title": "Use Directive",
@@ -151,6 +185,10 @@
         "arcIncreaseShipSystem": "Increase a Ship System",
         "arcIncreaseShipDepartment": "Increase a Ship Department",
         "arcAddShipTalent": "Add a new Ship Talent",
+        "arcRemoveTrauma": "Remove Trauma",
+        "arcRemoveTraumaDisabledTooltip": "All logs in the arc must challenge the trauma",
+        "arcRemoveTraumaRenameLabel": "Rename the Trauma",
+        "arcRemoveTraumaRenamePlaceholder": "Enter a new name for the Value",
         "pickAttribute": "Attribute",
         "pickDiscipline": "Discipline",
         "arcPickShipSystem": "Ship System",
@@ -195,7 +233,9 @@
         "previewTitle": "Talent Details",
         "previewClose": "Close",
         "none": "No talents found.",
-        "found": "Found: {count}"
+        "found": "Found: {count}",
+        "loadingTitle": "Loading Talents",
+        "loadingMessage": "Loading talents from compendiums..."
       },
       "shipTalentSwap": {
         "title": "Replace a Ship Talent",
@@ -252,6 +292,7 @@
         "resetDetermination": "Reset Determination for all characters",
         "resetStress": "Reset Stress for all characters",
         "resetShipStats": "Reset ship stats (Shields / Reserve Power / Shaken)",
+        "resetScars": "Reset all Scars to unused",
         "createLogs": "Create new mission logs for selected participants",
         "createLogsHint": "If unchecked, no new logs will be created and existing mission-log links will be kept.",
         "participants": "Participants",
@@ -284,7 +325,9 @@
         "challenged": "Challenged"
       },
       "logLabel": "Choose a Character Log",
-      "noUnusedLogsOption": "(No unused logs found)",      "noEligibleLogsOption": "No Eligible Logs for a Callback, Press \"Skip\"",      "noMatchHint": "No unused Logs match that Value.",
+      "noUnusedLogsOption": "(No unused logs found)",
+      "noEligibleLogsOption": "No Eligible Logs for a Callback, Press \"Skip\"",
+      "noMatchHint": "No unused Logs match that Value.",
       "noUnusedHint": "You don’t have any unused logs to spend.",
       "make": "Make a Callback",
       "skip": "Skip",
@@ -292,7 +335,7 @@
       "chooseAnother": "Choose another log",
       "confirmSelection": "Confirm",
       "noInvokedValues": "No invoked values recorded in this log.",
-      "bodyHtml": "<h2>Make a Callback</h2><p>Build a character arc by linking your values now to your values in a previous mission.</p>",
+      "bodyHtml": "<h2>Make a Callback</h2><p></p><p>Build a character arc! Link this mission to a previous one where you were motivated by the same value.</p>",
       "rewardHtml": "<h5>You made a callback!</h5>\n<ul>\n<li>+1 Determination.</li>\n<li>At the end of the mission, choose a new Milestone!</li>\n</ul>"
     },
     "warnings": {

@@ -2,6 +2,7 @@ import {
   MODULE_ID,
   VALUE_ICON_COUNT,
   valueIconPath,
+  traumaIconPath,
   STA_DEFAULT_ICON_FALLBACK,
   STA_DEFAULT_ICON_LEGACY,
   getStaDefaultIcon,
@@ -66,10 +67,74 @@ export function mergeValueStateArray(existingRaw, stateToAdd) {
   if (!next || next === "unused") return ["unused"];
 
   const arr = normalizeValueStateArray(existingRaw).filter(
-    (s) => s !== "unused"
+    (s) => s !== "unused",
   );
   if (!arr.includes(next)) arr.push(next);
   return arr.length ? arr : [next];
+}
+
+const TRAUMA_FLAG = "isTrauma";
+
+export function isValueTrauma(item) {
+  if (!item || item.type !== "value") return false;
+  try {
+    return Boolean(item.getFlag?.(MODULE_ID, TRAUMA_FLAG));
+  } catch (_) {
+    return false;
+  }
+}
+
+export async function setValueTraumaFlag(item, value) {
+  if (!item || item.type !== "value") return;
+  await item.setFlag(MODULE_ID, TRAUMA_FLAG, Boolean(value));
+}
+
+// Flag on log items to remember whether they were created while their primary value was a trauma.
+// This ensures logs keep their V# or T# icon prefix even when the value's trauma status changes.
+const LOG_CREATED_WITH_TRAUMA_FLAG = "createdWithTrauma";
+
+export function wasLogCreatedWithTrauma(log) {
+  if (!log || log.type !== "log") return false;
+  try {
+    return Boolean(log.getFlag?.(MODULE_ID, LOG_CREATED_WITH_TRAUMA_FLAG));
+  } catch (_) {
+    return false;
+  }
+}
+
+export async function setLogCreatedWithTraumaFlag(log, value) {
+  if (!log || log.type !== "log") return;
+  await log.setFlag(MODULE_ID, LOG_CREATED_WITH_TRAUMA_FLAG, Boolean(value));
+}
+
+/**
+ * Compute the appropriate icon path for a log based on its createdWithTrauma flag
+ * and the value's current sort position. The NUMBER comes from the value's position,
+ * but the LETTER (V or T) is determined by the log's createdWithTrauma flag.
+ *
+ * @param {Actor} actor - The actor that owns the log and value
+ * @param {string} valueId - The ID of the primary value
+ * @param {boolean} createdWithTrauma - Whether the log was created while the value was a trauma
+ * @returns {string|null} The icon path (V#.webp or T#.webp) or null if not determinable
+ */
+export function getLogIconPathForValue(actor, valueId, createdWithTrauma) {
+  const id = valueId ? String(valueId) : "";
+  if (!id || !actor?.items) return null;
+
+  // Directives are not affected by trauma status
+  if (isDirectiveValueId(id)) return directiveIconPath();
+
+  // Find the value's current position in the sorted list
+  const values = getValueItems(actor);
+  const sorted = values
+    .slice()
+    .sort((a, b) => Number(a.sort ?? 0) - Number(b.sort ?? 0));
+
+  const idx = sorted.findIndex((v) => String(v.id) === id);
+  if (idx < 0) return null;
+
+  const n = Math.min(idx + 1, VALUE_ICON_COUNT);
+  return createdWithTrauma ? traumaIconPath(n) : valueIconPath(n);
 }
 
 const _valueIconMapCache = new WeakMap();
@@ -126,20 +191,21 @@ export async function labelValuesOnActor(actor) {
 
   const updates = values.map((item, idx) => {
     const n = Math.min(idx + 1, VALUE_ICON_COUNT); // V1..V8 by sort order
-    const newImg = valueIconPath(n);
+    const newImg = isValueTrauma(item) ? traumaIconPath(n) : valueIconPath(n);
     return { _id: item.id, img: newImg };
   });
 
   await actor.updateEmbeddedDocuments("Item", updates);
 
   // Sync mission log icons to their Primary Value.
-  // Rule: log primaryValueId -> copy Value.img; if missing/invalid -> default icon.
+  // Rule: Use the log's createdWithTrauma flag to determine V# or T# prefix,
+  // but update the NUMBER to match the value's current position in the list.
   const logs = actor.items.filter((i) => i.type === "log");
   const logUpdates = [];
 
   for (const log of logs) {
     const primaryValueId = String(
-      log.getFlag?.(MODULE_ID, "primaryValueId") ?? ""
+      log.getFlag?.(MODULE_ID, "primaryValueId") ?? "",
     );
 
     if (primaryValueId && isDirectiveValueId(primaryValueId)) {
@@ -150,11 +216,33 @@ export async function labelValuesOnActor(actor) {
       continue;
     }
 
-    const valueItem = primaryValueId ? actor.items.get(primaryValueId) : null;
-    const desiredImg =
-      valueItem?.type === "value" && valueItem?.img
-        ? String(valueItem.img)
-        : getStaDefaultIcon();
+    if (!primaryValueId) {
+      // No primary value - use default icon
+      const desiredImg = getStaDefaultIcon();
+      if (desiredImg && String(log.img ?? "") !== desiredImg) {
+        logUpdates.push({ _id: log.id, img: desiredImg });
+      }
+      continue;
+    }
+
+    const valueItem = actor.items.get(primaryValueId);
+    if (!valueItem || valueItem.type !== "value") {
+      // Primary value no longer exists - use default icon
+      const desiredImg = getStaDefaultIcon();
+      if (desiredImg && String(log.img ?? "") !== desiredImg) {
+        logUpdates.push({ _id: log.id, img: desiredImg });
+      }
+      continue;
+    }
+
+    // Use the log's createdWithTrauma flag to determine V# or T# prefix,
+    // but the NUMBER comes from the value's current position.
+    const createdWithTrauma = wasLogCreatedWithTrauma(log);
+    const desiredImg = getLogIconPathForValue(
+      actor,
+      primaryValueId,
+      createdWithTrauma,
+    );
 
     if (desiredImg && String(log.img ?? "") !== desiredImg) {
       logUpdates.push({ _id: log.id, img: desiredImg });
@@ -177,6 +265,6 @@ export async function labelValuesOnActor(actor) {
     tf("sta-officers-log.notifications.labeledValues", {
       count: updates.length,
       actor: actor.name,
-    })
+    }),
   );
 }

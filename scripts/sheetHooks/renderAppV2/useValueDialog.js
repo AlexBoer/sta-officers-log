@@ -2,7 +2,7 @@ import { MODULE_ID } from "../../constants.js";
 import { t, tf } from "../../i18n.js";
 
 const _UseValueBase = foundry.applications.api.HandlebarsApplicationMixin(
-  foundry.applications.api.ApplicationV2
+  foundry.applications.api.ApplicationV2,
 );
 
 class UseValueApp extends _UseValueBase {
@@ -14,7 +14,7 @@ class UseValueApp extends _UseValueBase {
       options = [],
       resolve = null,
     } = {},
-    appOptions = {}
+    appOptions = {},
   ) {
     super(appOptions);
     this._valueName = valueName;
@@ -96,31 +96,47 @@ class UseValueApp extends _UseValueBase {
 export async function promptUseValueChoice({
   valueName,
   canChoosePositive = true,
+  isTrauma = false,
 }) {
   return new Promise((resolve) => {
     const app = new UseValueApp({
       valueName,
-      prompt: tf("sta-officers-log.dialog.useValue.prompt", {
-        value: valueName ?? "",
-      }),
+      prompt: tf(
+        isTrauma
+          ? "sta-officers-log.dialog.useTrauma.prompt"
+          : "sta-officers-log.dialog.useValue.prompt",
+        { value: valueName ?? "" },
+      ),
       chooseLabel: t("sta-officers-log.dialog.useValue.choose"),
       options: [
         {
           action: "positive",
           title: t("sta-officers-log.dialog.useValue.positiveTitle"),
-          description: t("sta-officers-log.dialog.useValue.positiveDesc"),
+          description: t(
+            isTrauma
+              ? "sta-officers-log.dialog.useTrauma.positiveDesc"
+              : "sta-officers-log.dialog.useValue.positiveDesc",
+          ),
           disabled: !canChoosePositive,
           buttonLabel: canChoosePositive ? null : "No Determination!",
         },
         {
           action: "negative",
           title: t("sta-officers-log.dialog.useValue.negativeTitle"),
-          description: t("sta-officers-log.dialog.useValue.negativeDesc"),
+          description: t(
+            isTrauma
+              ? "sta-officers-log.dialog.useTrauma.negativeDesc"
+              : "sta-officers-log.dialog.useValue.negativeDesc",
+          ),
         },
         {
           action: "challenge",
           title: t("sta-officers-log.dialog.useValue.challengeTitle"),
-          description: t("sta-officers-log.dialog.useValue.challengeDesc"),
+          description: t(
+            isTrauma
+              ? "sta-officers-log.dialog.useTrauma.challengeDesc"
+              : "sta-officers-log.dialog.useValue.challengeDesc",
+          ),
         },
       ],
       resolve,

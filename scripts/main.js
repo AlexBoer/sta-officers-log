@@ -32,8 +32,10 @@ import {
   installCreateChatMessageHook,
   installRenderApplicationV2Hook,
 } from "./sheetHooks.js";
+import { installStressMonitoringHook } from "./sheetHooks/stressHook.js";
 import { registerClientSettings } from "./clientSettings.js";
 import { registerDirectiveSettings } from "./directives.js";
+import { installMacroActorImageHook } from "./macroActorImage.js";
 
 function registerApi() {
   // Public API (available on all clients; methods may GM-guard internally)
@@ -71,6 +73,24 @@ function safeInstallUiHooks() {
   } catch (err) {
     console.error(`${MODULE_ID} | failed to install render hook`, err);
   }
+
+  try {
+    installStressMonitoringHook();
+  } catch (err) {
+    console.error(
+      `${MODULE_ID} | failed to install stress monitoring hook`,
+      err,
+    );
+  }
+
+  try {
+    installMacroActorImageHook();
+  } catch (err) {
+    console.error(
+      `${MODULE_ID} | failed to install macro actor image hook`,
+      err,
+    );
+  }
 }
 
 function safeInstallChatHooks() {
@@ -99,7 +119,7 @@ function safeRegisterSettings() {
   } catch (err) {
     console.error(
       `${MODULE_ID} | failed to register focus picker settings`,
-      err
+      err,
     );
   }
 
@@ -108,7 +128,7 @@ function safeRegisterSettings() {
   } catch (err) {
     console.error(
       `${MODULE_ID} | failed to register talent picker settings`,
-      err
+      err,
     );
   }
 }
@@ -136,7 +156,7 @@ function safeRegisterAmbientAudioSettings() {
         } catch (err) {
           console.error(
             `${MODULE_ID} | ambient audio setting onChange failed`,
-            err
+            err,
           );
         }
       },
@@ -144,7 +164,7 @@ function safeRegisterAmbientAudioSettings() {
   } catch (err) {
     console.error(
       `${MODULE_ID} | failed to register ambient audio settings`,
-      err
+      err,
     );
   }
 }
@@ -185,7 +205,7 @@ async function migrateWorldSettingsToActorFlags() {
   }
 
   console.log(
-    `${MODULE_ID} | Running one-time migration: world settings → actor flags`
+    `${MODULE_ID} | Running one-time migration: world settings → actor flags`,
   );
 
   try {
@@ -204,7 +224,7 @@ async function migrateWorldSettingsToActorFlags() {
       const userId = Object.keys(actor.ownership || {}).find(
         (uid) =>
           uid !== "default" &&
-          actor.ownership[uid] === CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER
+          actor.ownership[uid] === CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
       );
 
       if (!userId) continue;
@@ -219,7 +239,7 @@ async function migrateWorldSettingsToActorFlags() {
       const logId = missionLogMap[userId];
       if (logId && !actor.getFlag(MODULE_ID, "currentMissionLogId")) {
         updates.push(
-          actor.setFlag(MODULE_ID, "currentMissionLogId", String(logId))
+          actor.setFlag(MODULE_ID, "currentMissionLogId", String(logId)),
         );
       }
     }
@@ -230,7 +250,7 @@ async function migrateWorldSettingsToActorFlags() {
     await game.settings.set(MODULE_ID, migrationKey, true);
 
     console.log(
-      `${MODULE_ID} | Migration complete: ${updates.length} actors updated`
+      `${MODULE_ID} | Migration complete: ${updates.length} actors updated`,
     );
   } catch (err) {
     console.error(`${MODULE_ID} | Migration failed:`, err);
@@ -258,7 +278,7 @@ async function checkPendingShipBenefits() {
         `${totalPending} pending ship benefit${
           totalPending === 1 ? "" : "s"
         } to review. Click here to review them.`,
-        { permanent: true }
+        { permanent: true },
       );
 
       // Make the notification clickable
@@ -292,7 +312,7 @@ Hooks.once("init", () => {
   registerApi();
 
   console.log(
-    "sta-officers-log | API registered: game.staCallbacksHelper.open()"
+    "sta-officers-log | API registered: game.staCallbacksHelper.open()",
   );
 
   // Hooks moved out of main.js
@@ -301,7 +321,7 @@ Hooks.once("init", () => {
 
 Hooks.once("ready", () => {
   console.log(
-    `${MODULE_ID} | ready on ${game.user.name} | id=${game.user.id} | GM? ${game.user.isGM}`
+    `${MODULE_ID} | ready on ${game.user.name} | id=${game.user.id} | GM? ${game.user.isGM}`,
   );
 
   safeInitSocket();

@@ -16,6 +16,12 @@ import {
   getValueIconPathForValueId,
   escapeHTML,
   mergeValueStateArray,
+  getValueStateArray,
+  isValueTrauma,
+  setValueTraumaFlag,
+  wasLogCreatedWithTrauma,
+  setLogCreatedWithTraumaFlag,
+  getLogIconPathForValue,
 } from "../../values.js";
 import {
   createMilestoneItem,
@@ -26,20 +32,21 @@ import {
   sendCallbackPromptToUser,
 } from "../../callbackFlow.js";
 
-import { ATTRIBUTE_KEYS, DISCIPLINE_KEYS } from "../../callbackFlow/dialogs.js";
+import {
+  ATTRIBUTE_KEYS,
+  DISCIPLINE_KEYS,
+  ATTRIBUTE_LABELS,
+} from "../../callbackFlow/dialogs.js";
 import {
   DIRECTIVE_VALUE_ID_PREFIX,
   directiveIconPath,
   getDirectiveSnapshotForLog,
   getMissionDirectives,
   isDirectiveValueId,
-  isDirectiveChallenged,
   makeDirectiveKeyFromText,
   sanitizeDirectiveText,
   setDirectiveChallenged,
 } from "../../directives.js";
-import { _promptSelectAndText } from "../../callbackFlow/dialogs.js";
-
 import { openNewMilestoneArcDialog } from "./newMilestoneArcDialog.js";
 
 import { promptUseValueChoice } from "./useValueDialog.js";
@@ -55,6 +62,7 @@ import {
 import { filterMilestoneAssociatedLogOptions } from "./milestoneLinks.js";
 import { syncMilestoneImgFromLog } from "../../milestoneIcons.js";
 import { installInlineLogChainLinkControls } from "./logLinkControls.js";
+import { setTraitScarFlag, isTraitScar } from "./itemFlags.js";
 import { installConfirmDeleteControls } from "./confirmDelete.js";
 import {
   applyMissionLogSorting,
@@ -65,6 +73,8 @@ import { getCreatedKey, compareKeys } from "./sortingUtils.js";
 import {
   areSheetEnhancementsEnabled,
   shouldShowLogUsedToggle,
+  areTraumaRulesEnabled,
+  areScarRulesEnabled,
 } from "../../clientSettings.js";
 
 import { installCharacterLogListResizer } from "./logListResizer.js";
@@ -192,7 +202,7 @@ function openStaOfficersLogContextMenu({ x, y, label, onClick }) {
 
 function _hasEligibleCallbackTargetWithAnyInvokedDirective(
   actor,
-  currentMissionLogId
+  currentMissionLogId,
 ) {
   try {
     if (!actor || actor.type !== "character") return false;
@@ -264,10 +274,10 @@ function installOfficersLogButtonsInStaTracker(app, root) {
 
     // Wrap the existing STA tracker buttons and our module buttons into a 2-column layout.
     let columns = iconContainer.querySelector?.(
-      ":scope > .sta-tracker-button-columns"
+      ":scope > .sta-tracker-button-columns",
     );
     let systemGroup = iconContainer.querySelector?.(
-      ":scope > .sta-tracker-button-columns > .sta-tracker-button-group.sta-tracker-system-buttons"
+      ":scope > .sta-tracker-button-columns > .sta-tracker-button-group.sta-tracker-system-buttons",
     );
 
     if (!columns || !systemGroup) {
@@ -333,7 +343,7 @@ function installOfficersLogButtonsInStaTracker(app, root) {
         title: t("sta-officers-log.tools.sendPrompt"),
         icon: "fa-solid fa-reply",
         onClick: () => game.staCallbacksHelper.open(),
-      })
+      }),
     );
 
     officersGroup.appendChild(
@@ -343,7 +353,7 @@ function installOfficersLogButtonsInStaTracker(app, root) {
         title: t("sta-officers-log.tools.resetMission"),
         icon: "fa-solid fa-book",
         onClick: () => game.staCallbacksHelper.promptNewMissionAndReset(),
-      })
+      }),
     );
 
     officersGroup.appendChild(
@@ -353,7 +363,7 @@ function installOfficersLogButtonsInStaTracker(app, root) {
         title: t("sta-officers-log.tools.newScene"),
         icon: "fa-solid fa-clapperboard",
         onClick: () => game.staCallbacksHelper.newScene(),
-      })
+      }),
     );
 
     columns.appendChild(divider);
@@ -387,7 +397,7 @@ function installCallbackSourceButtons(root, actor) {
       String(root?.dataset?.staShowLogUsedToggle ?? "0") === "1";
 
     const logRows = root.querySelectorAll(
-      'div.section.milestones li.row.entry[data-item-type="log"]'
+      'div.section.milestones li.row.entry[data-item-type="log"]',
     );
     const missionUserId = getUserIdForCharacterActor(actor);
     const currentMissionLogId = missionUserId
@@ -408,14 +418,14 @@ function installCallbackSourceButtons(root, actor) {
       if (!uId) {
         console.error(
           `${MODULE_ID} | cannot set current mission log (no user for actor ${String(
-            actor?.id ?? ""
-          )})`
+            actor?.id ?? "",
+          )})`,
         );
         return;
       }
       if (!lId) {
         console.error(
-          `${MODULE_ID} | cannot set current mission log (no logId)`
+          `${MODULE_ID} | cannot set current mission log (no logId)`,
         );
         return;
       }
@@ -427,7 +437,7 @@ function installCallbackSourceButtons(root, actor) {
           const socket = getModuleSocket();
           if (!socket || typeof socket.executeAsGM !== "function") {
             console.error(
-              `${MODULE_ID} | cannot set current mission log (socket unavailable)`
+              `${MODULE_ID} | cannot set current mission log (socket unavailable)`,
             );
             return;
           }
@@ -440,7 +450,7 @@ function installCallbackSourceButtons(root, actor) {
 
           if (ok !== true) {
             console.error(
-              `${MODULE_ID} | GM rejected setting current mission log for ${uId} -> ${lId}`
+              `${MODULE_ID} | GM rejected setting current mission log for ${uId} -> ${lId}`,
             );
             return;
           }
@@ -557,13 +567,13 @@ function installCallbackSourceButtons(root, actor) {
               : "";
             if (!missionUserId) {
               console.error(
-                `${MODULE_ID} | cannot set current mission log (no user for actor)`
+                `${MODULE_ID} | cannot set current mission log (no user for actor)`,
               );
               return;
             }
             if (!logId) {
               console.error(
-                `${MODULE_ID} | cannot set current mission log (missing log id on row)`
+                `${MODULE_ID} | cannot set current mission log (missing log id on row)`,
               );
               return;
             }
@@ -575,7 +585,7 @@ function installCallbackSourceButtons(root, actor) {
               onClick: async () => requestSetCurrentMissionLog(logId),
             });
           },
-          true
+          true,
         );
       }
 
@@ -584,7 +594,7 @@ function installCallbackSourceButtons(root, actor) {
       const isCurrentMissionRow =
         entryId && currentMissionLogId && entryId === currentMissionLogId;
       const existingIndicator = row.querySelector(
-        ".sta-current-mission-indicator"
+        ".sta-current-mission-indicator",
       );
       if (isCurrentMissionRow) {
         const inlineActions = ensureInlineActionsContainer(row, toggleAnchor);
@@ -617,7 +627,9 @@ function installCallbackSourceButtons(root, actor) {
             try {
               const target = ev?.target instanceof Element ? ev.target : null;
               const isAllowed = Boolean(
-                target?.closest?.(".sta-inline-sheet-btn, .sta-show-source-btn")
+                target?.closest?.(
+                  ".sta-inline-sheet-btn, .sta-show-source-btn",
+                ),
               );
               if (isAllowed) return;
               ev.preventDefault();
@@ -627,7 +639,7 @@ function installCallbackSourceButtons(root, actor) {
               // ignore
             }
           },
-          true
+          true,
         );
       }
 
@@ -652,7 +664,7 @@ function installCallbackSourceButtons(root, actor) {
           ? String(row.dataset.itemId)
           : "";
         const targetLogItem = targetLogId
-          ? actor.items?.get?.(String(targetLogId)) ?? null
+          ? (actor.items?.get?.(String(targetLogId)) ?? null)
           : null;
         const callbackLink =
           targetLogItem?.getFlag?.(MODULE_ID, "callbackLink") ?? null;
@@ -684,7 +696,7 @@ function installCallbackSourceButtons(root, actor) {
             flashRow(milestoneRow);
           } else {
             ui.notifications?.warn?.(
-              "Associated milestone is missing from the sheet."
+              "Associated milestone is missing from the sheet.",
             );
           }
         }
@@ -760,14 +772,14 @@ async function enforceUniqueFromLogIdTargets(actor, { editedLogId } = {}) {
               [`flags.${MODULE_ID}.callbackLink.fromLogId`]: null,
               [`flags.${MODULE_ID}.callbackLink.valueId`]: null,
             },
-            { renderSheet: false }
+            { renderSheet: false },
           );
         } catch (err) {
           console.warn(
             `${MODULE_ID} | failed enforcing unique callback target for ${losingId} -> ${String(
-              fromLogId
+              fromLogId,
             )}`,
-            err
+            err,
           );
         }
       }
@@ -777,7 +789,7 @@ async function enforceUniqueFromLogIdTargets(actor, { editedLogId } = {}) {
     if (editedLogId && loserLogIds.includes(String(editedLogId))) {
       try {
         const collidedFromLogId = String(
-          loserToFromLogId.get(String(editedLogId)) ?? ""
+          loserToFromLogId.get(String(editedLogId)) ?? "",
         );
 
         const fromName = (() => {
@@ -795,7 +807,7 @@ async function enforceUniqueFromLogIdTargets(actor, { editedLogId } = {}) {
 
         const targetLabel = fromName || collidedFromLogId || "that log";
         ui.notifications?.warn?.(
-          `Callback target already used (${targetLabel}); link cleared.`
+          `Callback target already used (${targetLabel}); link cleared.`,
         );
       } catch (_) {
         // ignore
@@ -852,11 +864,11 @@ async function syncCallbackTargetUsedFlags(actor) {
       // Only write when we need to flip state.
       if (desired && !current) {
         updates.push(
-          log.update({ "system.used": true }, { renderSheet: false })
+          log.update({ "system.used": true }, { renderSheet: false }),
         );
       } else if (!desired && current) {
         updates.push(
-          log.update({ "system.used": false }, { renderSheet: false })
+          log.update({ "system.used": false }, { renderSheet: false }),
         );
       }
     }
@@ -952,7 +964,7 @@ function installLogMetaCollapsible(root, logItem) {
       const milestones = Array.from(actor.items ?? [])
         .filter((i) => i?.type === "milestone")
         .sort((a, b) =>
-          String(a.name ?? "").localeCompare(String(b.name ?? ""))
+          String(a.name ?? "").localeCompare(String(b.name ?? "")),
         );
 
       const existingLink = logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
@@ -1001,7 +1013,7 @@ function installLogMetaCollapsible(root, logItem) {
 
           await logItem.update(
             { [`flags.${MODULE_ID}.callbackLink`]: next },
-            { renderSheet: false }
+            { renderSheet: false },
           );
 
           // If the user associates a Milestone/Arc with this log, keep the milestone icon
@@ -1031,6 +1043,52 @@ function installLogMetaCollapsible(root, logItem) {
     }
   } catch (_) {
     // ignore
+  }
+
+  // Checkbox to mark whether this log was created while its primary value was a trauma.
+  // This flag persists so logs keep their V# or T# icon prefix even if the value's
+  // trauma status later changes.
+  // Only show if Trauma rules are enabled.
+  if (areTraumaRulesEnabled()) {
+    try {
+      const createdWithTraumaRow = document.createElement("div");
+      createdWithTraumaRow.className = "row sta-log-created-with-trauma-row";
+
+      const traumaLabel = document.createElement("label");
+      traumaLabel.textContent = t(
+        "sta-officers-log.logSheet.createdWithTraumaLabel",
+      );
+      traumaLabel.title = t(
+        "sta-officers-log.logSheet.createdWithTraumaTooltip",
+      );
+
+      const traumaCheckbox = document.createElement("input");
+      traumaCheckbox.type = "checkbox";
+      traumaCheckbox.dataset.staCallbacksField = "createdWithTrauma";
+      traumaCheckbox.title = t(
+        "sta-officers-log.logSheet.createdWithTraumaTooltip",
+      );
+      traumaCheckbox.checked = wasLogCreatedWithTrauma(logItem);
+
+      const onTraumaChange = async (ev) => {
+        ev?.preventDefault?.();
+        ev?.stopPropagation?.();
+
+        try {
+          await setLogCreatedWithTraumaFlag(logItem, traumaCheckbox.checked);
+        } catch (_) {
+          // ignore
+        }
+      };
+
+      traumaCheckbox.addEventListener("change", onTraumaChange);
+
+      createdWithTraumaRow.appendChild(traumaLabel);
+      createdWithTraumaRow.appendChild(traumaCheckbox);
+      details.appendChild(createdWithTraumaRow);
+    } catch (_) {
+      // ignore
+    }
   }
 
   try {
@@ -1067,7 +1125,7 @@ function installSupportingBenefitCaps(root) {
 
   const findActionButton = (action) =>
     root.querySelector(
-      `button[data-action="${action}"], footer button[data-action="${action}"]`
+      `button[data-action="${action}"], footer button[data-action="${action}"]`,
     );
 
   const setDisabled = (action, disabled) => {
@@ -1100,7 +1158,7 @@ function installSupportingBenefitCaps(root) {
 
   const update = () => {
     const actorId = String(select.value ?? "");
-    const a = actorId ? game.actors?.get?.(actorId) ?? null : null;
+    const a = actorId ? (game.actors?.get?.(actorId) ?? null) : null;
     if (!a) {
       setDisabled("attr", true);
       setDisabled("disc", true);
@@ -1116,10 +1174,10 @@ function installSupportingBenefitCaps(root) {
     const maxTalents = 4;
 
     const focusCount = (a.items ?? []).filter(
-      (i) => i?.type === "focus"
+      (i) => i?.type === "focus",
     ).length;
     const talentCount = (a.items ?? []).filter(
-      (i) => i?.type === "talent" || i?.type === "shipTalent"
+      (i) => i?.type === "talent" || i?.type === "shipTalent",
     ).length;
 
     const canIncreaseAttr = isAnyAttributeBelowCap(a, attrCap);
@@ -1133,6 +1191,332 @@ function installSupportingBenefitCaps(root) {
 
   select.addEventListener("change", update);
   update();
+}
+
+function installTraitScarCheckbox(root, item) {
+  // Only show scar checkbox if Scar rules are enabled
+  if (!areScarRulesEnabled()) {
+    return;
+  }
+
+  try {
+    if (!(root instanceof HTMLElement)) return;
+    if (!item || item.type !== "trait") return;
+
+    const quantityInput = root.querySelector('input[name="system.quantity"]');
+    if (!(quantityInput instanceof HTMLInputElement)) return;
+    const quantityRow = quantityInput.closest("div.row");
+    if (!(quantityRow instanceof HTMLElement)) return;
+
+    const existingControl = quantityRow.querySelector(
+      ".sta-trait-scar-control",
+    );
+    const tooltipText =
+      t("sta-officers-log.traits.scarTooltip") ?? "Mark this trait as a Scar.";
+    const labelText = t("sta-officers-log.traits.scarLabel") ?? "Scar";
+    const usedTooltipText =
+      t("sta-officers-log.traits.usedTooltip") ?? "Mark this Scar as used.";
+    const usedLabelText = t("sta-officers-log.traits.usedLabel") ?? "Used";
+
+    let checkbox;
+    if (existingControl instanceof HTMLElement) {
+      checkbox = existingControl.querySelector(".sta-trait-scar-checkbox");
+      if (checkbox instanceof HTMLInputElement) {
+        checkbox.checked = isTraitScar(item);
+      }
+      const usedSwitch = existingControl.querySelector(
+        ".sta-trait-used-switch",
+      );
+      if (usedSwitch instanceof HTMLInputElement) {
+        usedSwitch.checked = item.getFlag?.(MODULE_ID, "isScarUsed") ?? false;
+      }
+      return;
+    }
+
+    const control = document.createElement("div");
+    control.className = "sta-trait-scar-control";
+
+    const labelWrapper = document.createElement("label");
+    labelWrapper.className = "checkbox sta-trait-scar-field";
+    labelWrapper.title = tooltipText;
+
+    checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "sta-trait-scar-checkbox";
+    checkbox.checked = isTraitScar(item);
+    checkbox.title = tooltipText;
+
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = labelText;
+
+    labelWrapper.appendChild(checkbox);
+    labelWrapper.appendChild(labelSpan);
+    control.appendChild(labelWrapper);
+
+    // Add the "Used" toggle switch
+    const usedLabelWrapper = document.createElement("label");
+    usedLabelWrapper.className = "checkbox sta-trait-used-field";
+    usedLabelWrapper.title = usedTooltipText;
+
+    const usedSwitch = document.createElement("input");
+    usedSwitch.type = "checkbox";
+    usedSwitch.className = "sta-trait-used-switch";
+    usedSwitch.checked = item.getFlag?.(MODULE_ID, "isScarUsed") ?? false;
+    usedSwitch.title = usedTooltipText;
+
+    const usedLabelSpan = document.createElement("span");
+    usedLabelSpan.textContent = usedLabelText;
+
+    usedLabelWrapper.appendChild(usedSwitch);
+    usedLabelWrapper.appendChild(usedLabelSpan);
+    control.appendChild(usedLabelWrapper);
+
+    quantityRow.appendChild(control);
+
+    const onChange = async () => {
+      checkbox.disabled = true;
+      try {
+        await setTraitScarFlag(item, checkbox.checked);
+      } catch (err) {
+        console.error(`${MODULE_ID} | trait scar toggle failed`, err);
+        checkbox.checked = isTraitScar(item);
+      } finally {
+        checkbox.disabled = false;
+      }
+    };
+
+    const onUsedChange = async () => {
+      usedSwitch.disabled = true;
+      try {
+        await item.setFlag(MODULE_ID, "isScarUsed", usedSwitch.checked);
+      } catch (err) {
+        console.error(`${MODULE_ID} | trait used toggle failed`, err);
+        usedSwitch.checked = item.getFlag?.(MODULE_ID, "isScarUsed") ?? false;
+      } finally {
+        usedSwitch.disabled = false;
+      }
+    };
+
+    checkbox.addEventListener("change", onChange);
+    usedSwitch.addEventListener("change", onUsedChange);
+  } catch (_) {
+    // ignore
+  }
+}
+
+function installTraitFatigueCheckbox(root, item) {
+  try {
+    if (!(root instanceof HTMLElement)) return;
+    if (!item || item.type !== "trait") return;
+
+    const quantityInput = root.querySelector('input[name="system.quantity"]');
+    if (!(quantityInput instanceof HTMLInputElement)) return;
+    const quantityRow = quantityInput.closest("div.row");
+    if (!(quantityRow instanceof HTMLElement)) return;
+
+    const existingControl = quantityRow.querySelector(
+      ".sta-trait-fatigue-control",
+    );
+    const tooltipText =
+      t("sta-officers-log.traits.fatigueTooltip") ??
+      "Mark this trait as a Fatigue trait.";
+    const labelText = t("sta-officers-log.traits.fatigueLabel") ?? "Fatigue";
+
+    let checkbox;
+    if (existingControl instanceof HTMLElement) {
+      checkbox = existingControl.querySelector(".sta-trait-fatigue-checkbox");
+      if (checkbox instanceof HTMLInputElement) {
+        checkbox.checked = item.getFlag?.(MODULE_ID, "isFatigue") ?? false;
+      }
+      return;
+    }
+
+    const control = document.createElement("div");
+    control.className = "sta-trait-fatigue-control";
+
+    const labelWrapper = document.createElement("label");
+    labelWrapper.className = "checkbox sta-trait-fatigue-field";
+    labelWrapper.title = tooltipText;
+
+    checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "sta-trait-fatigue-checkbox";
+    checkbox.checked = item.getFlag?.(MODULE_ID, "isFatigue") ?? false;
+    checkbox.title = tooltipText;
+
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = labelText;
+
+    labelWrapper.appendChild(checkbox);
+    labelWrapper.appendChild(labelSpan);
+    control.appendChild(labelWrapper);
+
+    quantityRow.appendChild(control);
+
+    const onChange = async () => {
+      checkbox.disabled = true;
+      try {
+        await item.setFlag(MODULE_ID, "isFatigue", checkbox.checked);
+      } catch (err) {
+        console.error(`${MODULE_ID} | trait fatigue toggle failed`, err);
+        checkbox.checked = item.getFlag?.(MODULE_ID, "isFatigue") ?? false;
+      } finally {
+        checkbox.disabled = false;
+      }
+    };
+
+    checkbox.addEventListener("change", onChange);
+  } catch (_) {
+    // ignore
+  }
+}
+
+function installValueTraumaCheckbox(root, item) {
+  // Only show trauma checkbox if Trauma rules are enabled
+  if (!areTraumaRulesEnabled()) {
+    return;
+  }
+
+  try {
+    if (!(root instanceof HTMLElement)) return;
+    if (!item || item.type !== "value") return;
+
+    const nameInput = root.querySelector('input[name="name"]');
+    if (!(nameInput instanceof HTMLInputElement)) return;
+    const nameRow = nameInput.closest("div.row");
+    if (!(nameRow instanceof HTMLElement)) return;
+
+    const existingControl = nameRow.querySelector(".sta-value-trauma-control");
+    const tooltipText =
+      t("sta-officers-log.values.traumaTooltip") ??
+      "Mark this Value as Trauma.";
+    const labelText = t("sta-officers-log.values.traumaLabel") ?? "Trauma";
+
+    let checkbox;
+    if (existingControl instanceof HTMLElement) {
+      checkbox = existingControl.querySelector(".sta-value-trauma-checkbox");
+      if (checkbox instanceof HTMLInputElement) {
+        checkbox.checked = isValueTrauma(item);
+      }
+      return;
+    }
+
+    const control = document.createElement("div");
+    control.className = "sta-value-trauma-control";
+
+    const labelWrapper = document.createElement("label");
+    labelWrapper.className = "checkbox sta-value-trauma-field";
+    labelWrapper.title = tooltipText;
+
+    checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "sta-value-trauma-checkbox";
+    checkbox.checked = isValueTrauma(item);
+    checkbox.title = tooltipText;
+
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = labelText;
+
+    labelWrapper.appendChild(checkbox);
+    labelWrapper.appendChild(labelSpan);
+    control.appendChild(labelWrapper);
+
+    nameRow.appendChild(control);
+
+    const onChange = async () => {
+      checkbox.disabled = true;
+      try {
+        await setValueTraumaFlag(item, checkbox.checked);
+
+        // Update the value's icon from V# to T# or vice versa
+        try {
+          const actor = item.parent;
+          if (actor && actor.type === "character") {
+            // Get the value's current position in the sorted list
+            const values = getValueItems(actor);
+            const sorted = values
+              .slice()
+              .sort((a, b) => Number(a.sort ?? 0) - Number(b.sort ?? 0));
+            const idx = sorted.findIndex(
+              (v) => String(v.id) === String(item.id),
+            );
+
+            if (idx >= 0) {
+              const n = Math.min(idx + 1, 8); // VALUE_ICON_COUNT = 8
+              // After toggling, isValueTrauma will return the new state
+              const newIsTrauma = checkbox.checked;
+              const newIconPath = newIsTrauma
+                ? `modules/${MODULE_ID}/assets/ValueIcons/T${n}.webp`
+                : `modules/${MODULE_ID}/assets/ValueIcons/V${n}.webp`;
+
+              if (String(item.img ?? "") !== newIconPath) {
+                await item.update({ img: newIconPath });
+              }
+            }
+          }
+        } catch (iconErr) {
+          console.warn(`${MODULE_ID} | failed to update value icon`, iconErr);
+        }
+      } catch (err) {
+        console.error(`${MODULE_ID} | value trauma toggle failed`, err);
+        checkbox.checked = isValueTrauma(item);
+      } finally {
+        checkbox.disabled = false;
+      }
+    };
+
+    checkbox.addEventListener("change", onChange);
+  } catch (_) {
+    // ignore
+  }
+}
+
+function applyFatigueAttributeStyles(root, actor) {
+  try {
+    if (!(root instanceof HTMLElement)) return;
+    if (!actor || actor.type !== "character") return;
+
+    // Get the fatigued attribute from actor flags
+    const fatiguedAttribute = actor.getFlag?.(MODULE_ID, "fatiguedAttribute");
+    if (!fatiguedAttribute) return;
+
+    // Find the fatigued trait to get its name
+    const fatiguedTrait = Array.from(actor.items ?? []).find(
+      (item) =>
+        item?.type === "trait" &&
+        item.getFlag?.(MODULE_ID, "isFatigue") === true,
+    );
+    if (!fatiguedTrait) return;
+
+    const traitName = fatiguedTrait.name;
+    const attributeLabel = ATTRIBUTE_LABELS[fatiguedAttribute];
+
+    // Find the attribute selector checkbox and disable it
+    const selectorCheckbox = root.querySelector(
+      `input.selector.attribute[id="${fatiguedAttribute}.selector"]`,
+    );
+    if (selectorCheckbox instanceof HTMLInputElement) {
+      selectorCheckbox.disabled = true;
+      selectorCheckbox.classList.add("sta-fatigued-attribute");
+    }
+
+    // Find the attribute label and add strikethrough styling
+    const attributeRow = root
+      .querySelector(
+        `input.selector.attribute[id="${fatiguedAttribute}.selector"]`,
+      )
+      ?.closest("div.row-right");
+
+    if (attributeRow instanceof HTMLElement) {
+      const labelElement = attributeRow.querySelector("div.list-entry");
+      if (labelElement instanceof HTMLElement) {
+        labelElement.classList.add("sta-fatigued-attribute-label");
+        labelElement.title = `${traitName}: Fail all rolls using ${attributeLabel}`;
+      }
+    }
+  } catch (_) {
+    // ignore
+  }
 }
 
 export function installRenderApplicationV2Hook() {
@@ -1192,7 +1576,7 @@ export function installRenderApplicationV2Hook() {
                   const parent = item?.parent ?? null;
                   if (parent?.type === "character") return [parent];
                   return (game.actors ?? []).filter(
-                    (a) => a?.type === "character"
+                    (a) => a?.type === "character",
                   );
                 })();
 
@@ -1275,13 +1659,13 @@ export function installRenderApplicationV2Hook() {
                   el instanceof HTMLElement
                     ? el
                     : Array.isArray(el) && el[0] instanceof HTMLElement
-                    ? el[0]
-                    : el?.[0] instanceof HTMLElement
-                    ? el[0]
-                    : typeof el?.get === "function" &&
-                      el.get(0) instanceof HTMLElement
-                    ? el.get(0)
-                    : null;
+                      ? el[0]
+                      : el?.[0] instanceof HTMLElement
+                        ? el[0]
+                        : typeof el?.get === "function" &&
+                            el.get(0) instanceof HTMLElement
+                          ? el.get(0)
+                          : null;
 
                 if (
                   !(
@@ -1331,13 +1715,13 @@ export function installRenderApplicationV2Hook() {
                   el instanceof HTMLElement
                     ? el
                     : Array.isArray(el) && el[0] instanceof HTMLElement
-                    ? el[0]
-                    : el?.[0] instanceof HTMLElement
-                    ? el[0]
-                    : typeof el?.get === "function" &&
-                      el.get(0) instanceof HTMLElement
-                    ? el.get(0)
-                    : null;
+                      ? el[0]
+                      : el?.[0] instanceof HTMLElement
+                        ? el[0]
+                        : typeof el?.get === "function" &&
+                            el.get(0) instanceof HTMLElement
+                          ? el.get(0)
+                          : null;
 
                 if (
                   !(
@@ -1374,11 +1758,11 @@ export function installRenderApplicationV2Hook() {
                   undefined ||
                 foundry.utils.getProperty(
                   changes,
-                  `${base}callbackLink.fromLogId`
+                  `${base}callbackLink.fromLogId`,
                 ) !== undefined ||
                 foundry.utils.getProperty(
                   changes,
-                  `${base}callbackLink.valueId`
+                  `${base}callbackLink.valueId`,
                 ) !== undefined ||
                 foundry.utils.getProperty(changes, `${base}primaryValueId`) !==
                   undefined ||
@@ -1386,7 +1770,7 @@ export function installRenderApplicationV2Hook() {
                   undefined ||
                 foundry.utils.getProperty(
                   changes,
-                  `${base}callbackLinkDisabled`
+                  `${base}callbackLinkDisabled`,
                 ) !== undefined
               );
             } catch (_) {
@@ -1402,11 +1786,11 @@ export function installRenderApplicationV2Hook() {
                   undefined ||
                 foundry.utils.getProperty(
                   changes,
-                  `${base}callbackLink.fromLogId`
+                  `${base}callbackLink.fromLogId`,
                 ) !== undefined ||
                 foundry.utils.getProperty(
                   changes,
-                  `${base}callbackLinkDisabled`
+                  `${base}callbackLinkDisabled`,
                 ) !== undefined
               );
             } catch (_) {
@@ -1459,13 +1843,13 @@ export function installRenderApplicationV2Hook() {
                       // Clear guard on next tick to prevent loops.
                       setTimeout(
                         () => _staNormalizingActorIds.delete(String(actor.id)),
-                        0
+                        0,
                       );
                     }
                   }
 
                   const primaryValueId = String(
-                    item.getFlag?.(MODULE_ID, "primaryValueId") ?? ""
+                    item.getFlag?.(MODULE_ID, "primaryValueId") ?? "",
                   );
                   const link =
                     item.getFlag?.(MODULE_ID, "callbackLink") ?? null;
@@ -1480,15 +1864,15 @@ export function installRenderApplicationV2Hook() {
                       return (
                         foundry.utils.getProperty(
                           changes,
-                          `${base}callbackLink`
+                          `${base}callbackLink`,
                         ) !== undefined ||
                         foundry.utils.getProperty(
                           changes,
-                          `${base}callbackLink.fromLogId`
+                          `${base}callbackLink.fromLogId`,
                         ) !== undefined ||
                         foundry.utils.getProperty(
                           changes,
-                          `${base}callbackLink.valueId`
+                          `${base}callbackLink.valueId`,
                         ) !== undefined
                       );
                     } catch (_) {
@@ -1501,7 +1885,7 @@ export function installRenderApplicationV2Hook() {
                       return (
                         foundry.utils.getProperty(
                           changes,
-                          `flags.${MODULE_ID}.primaryValueId`
+                          `flags.${MODULE_ID}.primaryValueId`,
                         ) !== undefined
                       );
                     } catch (_) {
@@ -1517,15 +1901,15 @@ export function installRenderApplicationV2Hook() {
                           undefined ||
                         foundry.utils.getProperty(
                           changes,
-                          `${base}arcInfo.isArc`
+                          `${base}arcInfo.isArc`,
                         ) !== undefined ||
                         foundry.utils.getProperty(
                           changes,
-                          `${base}arcInfo.steps`
+                          `${base}arcInfo.steps`,
                         ) !== undefined ||
                         foundry.utils.getProperty(
                           changes,
-                          `${base}arcInfo.valueId`
+                          `${base}arcInfo.valueId`,
                         ) !== undefined
                       );
                     } catch (_) {
@@ -1558,25 +1942,64 @@ export function installRenderApplicationV2Hook() {
                   }
 
                   // Sync log icon to Primary Value (or default) after save.
+                  // Also set createdWithTrauma flag based on whether the value is currently a trauma.
                   if (primaryValueTouched) {
                     try {
-                      const desiredImg =
-                        primaryValueId && isDirectiveValueId(primaryValueId)
-                          ? directiveIconPath()
-                          : (() => {
-                              const valueItem = primaryValueId
-                                ? actor.items.get(primaryValueId)
-                                : null;
-                              return valueItem?.type === "value" &&
-                                valueItem?.img
-                                ? String(valueItem.img)
-                                : getStaDefaultIcon();
-                            })();
                       if (
-                        desiredImg &&
-                        String(item.img ?? "") !== String(desiredImg)
+                        primaryValueId &&
+                        !isDirectiveValueId(primaryValueId)
                       ) {
-                        update.img = desiredImg;
+                        const valueItem = actor.items.get(primaryValueId);
+                        if (valueItem?.type === "value") {
+                          // Record whether this log was created with a trauma as its primary value.
+                          // This flag persists so logs keep their V# or T# prefix even if the value's
+                          // trauma status later changes.
+                          const valueIsTrauma = isValueTrauma(valueItem);
+                          update[`flags.${MODULE_ID}.createdWithTrauma`] =
+                            valueIsTrauma;
+
+                          // Compute icon using the new trauma status and value's current position
+                          const desiredImg = getLogIconPathForValue(
+                            actor,
+                            primaryValueId,
+                            valueIsTrauma,
+                          );
+                          if (
+                            desiredImg &&
+                            String(item.img ?? "") !== String(desiredImg)
+                          ) {
+                            update.img = desiredImg;
+                          }
+                        } else {
+                          // Value not found - use default icon
+                          const desiredImg = getStaDefaultIcon();
+                          if (
+                            desiredImg &&
+                            String(item.img ?? "") !== String(desiredImg)
+                          ) {
+                            update.img = desiredImg;
+                          }
+                        }
+                      } else if (
+                        primaryValueId &&
+                        isDirectiveValueId(primaryValueId)
+                      ) {
+                        const desiredImg = directiveIconPath();
+                        if (
+                          desiredImg &&
+                          String(item.img ?? "") !== String(desiredImg)
+                        ) {
+                          update.img = desiredImg;
+                        }
+                      } else {
+                        // No primary value - use default icon
+                        const desiredImg = getStaDefaultIcon();
+                        if (
+                          desiredImg &&
+                          String(item.img ?? "") !== String(desiredImg)
+                        ) {
+                          update.img = desiredImg;
+                        }
                       }
                     } catch (_) {
                       // ignore
@@ -1600,7 +2023,7 @@ export function installRenderApplicationV2Hook() {
                           arcInfo?.valueId ??
                             primaryValueId ??
                             linkValueId ??
-                            ""
+                            "",
                         );
 
                         if (!arcValueId) {
@@ -1611,7 +2034,7 @@ export function installRenderApplicationV2Hook() {
                             actorDoc,
                             endLogId,
                             maxSteps,
-                            disallowNodeIds
+                            disallowNodeIds,
                           ) => {
                             try {
                               const steps = Number(maxSteps);
@@ -1661,7 +2084,7 @@ export function installRenderApplicationV2Hook() {
                           const disallowNodeIds = new Set();
                           try {
                             const actorLogs = Array.from(
-                              actor.items ?? []
+                              actor.items ?? [],
                             ).filter((i) => i?.type === "log");
                             for (const other of actorLogs) {
                               if (String(other.id) === String(item.id))
@@ -1670,7 +2093,7 @@ export function installRenderApplicationV2Hook() {
                                 other.getFlag?.(MODULE_ID, "arcInfo") ?? null;
                               if (otherArc?.isArc !== true) continue;
                               const otherChain = Array.isArray(
-                                otherArc.chainLogIds
+                                otherArc.chainLogIds,
                               )
                                 ? otherArc.chainLogIds
                                 : [];
@@ -1688,7 +2111,7 @@ export function installRenderApplicationV2Hook() {
                               actor,
                               String(item.id),
                               steps,
-                              disallowNodeIds
+                              disallowNodeIds,
                             );
                           } catch (_) {
                             chainLogIds = [];
@@ -1805,13 +2228,13 @@ export function installRenderApplicationV2Hook() {
           html instanceof HTMLElement
             ? html
             : Array.isArray(html) && html[0] instanceof HTMLElement
-            ? html[0]
-            : html?.[0] instanceof HTMLElement
-            ? html[0]
-            : typeof html?.get === "function" &&
-              html.get(0) instanceof HTMLElement
-            ? html.get(0)
-            : null;
+              ? html[0]
+              : html?.[0] instanceof HTMLElement
+                ? html[0]
+                : typeof html?.get === "function" &&
+                    html.get(0) instanceof HTMLElement
+                  ? html.get(0)
+                  : null;
         if (!(root instanceof HTMLElement)) return;
 
         if (item?.type === "log") {
@@ -1846,6 +2269,8 @@ export function installRenderApplicationV2Hook() {
         root.dataset.staShowLogUsedToggle = shouldShowLogUsedToggle()
           ? "1"
           : "0";
+        // Apply fatigue attribute styling for STA character sheets
+        applyFatigueAttributeStyles(root, app.actor);
       }
     } catch (_) {
       // ignore
@@ -1853,6 +2278,69 @@ export function installRenderApplicationV2Hook() {
 
     // STA system tracker: add Officers Log buttons next to the roll buttons.
     installOfficersLogButtonsInStaTracker(app, root);
+
+    // Check if this is a Dice Pool dialog and add fatigue notice if needed
+    try {
+      const isDicePoolDialog =
+        root?.querySelector?.("#dice-pool-form") ||
+        root?.querySelector?.('[id*="dice-pool"]') ||
+        app?.window?.title === "Dice Pool";
+
+      if (isDicePoolDialog) {
+        // Get the speaker actor from the context or from the last used actor
+        let actor = null;
+
+        // Try to get actor from app's options or context
+        if (app?.options?.actor) {
+          actor = app.options.actor;
+        } else if (app?.actor) {
+          actor = app.actor;
+        } else if (app?.object?.actor) {
+          actor = app.object.actor;
+        } else if (_context?.actor) {
+          actor = _context.actor;
+        } else {
+          // Try to get the last controlled token's actor
+          const controlledTokens = canvas?.tokens?.controlled ?? [];
+          if (controlledTokens.length > 0) {
+            actor = controlledTokens[0].actor;
+          } else if (game?.user?.character) {
+            actor = game.user.character;
+          }
+        }
+
+        if (actor) {
+          // Check if character is fatigued (case-insensitive, partial match)
+          const isFatigued = actor.items.some((item) => {
+            const itemName = String(item.name ?? "").toLowerCase();
+            const isTraitOrInjury =
+              item.type === "trait" || item.type === "injury";
+            return itemName.includes("fatigued") && isTraitOrInjury;
+          });
+
+          if (isFatigued) {
+            // Add fatigue notice to the dialog
+            const footer = root?.querySelector?.("footer.form-footer") ?? null;
+
+            if (footer) {
+              // Check if we've already added the fatigue notice to avoid duplicates
+              if (!footer.querySelector(".sta-dice-pool-fatigue-notice")) {
+                const fatigueNotice = document.createElement("div");
+                fatigueNotice.className = "sta-dice-pool-fatigue-notice";
+                fatigueNotice.innerHTML =
+                  '<p style="color: #d91e1e; font-weight: bold; margin-top: 10px;">You are fatigued: +1 Difficulty</p>';
+                footer.insertBefore(fatigueNotice, footer.firstChild);
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(
+        "sta-officers-log | Failed to check fatigue in Dice Pool dialog",
+        err,
+      );
+    }
 
     if (!areSheetEnhancementsEnabled()) return;
     // DialogV2: force vertical benefit button layout by wrapping footer buttons.
@@ -1901,6 +2389,18 @@ export function installRenderApplicationV2Hook() {
       // ignore
     }
 
+    try {
+      const item = getItemFromApp(app);
+      if (item?.type === "trait") {
+        installTraitScarCheckbox(root, item);
+        installTraitFatigueCheckbox(root, item);
+      } else if (item?.type === "value") {
+        installValueTraumaCheckbox(root, item);
+      }
+    } catch (_) {
+      // ignore
+    }
+
     // Only target your STA character sheet app
     if (!app?.id?.startsWith("STACharacterSheet2e")) return;
 
@@ -1909,7 +2409,7 @@ export function installRenderApplicationV2Hook() {
 
     // Add a "Visualize Story" button to the Character Logs title (when present)
     const anyLogEntry = root.querySelector(
-      'div.section.milestones li.row.entry[data-item-type="log"]'
+      'div.section.milestones li.row.entry[data-item-type="log"]',
     );
     const logsSection = anyLogEntry?.closest?.("div.section") ?? null;
     const logsTitleEl = logsSection
@@ -1928,7 +2428,7 @@ export function installRenderApplicationV2Hook() {
 
         // If a previous render appended buttons directly, adopt them.
         const existingBtns = Array.from(
-          logsTitleEl.querySelectorAll(":scope > a.sta-log-sort-btn")
+          logsTitleEl.querySelectorAll(":scope > a.sta-log-sort-btn"),
         );
         for (const b of existingBtns) actions.appendChild(b);
 
@@ -1949,19 +2449,19 @@ export function installRenderApplicationV2Hook() {
         m === "alpha"
           ? 'Sort: A⮕Z <i class="fa-solid fa-arrow-down-a-z"></i>'
           : m === "chain"
-          ? 'Sort: Chain <i class="fa-solid fa-link"></i>'
-          : m === "custom"
-          ? 'Sort: Custom <i class="fa-solid fa-list"></i>'
-          : 'Sort: Date <i class="fa-solid fa-calendar-day"></i>';
+            ? 'Sort: Chain <i class="fa-solid fa-link"></i>'
+            : m === "custom"
+              ? 'Sort: Custom <i class="fa-solid fa-list"></i>'
+              : 'Sort: Date <i class="fa-solid fa-calendar-day"></i>';
 
       btnEl.title =
         m === "alpha"
           ? "Mission Log sort: Alphabetical Order"
           : m === "chain"
-          ? "Mission Log sort: Chain Order"
-          : m === "custom"
-          ? "Mission Log sort: Custom Order"
-          : "Mission Log sort: Creation Order";
+            ? "Mission Log sort: Chain Order"
+            : m === "custom"
+              ? "Mission Log sort: Custom Order"
+              : "Mission Log sort: Creation Order";
     };
 
     if (actions) {
@@ -1991,10 +2491,10 @@ export function installRenderApplicationV2Hook() {
             cur === "created"
               ? "alpha"
               : cur === "alpha"
-              ? "chain"
-              : cur === "chain"
-              ? "custom"
-              : "created";
+                ? "chain"
+                : cur === "chain"
+                  ? "custom"
+                  : "created";
 
           // Persist on the actor (per character). If this fails for some reason,
           // still apply locally so the user sees an immediate effect.
@@ -2002,7 +2502,7 @@ export function installRenderApplicationV2Hook() {
 
           if (!res.ok) {
             ui?.notifications?.warn?.(
-              "Couldn't save Mission Log sort preference for this character."
+              "Couldn't save Mission Log sort preference for this character.",
             );
           }
 
@@ -2018,7 +2518,7 @@ export function installRenderApplicationV2Hook() {
         // Keep label in sync (in case another hook sets state before render)
         applyMissionLogSortButtonLabel(
           existingBtn,
-          getMissionLogSortModeForActor(actor)
+          getMissionLogSortModeForActor(actor),
         );
       }
     }
@@ -2084,7 +2584,7 @@ export function installRenderApplicationV2Hook() {
       btn.className = "sta-label-values-btn";
       btn.title = t("sta-officers-log.tools.labelValuesTooltip");
       btn.innerHTML = `${t(
-        "sta-officers-log.tools.labelValues"
+        "sta-officers-log.tools.labelValues",
       )} <i class="fa-solid fa-tags"></i>`;
 
       btn.addEventListener("click", async (ev) => {
@@ -2105,7 +2605,7 @@ export function installRenderApplicationV2Hook() {
       dirBtn.className = "sta-use-directive-btn";
       dirBtn.title = t("sta-officers-log.values.useDirectiveTooltip");
       dirBtn.innerHTML = `${t(
-        "sta-officers-log.values.useDirective"
+        "sta-officers-log.values.useDirective",
       )} <i class="fa-solid fa-flag"></i>`;
 
       dirBtn.addEventListener("click", async (ev) => {
@@ -2140,31 +2640,87 @@ export function installRenderApplicationV2Hook() {
           byKey.set(key, text);
         }
 
-        // Build options list (disable challenged directives)
-        const optionsHtml = [
-          `<option value="__other__">${escapeHTML(
-            t("sta-officers-log.dialog.useDirective.other")
-          )}</option>`,
-        ];
+        const directiveOptions = [];
         for (const [key, text] of byKey.entries()) {
-          const disabled = isDirectiveChallenged(actor, key) ? " disabled" : "";
-          optionsHtml.push(
-            `<option value="${escapeHTML(key)}"${disabled}>${escapeHTML(
-              text
-            )}</option>`
+          directiveOptions.push(
+            `<option value="${escapeHTML(key)}">${escapeHTML(text)}</option>`,
           );
         }
 
-        const pick = await _promptSelectAndText({
-          title: t("sta-officers-log.dialog.useDirective.title"),
-          selectLabel: t("sta-officers-log.dialog.useDirective.pick"),
-          selectName: "directiveKey",
-          selectOptionsHtml: optionsHtml.join(""),
-          textLabel: t("sta-officers-log.dialog.useDirective.other"),
-          textName: "directiveText",
-          textPlaceholder: t(
-            "sta-officers-log.dialog.useDirective.otherPlaceholder"
-          ),
+        const toggleCustomDirectiveInput = [
+          "(() => {",
+          "const form = this.form;",
+          "const customGroup = form?.querySelector('[data-sta-directive-custom]');",
+          "const customInput = form?.elements?.directiveText;",
+          "const shouldShow = this.value === '__other__';",
+          "if (customGroup) customGroup.style.display = shouldShow ? '' : 'none';",
+          "if (customInput) {",
+          "  customInput.disabled = !shouldShow;",
+          "  if (shouldShow) customInput.focus();",
+          "}",
+          "})()",
+        ].join(" ");
+
+        const pick = await foundry.applications.api.DialogV2.wait({
+          window: { title: t("sta-officers-log.dialog.useDirective.title") },
+          content: `
+            <div class="form-group">
+              <label>${escapeHTML(
+                t("sta-officers-log.dialog.useDirective.pick"),
+              )}</label>
+              <div class="form-fields">
+                <select name="directiveKey" onchange="${toggleCustomDirectiveInput}">
+                  <option value="" selected disabled hidden>${escapeHTML(
+                    t("sta-officers-log.dialog.useDirective.pick"),
+                  )}</option>
+                  <option value="__other__">${escapeHTML(
+                    t("sta-officers-log.dialog.useDirective.other"),
+                  )}</option>
+                  ${directiveOptions.join("")}
+                </select>
+              </div>
+            </div>
+            <div
+              class="form-group"
+              data-sta-directive-custom
+              style="display: none;"
+            >
+              <label>${escapeHTML(
+                t("sta-officers-log.dialog.useDirective.other"),
+              )}</label>
+              <div class="form-fields">
+                <input
+                  type="text"
+                  name="directiveText"
+                  placeholder="${escapeHTML(
+                    t("sta-officers-log.dialog.useDirective.otherPlaceholder"),
+                  )}"
+                  disabled
+                />
+              </div>
+              <p class="hint">
+                ask the GM if your custom Directive is in play before proceeding
+              </p>
+            </div>
+          `,
+          buttons: [
+            {
+              action: "ok",
+              label: t("sta-officers-log.dialog.chooseMilestoneBenefit.ok"),
+              default: true,
+              callback: (_event, button) => ({
+                directiveKey: button.form?.elements?.directiveKey?.value ?? "",
+                directiveText:
+                  button.form?.elements?.directiveText?.value ?? "",
+              }),
+            },
+            {
+              action: "cancel",
+              label: t("sta-officers-log.dialog.chooseMilestoneBenefit.cancel"),
+            },
+          ],
+          rejectClose: false,
+          modal: false,
         });
 
         if (!pick) return;
@@ -2177,16 +2733,13 @@ export function installRenderApplicationV2Hook() {
         const chosenText = sanitizeDirectiveText(chosenTextRaw);
         if (!chosenText) {
           ui.notifications?.warn?.(
-            t("sta-officers-log.dialog.useDirective.missing")
+            t("sta-officers-log.dialog.useDirective.missing"),
           );
           return;
         }
 
         const directiveKey = makeDirectiveKeyFromText(chosenText);
         const directiveValueId = `${DIRECTIVE_VALUE_ID_PREFIX}${directiveKey}`;
-
-        // Enforce: cannot re-use challenged directives.
-        if (isDirectiveChallenged(actor, directiveKey)) return;
 
         const choice = await promptUseValueChoice({
           valueName: chosenText,
@@ -2199,8 +2752,8 @@ export function installRenderApplicationV2Hook() {
           choice === "positive"
             ? "positive"
             : choice === "challenge"
-            ? "challenged"
-            : "negative";
+              ? "challenged"
+              : "negative";
 
         const applyLogUsage = async (logDoc) => {
           if (!logDoc) return;
@@ -2211,7 +2764,7 @@ export function installRenderApplicationV2Hook() {
           await logDoc.update({
             [`system.valueStates.${directiveValueId}`]: mergeValueStateArray(
               existingRaw,
-              valueState
+              valueState,
             ),
           });
 
@@ -2248,7 +2801,7 @@ export function installRenderApplicationV2Hook() {
             if (
               _hasEligibleCallbackTargetWithAnyInvokedDirective(
                 actor,
-                currentMissionLogId
+                currentMissionLogId,
               )
             ) {
               await promptCallbackForActorAsGM(actor, owningUserId, {
@@ -2266,7 +2819,7 @@ export function installRenderApplicationV2Hook() {
         const moduleSocket = getModuleSocket();
         if (!moduleSocket) {
           ui.notifications?.error(
-            t("sta-officers-log.errors.socketNotAvailable")
+            t("sta-officers-log.errors.socketNotAvailable"),
           );
           return;
         }
@@ -2280,7 +2833,7 @@ export function installRenderApplicationV2Hook() {
             if (
               _hasEligibleCallbackTargetWithAnyInvokedDirective(
                 actor,
-                currentMissionLogId
+                currentMissionLogId,
               )
             ) {
               await moduleSocket.executeAsGM("promptCallbackForUser", {
@@ -2293,7 +2846,7 @@ export function installRenderApplicationV2Hook() {
           } catch (err) {
             console.error(
               "sta-officers-log | Failed to request callback prompt",
-              err
+              err,
             );
           }
 
@@ -2313,22 +2866,22 @@ export function installRenderApplicationV2Hook() {
               directiveText: chosenText,
               usage: choice,
               currentMissionLogId,
-            }
+            },
           );
 
           if (result?.approved) {
             ui.notifications?.info(
-              t("sta-officers-log.dialog.useValue.approved")
+              t("sta-officers-log.dialog.useValue.approved"),
             );
           } else {
             ui.notifications?.warn(
-              t("sta-officers-log.dialog.useValue.denied")
+              t("sta-officers-log.dialog.useValue.denied"),
             );
           }
         } catch (err) {
           console.error(
             "sta-officers-log | Use Directive approval failed",
-            err
+            err,
           );
           ui.notifications?.error(t("sta-officers-log.dialog.useValue.error"));
         }
@@ -2339,14 +2892,109 @@ export function installRenderApplicationV2Hook() {
       titleEl.appendChild(dirBtn);
     }
 
+    // Add a per-Trait "Use Scar" button.
+    const traitEntries = root.querySelectorAll(
+      'div.section.traits li.row.entry[data-item-type="trait"]',
+    );
+
+    for (const entry of traitEntries) {
+      if (entry.querySelector(".sta-use-scar-btn")) continue;
+
+      const itemId = entry?.dataset?.itemId;
+      const traitItem = itemId ? actor.items.get(itemId) : null;
+      if (!traitItem) continue;
+
+      const isScar = isTraitScar(traitItem);
+      if (!isScar) continue; // Only show button for scars
+
+      // Locate the item-name input where we'll insert the button after
+      const itemNameInput = entry.querySelector("input.item-name");
+      if (!itemNameInput) continue;
+
+      const useBtn = document.createElement("span");
+      useBtn.className = "sta-use-scar-btn sta-inline-sheet-btn";
+      useBtn.title = t("sta-officers-log.traits.useScarTooltip");
+      useBtn.textContent = t("sta-officers-log.traits.useScar");
+      useBtn.setAttribute("role", "button");
+      useBtn.tabIndex = 0;
+
+      // Check if scar has already been used
+      const scarUsed = traitItem.getFlag?.(MODULE_ID, "isScarUsed");
+      if (scarUsed) {
+        useBtn.classList.add("is-disabled");
+        useBtn.setAttribute("aria-disabled", "true");
+        useBtn.disabled = true;
+      }
+
+      const onUseScar = async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        if (scarUsed) return; // Don't allow clicking if already used
+
+        const moduleSocket = getModuleSocket();
+        if (!moduleSocket) {
+          ui.notifications?.error(
+            t("sta-officers-log.errors.socketNotAvailable"),
+          );
+          return;
+        }
+
+        useBtn.disabled = true;
+
+        try {
+          const result = await moduleSocket.executeAsGM(
+            "requestScarUseApproval",
+            {
+              requestingUserId: game.user.id,
+              actorUuid: actor.uuid,
+              actorName: actor.name,
+              traitItemId: traitItem.id,
+              traitName: traitItem.name,
+            },
+          );
+
+          if (result?.approved) {
+            ui.notifications?.info(
+              t("sta-officers-log.dialog.useValue.approved"),
+            );
+            // Mark scar as used
+            await traitItem.setFlag(MODULE_ID, "isScarUsed", true);
+            useBtn.classList.add("is-disabled");
+            useBtn.setAttribute("aria-disabled", "true");
+            useBtn.disabled = true;
+          } else {
+            ui.notifications?.warn(
+              t("sta-officers-log.dialog.useValue.denied"),
+            );
+            useBtn.disabled = false;
+          }
+        } catch (err) {
+          console.error("sta-officers-log | Use Scar approval failed", err);
+          ui.notifications?.error(t("sta-officers-log.dialog.useValue.error"));
+          useBtn.disabled = false;
+        } finally {
+          app.render();
+        }
+      };
+
+      useBtn.addEventListener("click", onUseScar);
+      useBtn.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") onUseScar(ev);
+      });
+
+      // Insert button after item-name and before quantity
+      itemNameInput.insertAdjacentElement("afterend", useBtn);
+    }
+
     // Add a per-Value "Use Value" button.
     const valueEntries = root.querySelectorAll(
-      'div.section.values li.row.entry[data-item-type="value"]'
+      'div.section.values li.row.entry[data-item-type="value"]',
     );
 
     for (const entry of valueEntries) {
       const toggleEl = entry.querySelector(
-        'a.value-used.control.toggle, a.value-used.control.toggle > i[data-action="onStrikeThrough"]'
+        'a.value-used.control.toggle, a.value-used.control.toggle > i[data-action="onStrikeThrough"]',
       );
       const toggleAnchor =
         toggleEl instanceof HTMLElement && toggleEl.tagName === "A"
@@ -2360,11 +3008,16 @@ export function installRenderApplicationV2Hook() {
       if (!valueItem) continue;
 
       const challenged = isValueChallenged(valueItem);
+      const isTrauma = isValueTrauma(valueItem);
 
       const useBtn = document.createElement("span");
       useBtn.className = "sta-use-value-btn sta-inline-sheet-btn";
-      useBtn.title = t("sta-officers-log.values.useValueTooltip");
-      useBtn.textContent = t("sta-officers-log.values.useValue");
+      useBtn.title = isTrauma
+        ? t("sta-officers-log.values.useTraumaTooltip")
+        : t("sta-officers-log.values.useValueTooltip");
+      useBtn.textContent = isTrauma
+        ? t("sta-officers-log.values.useTrauma")
+        : t("sta-officers-log.values.useValue");
       useBtn.setAttribute("role", "button");
       useBtn.tabIndex = challenged ? -1 : 0;
 
@@ -2381,10 +3034,12 @@ export function installRenderApplicationV2Hook() {
         if (isValueChallenged(valueItem)) return;
 
         const det = Number(actor.system?.determination?.value ?? 0);
+        const valueIsTrauma = isValueTrauma(valueItem);
 
         const choice = await promptUseValueChoice({
           valueName: valueItem.name ?? "",
           canChoosePositive: det > 0,
+          isTrauma: valueIsTrauma,
         });
 
         if (!choice) return;
@@ -2400,19 +3055,25 @@ export function installRenderApplicationV2Hook() {
           choice === "positive"
             ? "positive"
             : choice === "challenge"
-            ? "challenged"
-            : "negative";
+              ? "challenged"
+              : "negative";
 
-        if (game.user.isGM) {
-          if (valueState === "positive") {
-            await spendDetermination(actor);
-          } else {
-            await gainDetermination(actor);
-            if (choice === "challenge") {
-              await setValueChallenged(valueItem, true);
-            }
-          }
+        // Helper to adjust stress on an actor
+        const adjustStress = async (delta) => {
+          const current = Number(actor.system?.stress?.value ?? 0);
+          const max = Number(actor.system?.stress?.max ?? current);
+          const newValue = Math.max(0, Math.min(max, current + delta));
+          await actor.update({ "system.stress.value": newValue });
+        };
 
+        // Helper to set stress to max
+        const setStressToMax = async () => {
+          const max = Number(actor.system?.stress?.max ?? 0);
+          await actor.update({ "system.stress.value": max });
+        };
+
+        // Helper to record value state on log
+        const recordValueStateOnLog = async () => {
           const currentLog = currentMissionLogId
             ? actor.items.get(String(currentMissionLogId))
             : null;
@@ -2422,10 +3083,81 @@ export function installRenderApplicationV2Hook() {
             await currentLog.update({
               [`system.valueStates.${valueItem.id}`]: mergeValueStateArray(
                 existingRaw,
-                valueState
+                valueState,
               ),
             });
           }
+        };
+
+        // Trauma challenged: special handling - no GM approval, no determination, max stress
+        if (valueIsTrauma && choice === "challenge") {
+          await setStressToMax();
+          await setValueChallenged(valueItem, true);
+          await recordValueStateOnLog();
+
+          // Show callback prompt (GM or player)
+          if (game.user.isGM) {
+            const owningUserId = getUserIdForCharacterActor(actor);
+            if (owningUserId) {
+              if (
+                hasEligibleCallbackTargetForValueId(
+                  actor,
+                  currentMissionLogId,
+                  valueItem.id,
+                )
+              ) {
+                await promptCallbackForActorAsGM(actor, owningUserId, {
+                  reason: "Trauma challenged",
+                  defaultValueId: valueItem.id,
+                  defaultValueState: valueState,
+                });
+              }
+            }
+          } else {
+            try {
+              if (
+                hasEligibleCallbackTargetForValueId(
+                  actor,
+                  currentMissionLogId,
+                  valueItem.id,
+                )
+              ) {
+                const targetUser = game.user;
+                await sendCallbackPromptToUser(targetUser, {
+                  reason: "Trauma challenged",
+                  defaultValueId: valueItem.id,
+                  defaultValueState: valueState,
+                });
+              }
+            } catch (err) {
+              console.error(
+                "sta-officers-log | Failed to show callback prompt",
+                err,
+              );
+            }
+          }
+
+          app.render();
+          return;
+        }
+
+        if (game.user.isGM) {
+          if (valueState === "positive") {
+            await spendDetermination(actor);
+            if (valueIsTrauma) {
+              await adjustStress(1); // Trauma positive: +1 stress
+            }
+          } else {
+            await gainDetermination(actor);
+            if (valueIsTrauma && valueState === "negative") {
+              await adjustStress(-2); // Trauma negative: -2 stress
+            }
+            if (choice === "challenge") {
+              await setValueChallenged(valueItem, true);
+            }
+          }
+
+          await recordValueStateOnLog();
 
           // GM clicked "Use Value" on a player's sheet: prompt the GM locally for the callback,
           // but apply it for the owning player's mission/chain context.
@@ -2435,7 +3167,7 @@ export function installRenderApplicationV2Hook() {
               hasEligibleCallbackTargetForValueId(
                 actor,
                 currentMissionLogId,
-                valueItem.id
+                valueItem.id,
               )
             ) {
               await promptCallbackForActorAsGM(actor, owningUserId, {
@@ -2453,28 +3185,19 @@ export function installRenderApplicationV2Hook() {
         const moduleSocket = getModuleSocket();
         if (!moduleSocket) {
           ui.notifications?.error(
-            t("sta-officers-log.errors.socketNotAvailable")
+            t("sta-officers-log.errors.socketNotAvailable"),
           );
           return;
         }
 
         if (choice === "positive") {
           await spendDetermination(actor);
+          if (valueIsTrauma) {
+            await adjustStress(1); // Trauma positive: +1 stress
+          }
 
           // Players can record the usage immediately.
-          const currentLog = currentMissionLogId
-            ? actor.items.get(String(currentMissionLogId))
-            : null;
-          if (currentLog) {
-            const existingRaw =
-              currentLog.system?.valueStates?.[String(valueItem.id)];
-            await currentLog.update({
-              [`system.valueStates.${valueItem.id}`]: mergeValueStateArray(
-                existingRaw,
-                "positive"
-              ),
-            });
-          }
+          await recordValueStateOnLog();
 
           // Show callback prompt locally to the player.
           try {
@@ -2482,7 +3205,7 @@ export function installRenderApplicationV2Hook() {
               hasEligibleCallbackTargetForValueId(
                 actor,
                 currentMissionLogId,
-                valueItem.id
+                valueItem.id,
               )
             ) {
               const targetUser = game.user;
@@ -2495,7 +3218,7 @@ export function installRenderApplicationV2Hook() {
           } catch (err) {
             console.error(
               "sta-officers-log | Failed to show callback prompt",
-              err
+              err,
             );
           }
 
@@ -2503,7 +3226,7 @@ export function installRenderApplicationV2Hook() {
           return;
         }
 
-        // GM approval required for negative and challenge
+        // GM approval required for negative and challenge (non-trauma challenge handled above)
         try {
           const result = await moduleSocket.executeAsGM(
             "requestValueUseApproval",
@@ -2515,16 +3238,17 @@ export function installRenderApplicationV2Hook() {
               valueName: valueItem.name,
               usage: choice,
               currentMissionLogId,
-            }
+              isTrauma: valueIsTrauma,
+            },
           );
 
           if (result?.approved) {
             ui.notifications?.info(
-              t("sta-officers-log.dialog.useValue.approved")
+              t("sta-officers-log.dialog.useValue.approved"),
             );
           } else {
             ui.notifications?.warn(
-              t("sta-officers-log.dialog.useValue.denied")
+              t("sta-officers-log.dialog.useValue.denied"),
             );
           }
         } catch (err) {
@@ -2547,7 +3271,7 @@ export function installRenderApplicationV2Hook() {
 
     // Add a per-Log "Choose Benefit" button for logs which have a pending milestone.
     const pendingMilestoneLogs = root.querySelectorAll(
-      'div.section.milestones li.row.entry[data-item-type="log"]'
+      'div.section.milestones li.row.entry[data-item-type="log"]',
     );
 
     for (const entry of pendingMilestoneLogs) {
@@ -2559,7 +3283,7 @@ export function installRenderApplicationV2Hook() {
 
       const pendingMilestone = logItem.getFlag?.(
         MODULE_ID,
-        "pendingMilestoneBenefit"
+        "pendingMilestoneBenefit",
       );
       if (!pendingMilestone) continue;
 
@@ -2590,12 +3314,12 @@ export function installRenderApplicationV2Hook() {
       chooseBtn.title = t(
         isArcBenefit
           ? "sta-officers-log.milestones.chooseArcTooltip"
-          : "sta-officers-log.milestones.chooseMilestoneTooltip"
+          : "sta-officers-log.milestones.chooseMilestoneTooltip",
       );
       chooseBtn.textContent = t(
         isArcBenefit
           ? "sta-officers-log.milestones.chooseArc"
-          : "sta-officers-log.milestones.chooseMilestone"
+          : "sta-officers-log.milestones.chooseMilestone",
       );
 
       chooseBtn.setAttribute("role", "button");
@@ -2625,7 +3349,7 @@ export function installRenderApplicationV2Hook() {
             };
             await logItem.update(
               { [`flags.${MODULE_ID}.callbackLink`]: next },
-              { renderSheet: false }
+              { renderSheet: false },
             );
           }
         } catch (_) {
@@ -2637,9 +3361,82 @@ export function installRenderApplicationV2Hook() {
 
         const initialTab = isArcBenefit ? "arc" : "milestone";
 
+        // Check if this is a trauma arc: all logs in the chain have a trauma as primary value
+        let traumaValueId = null;
+        let traumaAllChallenged = false;
+        if (isArcBenefit && arc) {
+          const chainLogIds = Array.isArray(arc.chainLogIds)
+            ? arc.chainLogIds.map((x) => String(x)).filter(Boolean)
+            : [];
+          // Include the current log if not already in the chain
+          if (!chainLogIds.includes(String(logItem.id))) {
+            chainLogIds.push(String(logItem.id));
+          }
+
+          if (chainLogIds.length > 0) {
+            // Check each log's primary value to see if it's a trauma
+            let allTrauma = true;
+            let allChallenged = true;
+            let sharedTraumaId = null;
+
+            for (const logId of chainLogIds) {
+              const log = actor.items.get(logId);
+              if (!log || log.type !== "log") {
+                allTrauma = false;
+                allChallenged = false;
+                break;
+              }
+
+              const primaryValueId = String(
+                log.getFlag?.(MODULE_ID, "primaryValueId") ?? "",
+              );
+              if (!primaryValueId) {
+                allTrauma = false;
+                allChallenged = false;
+                break;
+              }
+
+              const valueItem = actor.items.get(primaryValueId);
+              if (!valueItem || valueItem.type !== "value") {
+                allTrauma = false;
+                allChallenged = false;
+                break;
+              }
+
+              if (!isValueTrauma(valueItem)) {
+                allTrauma = false;
+                allChallenged = false;
+                break;
+              }
+
+              // Check all logs share the same trauma value
+              if (sharedTraumaId === null) {
+                sharedTraumaId = primaryValueId;
+              } else if (sharedTraumaId !== primaryValueId) {
+                allTrauma = false;
+                allChallenged = false;
+                break;
+              }
+
+              // Check if this log has the trauma marked as "challenged" in valueStates
+              const valueStates = getValueStateArray(log, primaryValueId);
+              if (!valueStates.includes("challenged")) {
+                allChallenged = false;
+              }
+            }
+
+            if (allTrauma && sharedTraumaId) {
+              traumaValueId = sharedTraumaId;
+              traumaAllChallenged = allChallenged;
+            }
+          }
+        }
+
         openNewMilestoneArcDialog(actor, {
           initialTab,
           lockOtherTab: true,
+          traumaValueId,
+          traumaAllChallenged,
           onApplied: async ({ applied }) => {
             if (!applied?.applied) return;
 
@@ -2654,7 +3451,7 @@ export function installRenderApplicationV2Hook() {
 
             if (!chosenLogId || !valueId) {
               ui.notifications?.warn(
-                t("sta-officers-log.dialog.chooseMilestoneBenefit.missingData")
+                t("sta-officers-log.dialog.chooseMilestoneBenefit.missingData"),
               );
               return;
             }
@@ -2663,14 +3460,14 @@ export function installRenderApplicationV2Hook() {
             // If possible, fall back to the callbackLink on the CURRENT log.
             let resolvedChosenLogId = chosenLogId ? String(chosenLogId) : "";
             let chosenLog = resolvedChosenLogId
-              ? actor.items.get(resolvedChosenLogId) ?? null
+              ? (actor.items.get(resolvedChosenLogId) ?? null)
               : null;
 
             if (!chosenLog) {
               const link = logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
               const fallbackId = link?.fromLogId ? String(link.fromLogId) : "";
               const fallbackLog = fallbackId
-                ? actor.items.get(fallbackId) ?? null
+                ? (actor.items.get(fallbackId) ?? null)
                 : null;
 
               if (fallbackLog?.type === "log") {
@@ -2691,7 +3488,7 @@ export function installRenderApplicationV2Hook() {
 
             if (!chosenLog) {
               ui.notifications?.warn(
-                "This callback references a Log that no longer exists. Please choose a different Log and try again."
+                "This callback references a Log that no longer exists. Please choose a different Log and try again.",
               );
               return;
             }
@@ -2726,7 +3523,9 @@ export function installRenderApplicationV2Hook() {
 
             if (!milestone) {
               ui.notifications?.error(
-                t("sta-officers-log.dialog.chooseMilestoneBenefit.createFailed")
+                t(
+                  "sta-officers-log.dialog.chooseMilestoneBenefit.createFailed",
+                ),
               );
               return;
             }

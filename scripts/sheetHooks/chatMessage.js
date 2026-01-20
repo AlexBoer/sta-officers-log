@@ -6,15 +6,44 @@ import { MODULE_ID } from "../constants.js";
 import { AUTO_CALLBACK_ON_DETERMINATION_ROLL_SETTING } from "../mission.js";
 
 // Hook to detect when a Determination roll is made in chat and prompt the user to use a callback.
+// Also checks if the character is fatigued and adds a note to the chat message.
 export function installCreateChatMessageHook() {
   Hooks.on("createChatMessage", async (message) => {
+    const html = message.content ?? "";
+    if (!html.includes('class="sta roll chat card"')) return;
+
+    // Check if character is fatigued and add notice to chat message
+    try {
+      const speakerActorId = message.speaker?.actor;
+      const actor = speakerActorId ? game.actors?.get?.(speakerActorId) : null;
+
+      if (actor) {
+        // Check for "fatigued" trait or injury item (case-insensitive, partial match)
+        const isFatigued = actor.items.some((item) => {
+          const itemName = String(item.name ?? "").toLowerCase();
+          const isTraitOrInjury =
+            item.type === "trait" || item.type === "injury";
+          return itemName.includes("fatigued") && isTraitOrInjury;
+        });
+
+        if (isFatigued) {
+          const characterName = actor.name ?? "Character";
+          const fatigueNotice = `<div class="sta-fatigue-notice"><strong>${characterName} is Fatigued: +1 Difficulty.</strong></div>`;
+          message.content = html + fatigueNotice;
+          await message.update({ content: message.content });
+        }
+      }
+    } catch (err) {
+      console.warn("sta-officers-log | Failed to check fatigue status", err);
+    }
+
     // Feature toggle: disable automatic Determination scanning/prompting unless enabled.
     try {
       const enabled = Boolean(
         game.settings.get(
           MODULE_ID,
-          AUTO_CALLBACK_ON_DETERMINATION_ROLL_SETTING
-        )
+          AUTO_CALLBACK_ON_DETERMINATION_ROLL_SETTING,
+        ),
       );
       if (!enabled) return;
     } catch (_) {
@@ -24,8 +53,6 @@ export function installCreateChatMessageHook() {
 
     if (!game.user.isGM) return;
 
-    const html = message.content ?? "";
-    if (!html.includes('class="sta roll chat card"')) return;
     if (!/\bDetermination\b/i.test(html)) return;
 
     const authorId = message.author?.id ?? message.user?.id;
@@ -45,7 +72,7 @@ export function installCreateChatMessageHook() {
     } catch (err) {
       console.warn(
         "sta-officers-log | Failed to spend determination for roll",
-        err
+        err,
       );
     }
 

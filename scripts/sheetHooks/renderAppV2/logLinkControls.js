@@ -74,7 +74,7 @@ async function _syncLogImgToValue(actor, log, valueId) {
     try {
       await log.update(
         { img: desiredImg },
-        { render: false, renderSheet: false }
+        { render: false, renderSheet: false },
       );
     } catch (_) {
       // ignore
@@ -88,7 +88,7 @@ async function setFlagWithoutRender(log, key, value) {
   if (!log || typeof log.update !== "function") return;
   await log.update(
     { [flagPath(key)]: value },
-    { render: false, renderSheet: false }
+    { render: false, renderSheet: false },
   );
 }
 
@@ -98,7 +98,7 @@ async function unsetFlagWithoutRender(log, key) {
   // Use `null` to unset flags.
   await log.update(
     { [flagPath(key)]: null },
-    { render: false, renderSheet: false }
+    { render: false, renderSheet: false },
   );
 }
 
@@ -109,7 +109,7 @@ export async function promptLinkLogToChain({ actor, log }) {
 
   const logs = Array.from(actor.items ?? []).filter((i) => i?.type === "log");
   const values = Array.from(actor.items ?? []).filter(
-    (i) => i?.type === "value"
+    (i) => i?.type === "value",
   );
 
   const existing = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
@@ -122,7 +122,7 @@ export async function promptLinkLogToChain({ actor, log }) {
     .map((l) => {
       const sel = String(l.id) === existingFrom ? " selected" : "";
       return `<option value="${escapeHTML(l.id)}"${sel}>${escapeHTML(
-        l.name
+        l.name,
       )}</option>`;
     })
     .join("");
@@ -134,11 +134,11 @@ export async function promptLinkLogToChain({ actor, log }) {
       // Best-effort: show icon in the dropdown option (works in Chromium in many cases).
       const style = icon
         ? ` style="background-image:url('${escapeHTML(
-            icon
+            icon,
           )}');background-repeat:no-repeat;background-position:4px 50%;background-size:16px 16px;padding-left:24px;"`
         : "";
       return `<option value="${escapeHTML(v.id)}"${sel}${style}>${escapeHTML(
-        v.name
+        v.name,
       )}</option>`;
     })
     .join("");
@@ -148,7 +148,7 @@ export async function promptLinkLogToChain({ actor, log }) {
     content: `
       <div class="form-group">
         <label>Link <strong>${escapeHTML(
-          log.name ?? "Log"
+          log.name ?? "Log",
         )}</strong> as a callback to:</label>
         <select name="fromLogId">
           <option value="">- (No link)</option>
@@ -194,7 +194,7 @@ export async function promptLinkLogToChain({ actor, log }) {
     const target = actor.items.get(String(fromLogId));
     if (target?.type === "log" && isLogUsed(target)) {
       ui.notifications?.warn?.(
-        "That log has already been used for a callback."
+        "That log has already been used for a callback.",
       );
       return;
     }
@@ -269,7 +269,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         undefined,
         {
           sensitivity: "base",
-        }
+        },
       );
     });
 
@@ -284,7 +284,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         undefined,
         {
           sensitivity: "base",
-        }
+        },
       );
     });
 
@@ -294,7 +294,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   const isDisabled = log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true;
 
   const persistedPrimary = String(
-    log.getFlag?.(MODULE_ID, "primaryValueId") ?? ""
+    log.getFlag?.(MODULE_ID, "primaryValueId") ?? "",
   );
 
   const directivesSnapshot = (() => {
@@ -335,7 +335,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       if (!key) continue;
       if (directivesByKey.has(String(key))) continue;
       const text = sanitizeDirectiveText(
-        getDirectiveTextForValueId(log, valueId)
+        getDirectiveTextForValueId(log, valueId),
       );
       if (text) directivesByKey.set(String(key), text);
     }
@@ -355,7 +355,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     : 0;
   const initialArcSteps = Math.max(
     1,
-    existingArcSteps || existingArcChainLen || 3
+    existingArcSteps || existingArcChainLen || 3,
   );
 
   const selectedFromLogId = isDisabled ? "" : existingFrom;
@@ -369,7 +369,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     ? Number(initialArcSteps)
     : 1;
   let _baselineArcValueId = String(
-    existingArcValueId || existingValue || selectedValueId || ""
+    existingArcValueId || existingValue || selectedValueId || "",
   );
 
   const completedArcEndLogIds = getCompletedArcEndLogIds(actor);
@@ -417,15 +417,15 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       const suffix = eligible
         ? ""
         : isLogUsed(l)
-        ? " (already used)"
-        : vId
-        ? " (different primary value)"
-        : "";
+          ? " (already used)"
+          : vId
+            ? " (different primary value)"
+            : "";
 
       options.push(
         `<option value="${escapeHTML(id)}"${sel}${disabled}>${escapeHTML(
-          String(l.name ?? "") + suffix
-        )}</option>`
+          String(l.name ?? "") + suffix,
+        )}</option>`,
       );
     }
 
@@ -445,8 +445,8 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       const sel = id === curId ? " selected" : "";
       options.push(
         `<option value="${escapeHTML(id)}"${sel}>${escapeHTML(
-          String(v.name ?? "")
-        )}</option>`
+          String(v.name ?? ""),
+        )}</option>`,
       );
     }
 
@@ -460,8 +460,8 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       const sel = String(valueId) === curId ? " selected" : "";
       directiveOptions.push(
         `<option value="${escapeHTML(valueId)}"${sel}>${escapeHTML(
-          String(text ?? valueId)
-        )}</option>`
+          String(text ?? valueId),
+        )}</option>`,
       );
     }
 
@@ -475,8 +475,8 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         sanitizeDirectiveText(getDirectiveTextForValueId(log, curId)) || curId;
       directiveOptions.unshift(
         `<option value="${escapeHTML(curId)}" selected>${escapeHTML(
-          label
-        )}</option>`
+          label,
+        )}</option>`,
       );
     }
 
@@ -491,10 +491,10 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   wrapper.className = "sta-log-link-controls";
   wrapper.innerHTML = `
     <input type="hidden" data-sta-callbacks-field="callbackLinkValueId" value="${escapeHTML(
-      String(selectedValueId)
+      String(selectedValueId),
     )}" />
     <input type="hidden" data-sta-callbacks-field="arcValueId" value="${escapeHTML(
-      String(existingArcValueId || existingValue || selectedValueId || "")
+      String(existingArcValueId || existingValue || selectedValueId || ""),
     )}" />
     <div class="column">
       <div class="title">Calls back to:</div>
@@ -523,7 +523,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         <label class="sta-arc-steps">
           <span class="sta-arc-label">Steps</span>
           <input type="number" data-sta-callbacks-field="arcSteps" min="1" step="1" value="${escapeHTML(
-            String(initialArcSteps)
+            String(initialArcSteps),
           )}" />
         </label>
       </div>
@@ -537,22 +537,22 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   else formRoot.prepend(wrapper);
 
   const fromSelect = wrapper.querySelector(
-    'select[data-sta-callbacks-field="fromLogId"]'
+    'select[data-sta-callbacks-field="fromLogId"]',
   );
   const valueSelect = wrapper.querySelector(
-    'select[data-sta-callbacks-field="valueId"]'
+    'select[data-sta-callbacks-field="valueId"]',
   );
   const arcToggle = wrapper.querySelector(
-    'input[data-sta-callbacks-field="isArcEnd"]'
+    'input[data-sta-callbacks-field="isArcEnd"]',
   );
   const arcStepsInput = wrapper.querySelector(
-    'input[data-sta-callbacks-field="arcSteps"]'
+    'input[data-sta-callbacks-field="arcSteps"]',
   );
   const callbackLinkValueIdInput = wrapper.querySelector(
-    'input[data-sta-callbacks-field="callbackLinkValueId"]'
+    'input[data-sta-callbacks-field="callbackLinkValueId"]',
   );
   const arcValueIdInput = wrapper.querySelector(
-    'input[data-sta-callbacks-field="arcValueId"]'
+    'input[data-sta-callbacks-field="arcValueId"]',
   );
   if (!(fromSelect instanceof HTMLSelectElement)) return;
   if (!(valueSelect instanceof HTMLSelectElement)) return;
@@ -572,7 +572,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     const vId = valueId ? String(valueId) : "";
     if (!vId) return;
     const exists = Array.from(valueSelect.options).some(
-      (o) => String(o.value) === vId
+      (o) => String(o.value) === vId,
     );
     if (exists) return;
 
@@ -585,7 +585,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
     // Insert after the "--Directives--" separator if present.
     const sep = Array.from(valueSelect.options).find(
-      (o) => o.disabled && String(o.textContent ?? "").includes("Directives")
+      (o) => o.disabled && String(o.textContent ?? "").includes("Directives"),
     );
     if (sep) {
       try {
@@ -606,7 +606,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
     // If the previous selection is still present, keep it; otherwise reset.
     const stillExists = Array.from(fromSelect.options).some(
-      (o) => String(o.value) === existingSel
+      (o) => String(o.value) === existingSel,
     );
     if (stillExists) fromSelect.value = existingSel;
     else fromSelect.value = "";
@@ -624,7 +624,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     if (!target || target.type !== "log") return;
 
     const targetPrimaryValueId = String(
-      getPrimaryValueIdForLog(actor, target, values) ?? ""
+      getPrimaryValueIdForLog(actor, target, values) ?? "",
     );
     if (!targetPrimaryValueId) return;
 
@@ -637,7 +637,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     }
 
     const optionExists = Array.from(valueSelect.options).some(
-      (o) => String(o.value) === targetPrimaryValueId
+      (o) => String(o.value) === targetPrimaryValueId,
     );
     if (!optionExists) return;
 
@@ -662,7 +662,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     // unless that log is the last log in a completed arc chain.
     if (fromLogId && valueId && !isEligibleFromLogId(fromLogId, valueId)) {
       ui.notifications?.warn(
-        "Cannot call back to a log with a different primary value."
+        "Cannot call back to a log with a different primary value.",
       );
       fromSelect.value = "";
       fromLogId = "";
@@ -675,7 +675,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       const target = actor.items.get(String(fromLogId));
       if (target?.type === "log" && isLogUsed(target)) {
         ui.notifications?.warn?.(
-          "That log has already been used for a callback."
+          "That log has already been used for a callback.",
         );
         fromSelect.value = "";
         fromLogId = "";
@@ -690,7 +690,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       const arcValueId = valueId || _baselineArcValueId;
       if (!arcValueId) {
         ui.notifications?.warn?.(
-          "Select a Primary Value before marking an Arc end."
+          "Select a Primary Value before marking an Arc end.",
         );
         arcToggle.checked = false;
       } else {
@@ -728,7 +728,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
     if (wantsArcEnd && !arcValueId) {
       ui.notifications?.warn?.(
-        "Select a Primary Value before marking an Arc end."
+        "Select a Primary Value before marking an Arc end.",
       );
       return;
     }
@@ -915,10 +915,10 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   const installAddDirectiveButton = () => {
     const anyStateInput =
       sheetRoot.querySelector(
-        'input[type="checkbox"][name^="system.valueStates."][data-action="onSelectValue"]'
+        'input[type="checkbox"][name^="system.valueStates."][data-action="onSelectValue"]',
       ) ||
       sheetRoot.querySelector(
-        'input[type="checkbox"][name^="system.valueStates."]'
+        'input[type="checkbox"][name^="system.valueStates."]',
       ) ||
       sheetRoot.querySelector('input[name^="system.valueStates."]');
 
@@ -954,7 +954,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       const optionsHtml = Array.from(directivesByKey.entries())
         .map(([key, text]) => {
           return `<option value="${escapeHTML(String(key))}">${escapeHTML(
-            String(text)
+            String(text),
           )}</option>`;
         })
         .join("");
@@ -967,7 +967,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
             <div class="form-fields">
               <select name="directiveKey">
                 <option value="__other__">${escapeHTML(
-                  t("sta-officers-log.dialog.useDirective.other")
+                  t("sta-officers-log.dialog.useDirective.other"),
                 )}</option>
                 ${optionsHtml}
               </select>
@@ -977,7 +977,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
             <label>Text (optional)</label>
             <div class="form-fields">
               <input type="text" name="directiveText" maxlength="100" placeholder="${escapeHTML(
-                t("sta-officers-log.dialog.useDirective.otherPlaceholder")
+                t("sta-officers-log.dialog.useDirective.otherPlaceholder"),
               )}" />
             </div>
             <p class="hint">If blank, uses the selected directive. Sanitized, max 100 characters.</p>
@@ -990,10 +990,10 @@ export function installInlineLogChainLinkControls(root, actor, log) {
             default: true,
             callback: (_event, button) => ({
               directiveKey: String(
-                button.form?.elements?.directiveKey?.value ?? "__other__"
+                button.form?.elements?.directiveKey?.value ?? "__other__",
               ),
               directiveText: String(
-                button.form?.elements?.directiveText?.value ?? ""
+                button.form?.elements?.directiveText?.value ?? "",
               ),
             }),
           },
@@ -1010,12 +1010,12 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       const chosen = typed
         ? typed
         : selectedKey && selectedKey !== "__other__"
-        ? directivesByKey.get(selectedKey) || ""
-        : "";
+          ? directivesByKey.get(selectedKey) || ""
+          : "";
       const cleaned = sanitizeDirectiveText(chosen);
       if (!cleaned) {
         ui.notifications?.warn?.(
-          t("sta-officers-log.dialog.useDirective.missing")
+          t("sta-officers-log.dialog.useDirective.missing"),
         );
         return;
       }
@@ -1033,7 +1033,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         const existingRaw = log?.system?.valueStates?.[String(valueId)];
         update[`system.valueStates.${valueId}`] = mergeValueStateArray(
           existingRaw,
-          nextState
+          nextState,
         );
       }
 
@@ -1075,7 +1075,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   if (selectedValueId && isDirectiveValueId(selectedValueId)) {
     ensurePrimaryValueOptionExists(
       String(selectedValueId),
-      getDirectiveTextForValueId(log, selectedValueId)
+      getDirectiveTextForValueId(log, selectedValueId),
     );
   }
 
@@ -1105,17 +1105,17 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         undefined,
         {
           sensitivity: "base",
-        }
-      )
+        },
+      ),
     );
 
     // Find the system-provided value-state rows.
     const anySystemStateInput =
       sheetRoot.querySelector(
-        'input[type="checkbox"][name^="system.valueStates."][data-action="onSelectValue"]'
+        'input[type="checkbox"][name^="system.valueStates."][data-action="onSelectValue"]',
       ) ||
       sheetRoot.querySelector(
-        'input[type="checkbox"][name^="system.valueStates."]'
+        'input[type="checkbox"][name^="system.valueStates."]',
       ) ||
       sheetRoot.querySelector('input[name^="system.valueStates."]');
 
@@ -1125,7 +1125,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
     // Clear any previously injected directive rows.
     for (const el of Array.from(
-      rowsParent.querySelectorAll(":scope > .sta-directive-value-row")
+      rowsParent.querySelectorAll(":scope > .sta-directive-value-row"),
     )) {
       try {
         el.remove();
@@ -1142,8 +1142,8 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       if (el.classList.contains("sta-directive-value-row")) return false;
       return Boolean(
         el.querySelector(
-          'input[type="checkbox"][name^="system.valueStates."]'
-        ) || el.querySelector('input[name^="system.valueStates."]')
+          'input[type="checkbox"][name^="system.valueStates."]',
+        ) || el.querySelector('input[name^="system.valueStates."]'),
       );
     });
 
@@ -1169,10 +1169,19 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       textInput.className = "text-entry sta-directive-inline-text";
       textInput.value = safeText;
       textInput.placeholder = t(
-        "sta-officers-log.dialog.useDirective.otherPlaceholder"
+        "sta-officers-log.dialog.useDirective.otherPlaceholder",
       );
       textInput.maxLength = 100;
+      textInput.readOnly = true;
       nameCol.appendChild(textInput);
+
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "sta-directive-edit-btn";
+      editBtn.title = "Edit directive";
+      editBtn.setAttribute("aria-label", "Edit directive");
+      editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+      nameCol.appendChild(editBtn);
 
       const removeBtn = document.createElement("button");
       removeBtn.type = "button";
@@ -1236,7 +1245,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         try {
           await log.update(
             { [`system.valueStates.${d.valueId}`]: payload },
-            { render: false, renderSheet: false }
+            { render: false, renderSheet: false },
           );
         } catch (_) {
           // ignore
@@ -1295,7 +1304,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
           try {
             const curPrimary = String(
-              log.getFlag?.(MODULE_ID, "primaryValueId") ?? ""
+              log.getFlag?.(MODULE_ID, "primaryValueId") ?? "",
             );
             if (curPrimary === oldId)
               update[`flags.${MODULE_ID}.primaryValueId`] = newId;
@@ -1367,6 +1376,62 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         void onTextChange();
       });
 
+      const setEditingState = (isEditing) => {
+        textInput.readOnly = !isEditing;
+        row.classList.toggle("sta-directive-editing", isEditing);
+        if (isEditing) {
+          editBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>';
+          editBtn.title = "Save directive";
+          editBtn.setAttribute("aria-label", "Save directive");
+        } else {
+          editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+          editBtn.title = "Edit directive";
+          editBtn.setAttribute("aria-label", "Edit directive");
+        }
+      };
+
+      let pendingSaveClick = false;
+
+      editBtn.addEventListener("pointerdown", () => {
+        if (!textInput.readOnly) pendingSaveClick = true;
+      });
+
+      editBtn.addEventListener("click", (ev) => {
+        try {
+          ev?.preventDefault?.();
+          ev?.stopPropagation?.();
+        } catch (_) {
+          // ignore
+        }
+
+        if (pendingSaveClick) {
+          pendingSaveClick = false;
+          if (!textInput.readOnly) setEditingState(false);
+          return;
+        }
+
+        if (textInput.readOnly) {
+          setEditingState(true);
+          try {
+            textInput.focus();
+            textInput.select?.();
+          } catch (_) {
+            // ignore
+          }
+        } else {
+          setEditingState(false);
+          try {
+            textInput.blur();
+          } catch (_) {
+            // ignore
+          }
+        }
+      });
+
+      textInput.addEventListener("blur", () => {
+        if (!textInput.readOnly) setEditingState(false);
+      });
+
       removeBtn.addEventListener("click", async (ev) => {
         try {
           ev?.preventDefault?.();
@@ -1385,7 +1450,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         // If this directive is referenced by log metadata, clear it.
         try {
           const curPrimary = String(
-            log.getFlag?.(MODULE_ID, "primaryValueId") ?? ""
+            log.getFlag?.(MODULE_ID, "primaryValueId") ?? "",
           );
           if (curPrimary === oldId) {
             update[`flags.${MODULE_ID}.primaryValueId`] = null;

@@ -20,7 +20,7 @@
       <p>{{arcPrompt}}</p>
       <div class="sta-callbacks-vertical-footer sta-benefit-buttons">
         {{#each arcButtons}}
-          <button type="button" class="dialog-button" data-group="arc" data-action="{{action}}">{{label}}</button>
+          <button type="button" class="dialog-button{{#if disabled}} is-disabled{{/if}}" data-group="arc" data-action="{{action}}"{{#if disabled}} disabled{{/if}}{{#if tooltip}} title="{{tooltip}}"{{/if}}>{{label}}</button>
         {{/each}}
       </div>
     </div>

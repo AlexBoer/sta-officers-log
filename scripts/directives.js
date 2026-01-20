@@ -168,12 +168,6 @@ export function getChallengedDirectivesMap(actor) {
   }
 }
 
-export function isDirectiveChallenged(actor, directiveKey) {
-  if (!actor || !directiveKey) return false;
-  const map = getChallengedDirectivesMap(actor);
-  return Boolean(map?.[String(directiveKey)]);
-}
-
 export async function setDirectiveChallenged(actor, directiveKey, challenged) {
   if (!actor || !directiveKey) return;
   const map = foundry.utils.deepClone(getChallengedDirectivesMap(actor));

@@ -2,9 +2,9 @@
   "id": "sta-officers-log",
   "title": "STA Officers Log",
   "description": "<p>GM instructions and log automation for STA officer callbacks.</p>",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "manifest": "https://github.com/AlexBoer/sta-officers-log/releases/latest/download/module.json",
-  "download": "https://github.com/AlexBoer/sta-officers-log/releases/download/1.0.8/module.zip",
+  "download": "https://github.com/AlexBoer/sta-officers-log/releases/download/1.1.0/module.zip",
   "compatibility": {
     "minimum": "13",
     "verified": "13"
@@ -13,10 +13,14 @@
     "scripts/main.js"
   ],
   "socket": true,
-"styles": [
-  { "src": "styles/sta-officers.css" },
-  { "src": "styles/sta-style-enhance.css" }
-],
+  "styles": [
+    {
+      "src": "styles/sta-officers.css"
+    },
+    {
+      "src": "styles/sta-style-enhance.css"
+    }
+  ],
   "relationships": {
     "systems": [
       {
@@ -31,7 +35,8 @@
       {
         "id": "socketlib",
         "type": "module",
-        "manifest": "https://github.com/farling42/foundryvtt-socketlib/releases/download/v1.1.3/module.json"
+        "manifest": "https://github.com/farling42/foundryvtt-socketlib/releases/download/v1.1.3/module.json",
+        "compatibility": {}
       }
     ]
   },
@@ -41,6 +46,19 @@
       "name": "English",
       "path": "lang/en.json",
       "flags": {}
+    }
+  ],
+  "packs": [
+    {
+      "name": "officers-log-macros",
+      "label": "STA Officer's Log Macros",
+      "path": "packs/officers-log-macros",
+      "type": "Macro",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "system": "sta"
     }
   ],
   "flags": {}
