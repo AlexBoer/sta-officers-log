@@ -1,17 +1,17 @@
 import { MODULE_ID } from "../constants.js";
 import { ATTRIBUTE_LABELS } from "../callbackFlow/dialogs.js";
 
-const FATIGUED_TRAIT_NAME = "Fatigued (Choose an Attribute)";
+const FATIGUED_TRAIT_NAME = "Fatigued";
 const FATIGUED_TRAIT_FLAG_KEY = "fatiguedTraitUuid";
 const IS_FATIGUE_FLAG_KEY = "isFatigue";
 const FATIGUED_ATTRIBUTE_FLAG_KEY = "fatiguedAttribute";
 const ATTRIBUTE_TO_FATIGUED_NAME = {
-  control: "Disordered",
-  daring: "Uncertain",
-  fitness: "Exhausted",
-  insight: "Confused",
-  presence: "Doubtful",
-  reason: "Insensible",
+  control: "Disordered (Fatigue)",
+  daring: "Uncertain (Fatigue)",
+  fitness: "Exhausted (Fatigue)",
+  insight: "Confused (Fatigue)",
+  presence: "Doubtful (Fatigue)",
+  reason: "Insensible (Fatigue)",
 };
 // Reverse mapping for finding which attribute corresponds to a fatigued name
 const FATIGUED_NAME_TO_ATTRIBUTE = Object.entries(
@@ -35,7 +35,7 @@ const _fatigueOperationInProgress = new Set();
  * @param {Actor} actor - The character actor
  * @returns {void}
  */
-async function showAttributeSelectionDialog(traitItem, actor) {
+export async function showAttributeSelectionDialog(traitItem, actor) {
   if (!traitItem || traitItem.type !== "trait") return;
 
   const buttons = [];
@@ -70,6 +70,31 @@ async function showAttributeSelectionDialog(traitItem, actor) {
     } catch (err) {
       console.error(`${MODULE_ID} | Failed to update fatigued trait name`, err);
     }
+  }
+}
+
+/**
+ * Checks if a fatigued trait has had an attribute chosen.
+ * Returns true if the attribute has been selected, false otherwise.
+ * @param {Item} traitItem - The Fatigued trait item
+ * @param {Actor} actor - The character actor
+ * @returns {boolean}
+ */
+export function hasFatiguedAttributeChosen(traitItem, actor) {
+  if (!traitItem || traitItem.type !== "trait") return false;
+  try {
+    // Check if actor has the fatiguedAttribute flag set
+    const attr = actor?.getFlag?.(MODULE_ID, FATIGUED_ATTRIBUTE_FLAG_KEY);
+    if (attr && ATTRIBUTE_TO_FATIGUED_NAME[attr]) return true;
+
+    // Also check if the trait name matches one of the chosen attribute names
+    const traitName = traitItem.name;
+    if (Object.values(ATTRIBUTE_TO_FATIGUED_NAME).includes(traitName))
+      return true;
+
+    return false;
+  } catch (_) {
+    return false;
   }
 }
 
@@ -191,11 +216,8 @@ async function createFatiguedTrait(actor) {
     // Set the isFatigue flag on the trait itself (must be done after creation)
     await created.setFlag?.(MODULE_ID, IS_FATIGUE_FLAG_KEY, true);
 
-    // Refresh the embedded Item reference from the actor to ensure updates
-    await new Promise((r) => setTimeout(r, 100));
-    const refreshed = actor.items.get(created.id) || created;
-    // Show attribute selection dialog using the refreshed item reference
-    await showAttributeSelectionDialog(refreshed, actor);
+    // Note: Attribute selection is now done via a button on the character sheet
+    // instead of auto-popping up a dialog.
 
     return created;
   } catch (err) {
@@ -253,6 +275,44 @@ async function deleteFatiguedTrait(actor, traitItem) {
 }
 
 /**
+ * Deletes ALL traits with the isFatigue flag from the actor.
+ * This guards against orphaned fatigue traits.
+ * @param {Actor} actor - The character actor
+ * @returns {Promise<void>}
+ */
+async function deleteAllFatigueTraits(actor) {
+  if (!actor?.deleteEmbeddedDocuments) return;
+  try {
+    // Find ALL traits with the isFatigue flag
+    const fatigueTraits = Array.from(actor.items).filter(
+      (i) =>
+        i?.type === "trait" &&
+        i.getFlag?.(MODULE_ID, IS_FATIGUE_FLAG_KEY) === true,
+    );
+
+    if (fatigueTraits.length === 0) {
+      // No flagged traits, just clear the actor flags
+      await actor.unsetFlag?.(MODULE_ID, FATIGUED_TRAIT_FLAG_KEY);
+      await actor.unsetFlag?.(MODULE_ID, FATIGUED_ATTRIBUTE_FLAG_KEY);
+      return;
+    }
+
+    // Delete all fatigue traits at once
+    const idsToDelete = fatigueTraits.map((t) => t.id);
+    console.log(
+      `${MODULE_ID} | Deleting ${idsToDelete.length} fatigue trait(s) from ${actor.name}`,
+    );
+    await actor.deleteEmbeddedDocuments("Item", idsToDelete);
+
+    // Clear the stored flags
+    await actor.unsetFlag?.(MODULE_ID, FATIGUED_TRAIT_FLAG_KEY);
+    await actor.unsetFlag?.(MODULE_ID, FATIGUED_ATTRIBUTE_FLAG_KEY);
+  } catch (err) {
+    console.warn(`${MODULE_ID} | deleteAllFatigueTraits failed`, err);
+  }
+}
+
+/**
  * Checks if the current user can modify the actor (for stress trait management).
  * @param {Actor} actor - The character actor
  * @returns {boolean} True if the user can write to the actor
@@ -265,6 +325,28 @@ function canWriteActor(actor) {
       (typeof actor?.testUserPermission === "function" &&
         actor.testUserPermission(game.user, "OWNER"))
     );
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
+ * Checks if an actor should experience fatigue mechanics.
+ * NPCs (using STANPCSheet2e) and characters with stress.max = 0 do not experience fatigue.
+ * @param {Actor} actor - The character actor
+ * @returns {boolean} True if the actor can experience fatigue
+ */
+function canExperienceFatigue(actor) {
+  try {
+    // Check if actor is an NPC (using STANPCSheet2e sheet class)
+    const sheetClass = actor.getFlag?.("core", "sheetClass");
+    if (sheetClass === "sta.STANPCSheet2e") return false;
+
+    // Check if actor has stress.max = 0
+    const maxStress = Number(actor.system?.stress?.max ?? 0);
+    if (maxStress === 0) return false;
+
+    return true;
   } catch (_) {
     return false;
   }
@@ -300,9 +382,12 @@ export function installStressMonitoringHook() {
       const actorId = actor.id;
       if (_fatigueOperationInProgress.has(actorId)) return;
 
+      // Check if this actor can experience fatigue (not NPC, stress.max > 0)
+      const canFatigue = canExperienceFatigue(actor);
+
       const currentStress = Number(actor.system?.stress?.value ?? 0);
       const maxStress = Number(actor.system?.stress?.max ?? 0);
-      const isFatigued = currentStress >= maxStress;
+      const isFatigued = canFatigue && currentStress >= maxStress;
       const existingFatiguedTrait = findFatiguedTrait(actor);
 
       // If fatigued but no trait exists, create it
@@ -315,7 +400,7 @@ export function installStressMonitoringHook() {
             const recheck = findFatiguedTrait(actor);
             if (recheck) {
               console.log(
-                `${MODULE_ID} | Fatigue trait already exists (race avoided)`,
+                `${MODULE_ID} | Fatigue trait already exists.`,
               );
               return;
             }
@@ -329,12 +414,13 @@ export function installStressMonitoringHook() {
         return;
       }
 
-      // If not fatigued but trait exists, delete it
+      // If not fatigued (or can't fatigue) but any fatigue trait exists, delete ALL of them
+      // This guards against orphaned fatigue traits
       if (!isFatigued && existingFatiguedTrait) {
         _fatigueOperationInProgress.add(actorId);
         void (async () => {
           try {
-            await deleteFatiguedTrait(actor, existingFatiguedTrait);
+            await deleteAllFatigueTraits(actor);
           } catch (_) {
             // ignore
           } finally {

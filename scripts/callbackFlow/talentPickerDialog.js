@@ -1,6 +1,9 @@
 import { MODULE_ID } from "../constants.js";
 import { t, tf } from "../i18n.js";
-import { getTalentPickerCustomCompendiumKeys } from "../focusPickerSettings.js";
+import {
+  getTalentPickerCustomCompendiumKeys,
+  getTalentPickerCustomFolderFilterEnabled,
+} from "../focusPickerSettings.js";
 import {
   ATTRIBUTE_KEYS,
   ATTRIBUTE_LABELS,
@@ -598,6 +601,7 @@ async function _collectTalentPickerEntries({
   if (explicit) addPack(explicit);
 
   const customPackKeys = getTalentPickerCustomCompendiumKeys();
+  const customFolderFilterEnabled = getTalentPickerCustomFolderFilterEnabled();
   for (const custom of customPackKeys) {
     if (custom) addPack(custom);
   }
@@ -632,9 +636,13 @@ async function _collectTalentPickerEntries({
     if (entries?.length) {
       // If the pack is consolidated (items-1e/items-2e), filter by folder lineage.
       // For legacy packs we usually already have crew-vs-ship separation by pack.
+      // Custom compendiums can opt-in to folder filtering via settings.
       const isConsolidated =
         key.endsWith("items-1e") || key.endsWith("items-2e");
-      if (!wantedKind || !isConsolidated) {
+      const isCustomWithFolderFilter =
+        customFolderFilterEnabled && customPackKeys.includes(key);
+      const shouldFilterByFolder = isConsolidated || isCustomWithFolderFilter;
+      if (!wantedKind || !shouldFilterByFolder) {
         allEntries.push({ key, entries });
       } else {
         const filtered = entries.filter((e) => {
@@ -708,6 +716,9 @@ async function _collectTalentPickerEntries({
     talents.map(async (talent) => {
       const packKey = _packKeyFromUuid(talent.uuid);
       const isConsolidated = _isConsolidatedTalentPackKey(packKey);
+      const isCustomWithFolderFilter =
+        customFolderFilterEnabled && customPackKeys.includes(packKey);
+      const shouldFilterByFolder = isConsolidated || isCustomWithFolderFilter;
       const doc = await _getTalentDocumentByUuid(talent.uuid);
       const rawDescription = _extractTalentDescription(doc);
       if (
@@ -717,7 +728,7 @@ async function _collectTalentPickerEntries({
         return null;
       }
 
-      if (wantedKind && isConsolidated) {
+      if (wantedKind && shouldFilterByFolder) {
         const kindFromDoc = _classifyTalentFolderFromDocument(doc);
         let kind = kindFromDoc;
         if (!kind) {

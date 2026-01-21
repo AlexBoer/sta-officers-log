@@ -346,6 +346,110 @@
     width: 1.3em;
 }
 
+/* STA system tracker: Mission Directives section */
+.tracker-container .sta-tracker-directives-section {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--sidebar-background);
+}
+
+.tracker-container .sta-tracker-directives-header {
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tracker-container .sta-tracker-directives-edit-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 0.15rem 0.3rem;
+  font-size: 0.75rem;
+}
+
+.tracker-container .sta-tracker-directives-edit-btn:hover {
+  color: #89CFF0;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.tracker-container .sta-tracker-directives-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.tracker-container .sta-tracker-directives-textarea {
+  width: 100%;
+  min-height: 80px;
+  max-height: 150px;
+  resize: none;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 0.8rem;
+  padding: 0.4rem;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.tracker-container .sta-tracker-directives-textarea:focus {
+  outline: none;
+  border-color: #89CFF0;
+}
+
+.tracker-container .sta-tracker-directives-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+}
+
+.tracker-container .sta-tracker-directives-save-btn {
+  background: #89CFF0;
+  border: none;
+  color: #1a1a2e;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  transition: background-color 0.15s ease;
+}
+
+.tracker-container .sta-tracker-directives-save-btn:hover {
+  background: #a8dbf5;
+}
+
+.tracker-container .sta-tracker-directives-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tracker-container .sta-tracker-directive-item {
+  font-size: 0.8rem;
+  color: #e0e0e0;
+  padding: 0.15rem 0;
+  line-height: 1.3;
+}
+
+.tracker-container .sta-tracker-directive-item::before {
+  content: "•";
+  color: #89CFF0;
+  margin-right: 0.4em;
+}
+
+.tracker-container .sta-tracker-directive-empty {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.tracker-container .sta-tracker-directive-empty::before {
+  content: none;
+}
+
 /* =============================================================================
  * DIALOGS (DialogV2 / ApplicationV2)
  * ============================================================================= */

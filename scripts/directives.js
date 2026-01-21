@@ -176,6 +176,47 @@ export async function setDirectiveChallenged(actor, directiveKey, challenged) {
   await actor.setFlag(MODULE_ID, "challengedDirectives", map);
 }
 
+// --- STA Tracker re-render helper ---
+
+async function rerenderStaTracker() {
+  try {
+    const Tracker = globalThis?.STATracker;
+
+    const inst = globalThis?.foundry?.applications?.instances;
+    const apps = [];
+    if (inst && typeof inst.values === "function") {
+      for (const app of inst.values()) apps.push(app);
+    } else if (inst && typeof inst === "object") {
+      for (const app of Object.values(inst)) apps.push(app);
+    }
+
+    const uniq = Array.from(new Set(apps)).filter(Boolean);
+
+    for (const app of uniq) {
+      const ctorName = String(app?.constructor?.name ?? "");
+      const isTracker =
+        ctorName === "STATracker" || (Tracker && app instanceof Tracker);
+      if (!isTracker) continue;
+
+      try {
+        if (typeof app?.render === "function") {
+          await app.render({ force: true });
+        }
+      } catch (_) {
+        try {
+          if (typeof app?.render === "function") {
+            await app.render(true);
+          }
+        } catch (_) {
+          // ignore
+        }
+      }
+    }
+  } catch (_) {
+    // ignore
+  }
+}
+
 // --- Settings menu ---
 
 export class DirectiveSettingsApp extends FormApplication {
@@ -212,8 +253,11 @@ export class DirectiveSettingsApp extends FormApplication {
 
     ui.notifications?.info?.(
       t("sta-officers-log.settings.directives.saved") ||
-        "Mission directives saved."
+        "Mission directives saved.",
     );
+
+    // Re-render the STA Tracker so the directives section updates.
+    rerenderStaTracker();
   }
 }
 

@@ -29,6 +29,10 @@
         "name": "Talent Picker: Extra Compendium",
         "hint": "Optional compendium pack id(s) to include in the Talent picker. You can provide multiple pack ids separated by commas (e.g. module-name.talents-homebrew, another-module.more-talents)."
       },
+      "talentPickerCustomCompendiumFolderFilter": {
+        "name": "Talent Picker: Filter Custom Compendium by Folder",
+        "hint": "If enabled, talents in custom compendiums will be filtered by folder structure (Crew vs Starship), just like the official STA consolidated packs. Use this if your custom compendium contains both crew and starship talents organized in folders."
+      },
       "focusPickerCustomCompendium": {
         "name": "Focus Picker: Extra Compendium",
         "hint": "Optional compendium pack id(s) to include in the Focus picker. You can provide multiple pack ids separated by commas (e.g. module-name.focuses-homebrew, another-module.more-focuses)."
@@ -61,6 +65,14 @@
       "labelValues": "Label Values",
       "labelValuesTooltip": "Changes the icons of your Value items to indicate their order."
     },
+    "tracker": {
+      "missionDirectives": "Mission Directives",
+      "noDirectives": "No directives set.",
+      "editDirectives": "Edit Directives",
+      "cancelEdit": "Cancel Edit",
+      "save": "Save",
+      "directivesPlaceholder": "Enter one directive per line..."
+    },
     "traits": {
       "scarLabel": "Scar",
       "scarTooltip": "Mark this Trait as a scar.",
@@ -69,7 +81,9 @@
       "useScar": "Use Scar",
       "useScarTooltip": "Use this Scar (requires GM approval).",
       "fatiguedLabel": "Fatigued",
-      "fatiguedTooltip": "Mark this Trait as a Fatigue trait (auto-created when stress is maxed)."
+      "fatiguedTooltip": "Mark this Trait as a Fatigue trait (auto-created when stress is maxed).",
+      "chooseAttribute": "Choose Attribute",
+      "chooseAttributeTooltip": "Choose which attribute your character is fatigued in."
     },
     "sceneControls": {
       "title": "STA"

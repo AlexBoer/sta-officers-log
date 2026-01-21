@@ -121,3 +121,7 @@ body.system-sta .note .editor-content {
     right: 1rem;
     display: block;
 }
+
+.tracker-container .tracker .button-group {
+    height: 34px;
+}
