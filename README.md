@@ -11,6 +11,7 @@ Tools for character development in _Star Trek Adventures_ for Foundry VTT.
 - Adds support for Trauma and Scars in the 23rd Century Campaign guide.
 - Adds a button to add mission directives to log items.
 - When you complete a log or a milestone, adds a button to select a benefit.
+- Adds a world setting that changes ambient audio for players. Players should not only hear ambient audio a token they have selected.
 
 ## Requirements
 
