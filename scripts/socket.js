@@ -294,12 +294,6 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
       await actor.update({ "system.stress.value": newValue });
     }
 
-    // Supporting characters: skip log updates and callback prompts
-    const isSupportingCharacter = msg.isSupportingCharacter === true;
-    if (isSupportingCharacter) {
-      return { approved: true };
-    }
-
     // Record usage on the current mission log (if provided by the requester).
     // This drives callback eligibility via log.system.valueStates.
     const missionLogId = msg.currentMissionLogId
@@ -360,7 +354,6 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     const requestingUserName = _formatUserName(msg.requestingUserId);
     const traitName = msg.traitName ?? traitItem.name ?? "";
     const actorName = msg.actorName ?? actor.name ?? "";
-    const isSupportingCharacter = msg.isSupportingCharacter === true;
 
     const approved =
       (await foundry.applications.api.DialogV2.wait({
@@ -394,9 +387,6 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
 
     await gainDetermination(actor);
 
-    // Supporting characters: skip any log/callback operations (they don't have mission logs)
-    // The scar is still marked as used on the client side after approval
-
     return { approved: true };
   });
 
@@ -419,8 +409,6 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     if (!directiveKey || !directiveText) {
       return { approved: false, reason: "directive-missing" };
     }
-
-    const isSupportingCharacter = msg.isSupportingCharacter === true;
 
     const shouldAutoApprove =
       msg.autoApprove === true && msg.requestingUserId === game.user.id;
@@ -459,11 +447,6 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     await gainDetermination(actor);
     if (usage === "challenge") {
       await setDirectiveChallenged(actor, directiveKey, true);
-    }
-
-    // Supporting characters: skip log updates and callback prompts
-    if (isSupportingCharacter) {
-      return { approved: true };
     }
 
     const directiveValueId = `${DIRECTIVE_VALUE_ID_PREFIX}${directiveKey}`;

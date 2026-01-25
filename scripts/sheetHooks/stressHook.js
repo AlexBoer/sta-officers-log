@@ -333,7 +333,6 @@ function canWriteActor(actor) {
 /**
  * Checks if an actor should experience fatigue mechanics.
  * NPCs (using STANPCSheet2e) and characters with stress.max = 0 do not experience fatigue.
- * Main characters and supporting characters can experience fatigue.
  * @param {Actor} actor - The character actor
  * @returns {boolean} True if the actor can experience fatigue
  */
@@ -342,15 +341,6 @@ function canExperienceFatigue(actor) {
     // Check if actor is an NPC (using STANPCSheet2e sheet class)
     const sheetClass = actor.getFlag?.("core", "sheetClass");
     if (sheetClass === "sta.STANPCSheet2e") return false;
-
-    // Allow main characters and supporting characters to experience fatigue
-    // Supporting characters use sta.STASupportingSheet2e
-    const allowedSheets = new Set([
-      "sta.STACharacterSheet2e",
-      "sta.STASupportingSheet2e",
-    ]);
-    // If a sheet class is explicitly set and it's not in the allowlist, skip
-    if (sheetClass && !allowedSheets.has(sheetClass)) return false;
 
     // Check if actor has stress.max = 0
     const maxStress = Number(actor.system?.stress?.max ?? 0);
@@ -409,7 +399,9 @@ export function installStressMonitoringHook() {
             await new Promise((r) => setTimeout(r, 50));
             const recheck = findFatiguedTrait(actor);
             if (recheck) {
-              console.log(`${MODULE_ID} | Fatigue trait already exists.`);
+              console.log(
+                `${MODULE_ID} | Fatigue trait already exists.`,
+              );
               return;
             }
             await createFatiguedTrait(actor);

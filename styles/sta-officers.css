@@ -717,47 +717,6 @@ div.section.milestones li.row.entry .sta-current-mission-indicator {
     color: goldenrod;
 }
 
-.sta-inline-sheet-btn.is-disabled:hover {
-    border-color: white;
-    color: inherit;
-}
-
-/* =============================================================================
- * SUPPORTING CHARACTER IMPROVEMENT BUTTONS
- * ============================================================================= */
-
-.sta-supporting-improvements-buttons {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
-  justify-content: center;
-}
-
-.sta-supporting-improvements-buttons .sta-supporting-improvement-btn {
-  padding: 0.35rem 0.65rem;
-  font-size: 0.85rem;
-  cursor: pointer;
-  background: transparent;
-}
-
-.sta-supporting-improvements-buttons .sta-supporting-improvement-btn:not(.is-disabled):hover {
-  background: rgba(218, 165, 32, 0.15);
-}
-
-.sta-supporting-improvements-buttons .sta-supporting-improvement-btn.is-disabled {
-  cursor: not-allowed;
-  pointer-events: auto;
-}
-
-/* Style the checkbox grid when buttons are present above it */
-.sta-supporting-improvements-buttons + .supporting-char-grid {
-  margin-top: 0.25rem;
-  opacity: 0.85;
-  font-size: 0.9em;
-}
-
 .sta-trait-scar-control {
   display: flex;
   align-items: center;

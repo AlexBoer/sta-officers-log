@@ -1,7 +1,8 @@
 import { MODULE_ID } from "../../constants.js";
-
-const CHARACTER_LOG_HEIGHT_FLAG = "characterLogHeight";
-const CHARACTER_MILESTONE_HEIGHT_FLAG = "characterMilestoneHeight";
+import {
+  getCharacterLogMaxHeightSetting,
+  getCharacterMilestoneMaxHeightSetting,
+} from "../../clientSettings.js";
 
 function _getPxNumber(value) {
   const s = String(value ?? "").trim();
@@ -45,8 +46,8 @@ function _getCurrentHeightPx(el) {
   }
 }
 
-export function installCharacterLogListResizer(root, actor) {
-  if (!root || !actor) return;
+export function installCharacterLogListResizer(root) {
+  if (!root) return;
 
   const section = root.querySelector?.("div.section.milestones");
   if (!section) return;
@@ -68,7 +69,13 @@ export function installCharacterLogListResizer(root, actor) {
 
   if (!logListScrollable && !milestoneListScrollable) return;
 
-  const installResizer = ({ listEl, resizerClass, ariaLabel, flagKey }) => {
+  const installResizer = ({
+    listEl,
+    resizerClass,
+    ariaLabel,
+    settingKey,
+    getSetting,
+  }) => {
     if (!listEl) return;
 
     // Insert the resizer between the list and whatever follows.
@@ -81,13 +88,7 @@ export function installCharacterLogListResizer(root, actor) {
 
     const resizer = existing instanceof HTMLElement ? existing : null;
 
-    // Read from actor flag (persisted per-character)
-    let currentSetting = null;
-    try {
-      currentSetting = actor.getFlag?.(MODULE_ID, flagKey);
-    } catch (_) {
-      // ignore
-    }
+    const currentSetting = getSetting?.();
     const initialHeight =
       typeof currentSetting === "number" && Number.isFinite(currentSetting)
         ? Math.max(currentSetting, minHeight)
@@ -180,7 +181,7 @@ export function installCharacterLogListResizer(root, actor) {
       }
 
       try {
-        await actor.setFlag?.(MODULE_ID, flagKey, finalHeight);
+        await game.settings.set(MODULE_ID, settingKey, finalHeight);
       } catch (_) {
         // ignore
       }
@@ -264,7 +265,7 @@ export function installCharacterLogListResizer(root, actor) {
       _applyHeight(listEl, next);
 
       try {
-        await actor.setFlag?.(MODULE_ID, flagKey, next);
+        await game.settings.set(MODULE_ID, settingKey, next);
       } catch (_) {
         // ignore
       }
@@ -275,13 +276,15 @@ export function installCharacterLogListResizer(root, actor) {
     listEl: logListScrollable,
     resizerClass: "staol-log-resizer",
     ariaLabel: "Resize Character Log",
-    flagKey: CHARACTER_LOG_HEIGHT_FLAG,
+    settingKey: "characterLogMaxHeight",
+    getSetting: getCharacterLogMaxHeightSetting,
   });
 
   installResizer({
     listEl: milestoneListScrollable,
     resizerClass: "staol-milestone-resizer",
     ariaLabel: "Resize Milestones",
-    flagKey: CHARACTER_MILESTONE_HEIGHT_FLAG,
+    settingKey: "characterMilestoneMaxHeight",
+    getSetting: getCharacterMilestoneMaxHeightSetting,
   });
 }

@@ -200,25 +200,6 @@ export function refreshMissionLogSortingForActorId(actorId) {
   }
 }
 
-/**
- * Checks if an actor is a Supporting Character based on its sheet class.
- * Supporting characters use the STA Supporting Sheet, not the main Character Sheet.
- * @param {Actor} actor
- * @returns {boolean}
- */
-export function isSupportingCharacter(actor) {
-  if (!actor) return false;
-  try {
-    const sheetClass =
-      actor.getFlag?.("core", "sheetClass") ??
-      foundry.utils.getProperty(actor, "flags.core.sheetClass") ??
-      "";
-    return String(sheetClass) === "sta.STASupportingSheet2e";
-  } catch (_) {
-    return false;
-  }
-}
-
 export function getItemFromApp(app) {
   return app?.item ?? null;
 }

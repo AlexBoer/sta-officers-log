@@ -178,7 +178,7 @@ export async function setDirectiveChallenged(actor, directiveKey, challenged) {
 
 // --- STA Tracker re-render helper ---
 
-export async function rerenderStaTracker() {
+async function rerenderStaTracker() {
   try {
     const Tracker = globalThis?.STATracker;
 

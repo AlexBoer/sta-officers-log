@@ -3,6 +3,9 @@ import { t } from "./i18n.js";
 
 export const CLIENT_SHEET_ENHANCEMENTS_SETTING = "enableSheetEnhancements";
 export const CLIENT_SHOW_LOG_USED_TOGGLE_SETTING = "showLogUsedToggle";
+export const CLIENT_CHARACTER_LOG_MAX_HEIGHT_SETTING = "characterLogMaxHeight";
+export const CLIENT_CHARACTER_MILESTONE_MAX_HEIGHT_SETTING =
+  "characterMilestoneMaxHeight";
 export const WORLD_ENABLE_TRAUMA_RULES_SETTING = "enableTraumaRules";
 export const WORLD_ENABLE_SCAR_RULES_SETTING = "enableScarRules";
 
@@ -60,6 +63,58 @@ export function registerClientSettings() {
       }
     },
   });
+
+  // Character sheet: allow resizing the Character Log list height via drag handle.
+  game.settings.register(MODULE_ID, CLIENT_CHARACTER_LOG_MAX_HEIGHT_SETTING, {
+    name: "Character Log Height",
+    hint: "Height (px) for the Character Log scroll area; updated by dragging the divider.",
+    scope: "client",
+    config: false,
+    type: Number,
+    default: 150,
+    onChange: () => {
+      try {
+        for (const app of Object.values(ui?.windows ?? {})) {
+          try {
+            if (app?.id?.startsWith?.("STACharacterSheet2e"))
+              app.render?.(true);
+          } catch (_) {
+            // ignore
+          }
+        }
+      } catch (_) {
+        // ignore
+      }
+    },
+  });
+
+  // Character sheet: allow resizing the Milestones list height via drag handle.
+  game.settings.register(
+    MODULE_ID,
+    CLIENT_CHARACTER_MILESTONE_MAX_HEIGHT_SETTING,
+    {
+      name: "Character Milestones Height",
+      hint: "Height (px) for the Milestones scroll area; updated by dragging the divider.",
+      scope: "client",
+      config: false,
+      type: Number,
+      default: 150,
+      onChange: () => {
+        try {
+          for (const app of Object.values(ui?.windows ?? {})) {
+            try {
+              if (app?.id?.startsWith?.("STACharacterSheet2e"))
+                app.render?.(true);
+            } catch (_) {
+              // ignore
+            }
+          }
+        } catch (_) {
+          // ignore
+        }
+      },
+    },
+  );
 
   // World setting: Enable Trauma rules (23rd Century Campaign Guide)
   game.settings.register(MODULE_ID, WORLD_ENABLE_TRAUMA_RULES_SETTING, {
@@ -133,6 +188,31 @@ export function shouldShowLogUsedToggle() {
     );
   } catch (_) {
     return false;
+  }
+}
+
+export function getCharacterLogMaxHeightSetting() {
+  try {
+    const n = Number(
+      game.settings.get(MODULE_ID, CLIENT_CHARACTER_LOG_MAX_HEIGHT_SETTING),
+    );
+    return Number.isFinite(n) ? n : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+export function getCharacterMilestoneMaxHeightSetting() {
+  try {
+    const n = Number(
+      game.settings.get(
+        MODULE_ID,
+        CLIENT_CHARACTER_MILESTONE_MAX_HEIGHT_SETTING,
+      ),
+    );
+    return Number.isFinite(n) ? n : null;
+  } catch (_) {
+    return null;
   }
 }
 
