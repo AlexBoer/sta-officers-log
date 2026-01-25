@@ -376,9 +376,6 @@ function installOfficersLogButtonsInStaTracker(app, root) {
 
     columns.appendChild(divider);
     columns.appendChild(officersGroup);
-
-    // --- Mission Directives Section ---
-    installMissionDirectivesInStaTracker(root, row);
   } catch (_) {
     // ignore
   }
@@ -2427,6 +2424,21 @@ export function installRenderApplicationV2Hook() {
     // STA system tracker: add Officers Log buttons next to the roll buttons.
     installOfficersLogButtonsInStaTracker(app, root);
 
+    // STA system tracker: add Mission Directives section (visible to all users, editable by GM only).
+    try {
+      if (root instanceof HTMLElement) {
+        const row =
+          root.querySelector?.("div.tracker-column.abilities .roll-button") ??
+          root.querySelector?.(".roll-button") ??
+          null;
+        if (row) {
+          installMissionDirectivesInStaTracker(root, row);
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+
     // Check if this is a Dice Pool dialog and add fatigue notice if needed
     try {
       const isDicePoolDialog =
@@ -2546,7 +2558,11 @@ export function installRenderApplicationV2Hook() {
     }
 
     // Only target your STA character sheet app
-    if (!app?.id?.startsWith("STACharacterSheet2e")) return;
+    if (
+      !app?.id?.startsWith("STACharacterSheet2e") &&
+      !app?.id?.startsWith("STASupportingSheet2e")
+    )
+      return;
 
     const actor = app.actor;
     if (!actor || actor.type !== "character") return;
@@ -2796,14 +2812,26 @@ export function installRenderApplicationV2Hook() {
         ev.preventDefault();
         ev.stopPropagation();
 
+        // Check if this is a supporting character (no logs, no callbacks)
+        const isSupportingCharacter = (() => {
+          const sheetClass =
+            actor?.getFlag?.("core", "sheetClass") ??
+            foundry.utils.getProperty(actor, "flags.core.sheetClass") ??
+            "";
+          return String(sheetClass) === "sta.STASupportingSheet2e";
+        })();
+
         const det = Number(actor.system?.determination?.value ?? 0);
 
-        const missionUserId = game.user.isGM
-          ? getUserIdForCharacterActor(actor)
-          : game.user.id;
-        const currentMissionLogId = missionUserId
-          ? getCurrentMissionLogIdForUser(missionUserId)
+        const missionUserId = !isSupportingCharacter
+          ? game.user.isGM
+            ? getUserIdForCharacterActor(actor)
+            : game.user.id
           : null;
+        const currentMissionLogId =
+          !isSupportingCharacter && missionUserId
+            ? getCurrentMissionLogIdForUser(missionUserId)
+            : null;
 
         const currentLog = currentMissionLogId
           ? actor.items.get(String(currentMissionLogId))
@@ -2945,7 +2973,7 @@ export function installRenderApplicationV2Hook() {
               : "negative";
 
         const applyLogUsage = async (logDoc) => {
-          if (!logDoc) return;
+          if (!logDoc || isSupportingCharacter) return; // Skip for supporting characters
 
           // Record invoked directive on the mission log
           const existingRaw =
@@ -2985,19 +3013,22 @@ export function installRenderApplicationV2Hook() {
           await applyLogUsage(currentLog);
 
           // Prompt callback locally, but apply for owning player's mission context.
-          const owningUserId = getUserIdForCharacterActor(actor);
-          if (owningUserId) {
-            if (
-              _hasEligibleCallbackTargetWithAnyInvokedDirective(
-                actor,
-                currentMissionLogId,
-              )
-            ) {
-              await promptCallbackForActorAsGM(actor, owningUserId, {
-                reason: "Directive used",
-                defaultValueId: directiveValueId,
-                defaultValueState: valueState,
-              });
+          // (only for main characters, not supporting characters)
+          if (!isSupportingCharacter) {
+            const owningUserId = getUserIdForCharacterActor(actor);
+            if (owningUserId) {
+              if (
+                _hasEligibleCallbackTargetWithAnyInvokedDirective(
+                  actor,
+                  currentMissionLogId,
+                )
+              ) {
+                await promptCallbackForActorAsGM(actor, owningUserId, {
+                  reason: "Directive used",
+                  defaultValueId: directiveValueId,
+                  defaultValueState: valueState,
+                });
+              }
             }
           }
 
@@ -3017,26 +3048,28 @@ export function installRenderApplicationV2Hook() {
           await spendDetermination(actor);
           await applyLogUsage(currentLog);
 
-          // Ask the GM to prompt the player for a callback.
-          try {
-            if (
-              _hasEligibleCallbackTargetWithAnyInvokedDirective(
-                actor,
-                currentMissionLogId,
-              )
-            ) {
-              await moduleSocket.executeAsGM("promptCallbackForUser", {
-                targetUserId: game.user.id,
-                reason: "Directive used",
-                defaultValueId: directiveValueId,
-                defaultValueState: "positive",
-              });
+          // Ask the GM to prompt the player for a callback (only for main characters).
+          if (!isSupportingCharacter) {
+            try {
+              if (
+                _hasEligibleCallbackTargetWithAnyInvokedDirective(
+                  actor,
+                  currentMissionLogId,
+                )
+              ) {
+                await moduleSocket.executeAsGM("promptCallbackForUser", {
+                  targetUserId: game.user.id,
+                  reason: "Directive used",
+                  defaultValueId: directiveValueId,
+                  defaultValueState: "positive",
+                });
+              }
+            } catch (err) {
+              console.error(
+                "sta-officers-log | Failed to request callback prompt",
+                err,
+              );
             }
-          } catch (err) {
-            console.error(
-              "sta-officers-log | Failed to request callback prompt",
-              err,
-            );
           }
 
           app.render();
@@ -3288,12 +3321,24 @@ export function installRenderApplicationV2Hook() {
 
         if (!choice) return;
 
-        const missionUserId = game.user.isGM
-          ? getUserIdForCharacterActor(actor)
-          : game.user.id;
-        const currentMissionLogId = missionUserId
-          ? getCurrentMissionLogIdForUser(missionUserId)
+        // Check if this is a supporting character (no logs, no callbacks)
+        const isSupportingCharacter = (() => {
+          const sheetClass =
+            actor?.getFlag?.("core", "sheetClass") ??
+            foundry.utils.getProperty(actor, "flags.core.sheetClass") ??
+            "";
+          return String(sheetClass) === "sta.STASupportingSheet2e";
+        })();
+
+        const missionUserId = !isSupportingCharacter
+          ? game.user.isGM
+            ? getUserIdForCharacterActor(actor)
+            : game.user.id
           : null;
+        const currentMissionLogId =
+          !isSupportingCharacter && missionUserId
+            ? getCurrentMissionLogIdForUser(missionUserId)
+            : null;
 
         const valueState =
           choice === "positive"
@@ -3316,8 +3361,9 @@ export function installRenderApplicationV2Hook() {
           await actor.update({ "system.stress.value": max });
         };
 
-        // Helper to record value state on log
+        // Helper to record value state on log (only for main characters)
         const recordValueStateOnLog = async () => {
+          if (isSupportingCharacter) return; // Skip for supporting characters
           const currentLog = currentMissionLogId
             ? actor.items.get(String(currentMissionLogId))
             : null;
@@ -3339,45 +3385,47 @@ export function installRenderApplicationV2Hook() {
           await setValueChallenged(valueItem, true);
           await recordValueStateOnLog();
 
-          // Show callback prompt (GM or player)
-          if (game.user.isGM) {
-            const owningUserId = getUserIdForCharacterActor(actor);
-            if (owningUserId) {
-              if (
-                hasEligibleCallbackTargetForValueId(
-                  actor,
-                  currentMissionLogId,
-                  valueItem.id,
-                )
-              ) {
-                await promptCallbackForActorAsGM(actor, owningUserId, {
-                  reason: "Trauma challenged",
-                  defaultValueId: valueItem.id,
-                  defaultValueState: valueState,
-                });
+          // Show callback prompt (GM or player) - only for main characters
+          if (!isSupportingCharacter) {
+            if (game.user.isGM) {
+              const owningUserId = getUserIdForCharacterActor(actor);
+              if (owningUserId) {
+                if (
+                  hasEligibleCallbackTargetForValueId(
+                    actor,
+                    currentMissionLogId,
+                    valueItem.id,
+                  )
+                ) {
+                  await promptCallbackForActorAsGM(actor, owningUserId, {
+                    reason: "Trauma challenged",
+                    defaultValueId: valueItem.id,
+                    defaultValueState: valueState,
+                  });
+                }
               }
-            }
-          } else {
-            try {
-              if (
-                hasEligibleCallbackTargetForValueId(
-                  actor,
-                  currentMissionLogId,
-                  valueItem.id,
-                )
-              ) {
-                const targetUser = game.user;
-                await sendCallbackPromptToUser(targetUser, {
-                  reason: "Trauma challenged",
-                  defaultValueId: valueItem.id,
-                  defaultValueState: valueState,
-                });
+            } else {
+              try {
+                if (
+                  hasEligibleCallbackTargetForValueId(
+                    actor,
+                    currentMissionLogId,
+                    valueItem.id,
+                  )
+                ) {
+                  const targetUser = game.user;
+                  await sendCallbackPromptToUser(targetUser, {
+                    reason: "Trauma challenged",
+                    defaultValueId: valueItem.id,
+                    defaultValueState: valueState,
+                  });
+                }
+              } catch (err) {
+                console.error(
+                  "sta-officers-log | Failed to show callback prompt",
+                  err,
+                );
               }
-            } catch (err) {
-              console.error(
-                "sta-officers-log | Failed to show callback prompt",
-                err,
-              );
             }
           }
 
@@ -3405,20 +3453,23 @@ export function installRenderApplicationV2Hook() {
 
           // GM clicked "Use Value" on a player's sheet: prompt the GM locally for the callback,
           // but apply it for the owning player's mission/chain context.
-          const owningUserId = getUserIdForCharacterActor(actor);
-          if (owningUserId) {
-            if (
-              hasEligibleCallbackTargetForValueId(
-                actor,
-                currentMissionLogId,
-                valueItem.id,
-              )
-            ) {
-              await promptCallbackForActorAsGM(actor, owningUserId, {
-                reason: "Value used",
-                defaultValueId: valueItem.id,
-                defaultValueState: valueState,
-              });
+          // (only for main characters, not supporting characters)
+          if (!isSupportingCharacter) {
+            const owningUserId = getUserIdForCharacterActor(actor);
+            if (owningUserId) {
+              if (
+                hasEligibleCallbackTargetForValueId(
+                  actor,
+                  currentMissionLogId,
+                  valueItem.id,
+                )
+              ) {
+                await promptCallbackForActorAsGM(actor, owningUserId, {
+                  reason: "Value used",
+                  defaultValueId: valueItem.id,
+                  defaultValueState: valueState,
+                });
+              }
             }
           }
 
@@ -3443,27 +3494,29 @@ export function installRenderApplicationV2Hook() {
           // Players can record the usage immediately.
           await recordValueStateOnLog();
 
-          // Show callback prompt locally to the player.
-          try {
-            if (
-              hasEligibleCallbackTargetForValueId(
-                actor,
-                currentMissionLogId,
-                valueItem.id,
-              )
-            ) {
-              const targetUser = game.user;
-              await sendCallbackPromptToUser(targetUser, {
-                reason: "Value used",
-                defaultValueId: valueItem.id,
-                defaultValueState: "positive",
-              });
+          // Show callback prompt locally to the player (only for main characters).
+          if (!isSupportingCharacter) {
+            try {
+              if (
+                hasEligibleCallbackTargetForValueId(
+                  actor,
+                  currentMissionLogId,
+                  valueItem.id,
+                )
+              ) {
+                const targetUser = game.user;
+                await sendCallbackPromptToUser(targetUser, {
+                  reason: "Value used",
+                  defaultValueId: valueItem.id,
+                  defaultValueState: "positive",
+                });
+              }
+            } catch (err) {
+              console.error(
+                "sta-officers-log | Failed to show callback prompt",
+                err,
+              );
             }
-          } catch (err) {
-            console.error(
-              "sta-officers-log | Failed to show callback prompt",
-              err,
-            );
           }
 
           app.render();
