@@ -2,6 +2,7 @@ import { MODULE_ID } from "./constants.js";
 import { t, tf } from "./i18n.js";
 import {
   getMissionDirectives,
+  rerenderStaTracker,
   sanitizeDirectiveText,
   setMissionDirectives,
 } from "./directives.js";
@@ -888,4 +889,7 @@ export async function promptNewMissionAndReset() {
   } catch (_) {
     // ignore
   }
+
+  // Refresh the STA Tracker to show the updated directives.
+  rerenderStaTracker();
 }

@@ -130,6 +130,14 @@
       "chooseArc": "Choose Arc",
       "chooseArcTooltip": "Choose an Arc benefit."
     },
+    "supportingImprovements": {
+      "addValue": "Add Value",
+      "improveAttribute": "Improve Attribute",
+      "improveDiscipline": "Improve Discipline",
+      "addFocus": "Add Focus",
+      "addTalent": "Add Talent",
+      "allUsed": "All improvements of this type have been used."
+    },
     "logSheet": {
       "arcComplete": "Arc Complete",
       "createdWithTraumaLabel": "Created With Trauma",
@@ -201,6 +209,12 @@
         "arcAddShipTalent": "Add a new Ship Talent",
         "arcRemoveTrauma": "Remove Trauma",
         "arcRemoveTraumaDisabledTooltip": "All logs in the arc must challenge the trauma",
+        "customMilestone": "Custom Milestone",
+        "customArc": "Custom Arc",
+        "customMilestoneDefaultName": "Custom Milestone",
+        "customArcDefaultName": "Custom Arc",
+        "customMilestoneNameLabel": "Milestone Name",
+        "customArcNameLabel": "Arc Name",
         "arcRemoveTraumaRenameLabel": "Rename the Trauma",
         "arcRemoveTraumaRenamePlaceholder": "Enter a new name for the Value",
         "pickAttribute": "Attribute",

@@ -104,6 +104,12 @@ class NewMilestoneArcApp extends Base {
             "sta-officers-log.dialog.chooseMilestoneBenefit.changeShipStats",
           ),
         },
+        {
+          action: "custom",
+          label: t(
+            "sta-officers-log.dialog.chooseMilestoneBenefit.customMilestone",
+          ),
+        },
       ],
       arcButtons: [
         {
@@ -141,6 +147,10 @@ class NewMilestoneArcApp extends Base {
           label: t(
             "sta-officers-log.dialog.chooseMilestoneBenefit.arcAddShipTalent",
           ),
+        },
+        {
+          action: "custom",
+          label: t("sta-officers-log.dialog.chooseMilestoneBenefit.customArc"),
         },
         // Conditionally add Remove Trauma if this arc is a trauma arc
         ...(this._traumaValueId
@@ -308,6 +318,30 @@ class NewMilestoneArcApp extends Base {
 
       btn.disabled = true;
       try {
+        // Handle custom milestone/arc creation
+        if (action === "custom") {
+          const isArc = group === "arc";
+          const name = "New Milestone";
+
+          if (this._onApplied) {
+            await this._onApplied({
+              applied: { action: isArc ? "arcCustom" : "custom" },
+              label: name,
+              isArc,
+              group,
+            });
+          } else {
+            await this._createStandaloneMilestone({
+              name,
+              applied: { action: isArc ? "arcCustom" : "custom" },
+              isArc,
+            });
+          }
+
+          await this.close();
+          return;
+        }
+
         const applied =
           group === "arc"
             ? await applyArcMilestoneBenefit(this._actor, {
