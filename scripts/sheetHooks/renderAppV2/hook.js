@@ -376,6 +376,9 @@ function installOfficersLogButtonsInStaTracker(app, root) {
 
     columns.appendChild(divider);
     columns.appendChild(officersGroup);
+
+    // --- Mission Directives Section ---
+    installMissionDirectivesInStaTracker(root, row);
   } catch (_) {
     // ignore
   }
@@ -2421,17 +2424,21 @@ export function installRenderApplicationV2Hook() {
       // ignore
     }
 
-    // STA system tracker: add Officers Log buttons next to the roll buttons.
+    // STA system tracker: add Officers Log buttons next to the roll buttons (GM only).
     installOfficersLogButtonsInStaTracker(app, root);
 
-    // STA system tracker: add Mission Directives section (visible to all users, editable by GM only).
+    // STA system tracker: add Mission Directives section for all users.
     try {
       if (root instanceof HTMLElement) {
-        const row =
-          root.querySelector?.("div.tracker-column.abilities .roll-button") ??
-          root.querySelector?.(".roll-button") ??
+        const trackerContainer =
+          root.querySelector?.(".tracker-container[data-application-part]") ??
+          root.querySelector?.(".tracker-container") ??
           null;
-        if (row) {
+        if (trackerContainer) {
+          const row =
+            root.querySelector?.("div.tracker-column.abilities .roll-button") ??
+            root.querySelector?.(".roll-button") ??
+            null;
           installMissionDirectivesInStaTracker(root, row);
         }
       }

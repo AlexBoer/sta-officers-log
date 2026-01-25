@@ -1,6 +1,1 @@
-2026/01/26-02:35:52.140 29f0 Log #19: 0 ops saved to Table #20 OK
-2026/01/26-02:35:52.141 29f0 Archiving C:\Users\alex\AppData\Local\FoundryVTT\Data\modules\sta-officers-log\packs\officers-log-macros/000019.log: OK
-2026/01/26-02:35:52.141 29f0 Table #4: 17 entries OK
-2026/01/26-02:35:52.141 29f0 Table #18: 1 entries OK
-2026/01/26-02:35:52.145 29f0 Archiving C:\Users\alex\AppData\Local\FoundryVTT\Data\modules\sta-officers-log\packs\officers-log-macros/MANIFEST-000017: OK
-2026/01/26-02:35:52.150 29f0 **** Repaired leveldb C:\Users\alex\AppData\Local\FoundryVTT\Data\modules\sta-officers-log\packs\officers-log-macros; recovered 2 files; 11960 bytes. Some data may have been lost. ****
+2026/01/26-02:35:52.165 29f0 Delete type=3 #1
