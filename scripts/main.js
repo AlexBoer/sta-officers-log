@@ -1,12 +1,5 @@
-﻿import { CallbackRequestApp } from "./CallbackRequestApp.js";
-import { MODULE_ID } from "./constants.js";
-import { t } from "./i18n.js";
-import { initSocket } from "./socket.js";
-import {
-  AMBIENT_AUDIO_SELECTION_ONLY_SETTING,
-  installAmbientAudioSelectionListenerPatch,
-  setPlayerAmbientAudioSelectionOnlyEnabled,
-} from "./ambientAudioPatch.js";
+﻿import { CallbackRequestApp } from "./callbackFlow/CallbackRequestApp.js";
+import { MODULE_ID, t, initSocket } from "./core/index.js";
 import {
   addParticipantToCurrentMission,
   ensureNewSceneMacro,
@@ -16,12 +9,12 @@ import {
   promptNewMissionAndReset,
   registerMissionSettings,
   resetMissionCallbacks,
-} from "./mission.js";
+} from "./data/mission.js";
 import {
   registerFocusPickerSettings,
   registerTalentPickerSettings,
-} from "./focusPickerSettings.js";
-import { getCharacterArcEligibility } from "./arcChains.js";
+} from "./settings/pickerSettings.js";
+import { getCharacterArcEligibility } from "./data/arcChains.js";
 import {
   openGMFlow,
   promptCallbackForUserId,
@@ -29,13 +22,16 @@ import {
   openPendingShipBenefitsDialog,
 } from "./callbackFlow.js";
 import {
+  AMBIENT_AUDIO_SELECTION_ONLY_SETTING,
+  installAmbientAudioSelectionListenerPatch,
   installCreateChatMessageHook,
+  installMacroActorImageHook,
   installRenderApplicationV2Hook,
-} from "./sheetHooks.js";
-import { installStressMonitoringHook } from "./sheetHooks/stressHook.js";
-import { registerClientSettings } from "./clientSettings.js";
-import { registerDirectiveSettings } from "./directives.js";
-import { installMacroActorImageHook } from "./macroActorImage.js";
+  installStressMonitoringHook,
+  setPlayerAmbientAudioSelectionOnlyEnabled,
+} from "./hooks/index.js";
+import { registerClientSettings } from "./settings/clientSettings.js";
+import { registerDirectiveSettings } from "./data/directives.js";
 
 function registerApi() {
   // Public API (available on all clients; methods may GM-guard internally)
@@ -187,77 +183,6 @@ function refreshSceneControls() {
 }
 
 /**
- * One-time migration: copy world settings data (callback usage, mission logs) to actor flags.
- * TODO (May 2026): Remove this migration code after transition period
- */
-async function migrateWorldSettingsToActorFlags() {
-  // Only GM can set world settings
-  if (!game.user.isGM) {
-    return;
-  }
-
-  const migrationKey = "worldSettingsToActorFlagsMigration";
-  const migrated = game.settings.get(MODULE_ID, migrationKey);
-
-  if (migrated) {
-    // Migration already completed
-    return;
-  }
-
-  console.log(
-    `${MODULE_ID} | Running one-time migration: world settings → actor flags`,
-  );
-
-  try {
-    // Get world settings data
-    const callbackUsedMap =
-      game.settings.get(MODULE_ID, "missionCallbackUsed") ?? {};
-    const missionLogMap =
-      game.settings.get(MODULE_ID, "missionLogByUser") ?? {};
-
-    // Migrate to actor flags
-    const updates = [];
-    for (const actor of game.actors) {
-      if (actor.type !== "character") continue;
-
-      // Find the user who owns this actor
-      const userId = Object.keys(actor.ownership || {}).find(
-        (uid) =>
-          uid !== "default" &&
-          actor.ownership[uid] === CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
-      );
-
-      if (!userId) continue;
-
-      // Migrate callback usage
-      const hasUsed = Boolean(callbackUsedMap[userId]);
-      if (hasUsed && !actor.getFlag(MODULE_ID, "usedCallbackThisMission")) {
-        updates.push(actor.setFlag(MODULE_ID, "usedCallbackThisMission", true));
-      }
-
-      // Migrate mission log
-      const logId = missionLogMap[userId];
-      if (logId && !actor.getFlag(MODULE_ID, "currentMissionLogId")) {
-        updates.push(
-          actor.setFlag(MODULE_ID, "currentMissionLogId", String(logId)),
-        );
-      }
-    }
-
-    await Promise.allSettled(updates);
-
-    // Mark migration as complete
-    await game.settings.set(MODULE_ID, migrationKey, true);
-
-    console.log(
-      `${MODULE_ID} | Migration complete: ${updates.length} actors updated`,
-    );
-  } catch (err) {
-    console.error(`${MODULE_ID} | Migration failed:`, err);
-  }
-}
-
-/**
  * Check all actors for pending ship benefits and notify GM if any exist
  */
 async function checkPendingShipBenefits() {
@@ -330,14 +255,6 @@ Hooks.once("ready", () => {
     if (game.user.isGM) ensureNewSceneMacro();
   } catch (err) {
     console.error(`${MODULE_ID} | ensureNewSceneMacro failed`, err);
-  }
-
-  // Migrate world settings to actor flags (one-time migration)
-  // TODO (May 2026): Remove this migration code after transition period
-  try {
-    migrateWorldSettingsToActorFlags();
-  } catch (err) {
-    console.error(`${MODULE_ID} | migration failed`, err);
   }
 
   // Check for pending ship benefits and notify GM

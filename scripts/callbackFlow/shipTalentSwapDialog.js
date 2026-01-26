@@ -1,5 +1,5 @@
-import { MODULE_ID } from "../constants.js";
-import { t } from "../i18n.js";
+import { MODULE_ID } from "../core/constants.js";
+import { t } from "../core/i18n.js";
 import {
   SHIP_TALENT_BASE_PACKS,
   prepareTalentPickerContext,
@@ -8,13 +8,13 @@ import {
 } from "./talentPickerDialog.js";
 
 const Base = foundry.applications.api.HandlebarsApplicationMixin(
-  foundry.applications.api.ApplicationV2
+  foundry.applications.api.ApplicationV2,
 );
 
 class ShipTalentSwapApp extends Base {
   constructor(
     { ship = null, talents = [], shipTalents = [], resolve = null } = {},
-    options = {}
+    options = {},
   ) {
     super(options);
     this._ship = ship;
@@ -59,12 +59,12 @@ class ShipTalentSwapApp extends Base {
       this._ship,
       {
         showCustomButton: false,
-      }
+      },
     );
     const rawPickerMarkup =
       await foundry.applications.handlebars.renderTemplate(
         `modules/${MODULE_ID}/templates/talent-picker.hbs`,
-        pickerContext
+        pickerContext,
       );
     const talentPickerMarkup = String(rawPickerMarkup ?? "")
       .trim()
@@ -130,7 +130,7 @@ class ShipTalentSwapApp extends Base {
     this._confirmBtn = root.querySelector('button[data-action="confirm"]');
 
     const existingButtons = Array.from(
-      root.querySelectorAll("button[data-action=select-ship-talent]")
+      root.querySelectorAll("button[data-action=select-ship-talent]"),
     );
     for (const btn of existingButtons) {
       btn.addEventListener("click", () => {
@@ -157,7 +157,7 @@ class ShipTalentSwapApp extends Base {
     const warnNoCustom = () =>
       ui.notifications?.warn?.(
         t("sta-officers-log.dialog.shipTalentSwap.customNameRequired") ??
-          "Enter a custom talent name before selecting it."
+          "Enter a custom talent name before selecting it.",
       );
 
     customBtn?.addEventListener("click", () => {
@@ -222,7 +222,7 @@ class ShipTalentSwapApp extends Base {
       if (!this._selectedShipTalentId || !this._selectedNewTalent) {
         ui.notifications?.warn?.(
           t("sta-officers-log.dialog.shipTalentSwap.needSelection") ??
-            "Choose both a talent to remove and a new talent to add before confirming."
+            "Choose both a talent to remove and a new talent to add before confirming.",
         );
         return;
       }
@@ -298,10 +298,10 @@ export async function promptShipTalentSwapDialog({ ship = null } = {}) {
           type: itemType,
           typeLabel:
             itemType === "shiptalent"
-              ? t("sta-officers-log.dialog.shipTalentSwap.shipTalentLabel") ??
-                "Ship Talent"
-              : t("sta-officers-log.dialog.shipTalentSwap.talentLabel") ??
-                "Talent",
+              ? (t("sta-officers-log.dialog.shipTalentSwap.shipTalentLabel") ??
+                "Ship Talent")
+              : (t("sta-officers-log.dialog.shipTalentSwap.talentLabel") ??
+                "Talent"),
         };
       })
       .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));

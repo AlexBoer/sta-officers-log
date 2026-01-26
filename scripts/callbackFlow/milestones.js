@@ -1,4 +1,4 @@
-import { MODULE_ID } from "../constants.js";
+import { MODULE_ID } from "../core/constants.js";
 
 /**
  *
@@ -13,7 +13,7 @@ import { MODULE_ID } from "../constants.js";
  */
 export async function createMilestoneItem(
   actor,
-  { chosenLogId, currentLogId, valueImg, valueId, arc, benefitLabel, benefit }
+  { chosenLogId, currentLogId, valueImg, valueId, arc, benefitLabel, benefit },
 ) {
   if (!actor || !chosenLogId || !currentLogId || !valueId) return null;
 
@@ -23,7 +23,7 @@ export async function createMilestoneItem(
 
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   const childUpdates = {};
-  const arcChain = arc?.isArc ? arc?.chainLogIds ?? [] : [];
+  const arcChain = arc?.isArc ? (arc?.chainLogIds ?? []) : [];
 
   // Arc: Set the value of the associate logs to the logIds listed in arcChain.
   if (arcChain.length) {

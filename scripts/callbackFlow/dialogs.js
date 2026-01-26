@@ -1,77 +1,17 @@
-﻿import { t } from "../i18n.js";
-import { escapeHTML } from "../values.js";
+﻿import { t } from "../core/i18n.js";
+import { escapeHTML } from "../data/values.js";
 
-export const ATTRIBUTE_KEYS = [
-  "control",
-  "daring",
-  "fitness",
-  "insight",
-  "presence",
-  "reason",
-];
-
-export const DISCIPLINE_KEYS = [
-  "command",
-  "conn",
-  "security",
-  "engineering",
-  "science",
-  "medicine",
-];
-
-export const ATTRIBUTE_LABELS = {
-  control: "Control",
-  daring: "Daring",
-  fitness: "Fitness",
-  insight: "Insight",
-  presence: "Presence",
-  reason: "Reason",
-};
-
-export const DISCIPLINE_LABELS = {
-  command: "Command",
-  conn: "Conn",
-  security: "Security",
-  engineering: "Engineering",
-  science: "Science",
-  medicine: "Medicine",
-};
-
-export const SHIP_SYSTEM_KEYS = [
-  "communications",
-  "computers",
-  "engines",
-  "sensors",
-  "structure",
-  "weapons",
-];
-
-export const SHIP_DEPARTMENT_KEYS = [
-  "command",
-  "conn",
-  "engineering",
-  "security",
-  "medicine",
-  "science",
-];
-
-export const SHIP_SYSTEM_LABELS = {
-  communications: "Communications",
-  computers: "Computers",
-  engines: "Engines",
-  sensors: "Sensors",
-  structure: "Structure",
-  weapons: "Weapons",
-};
-
-export const SHIP_DEPARTMENT_LABELS = {
-  command: "Command",
-  conn: "Conn",
-  engineering: "Engineering",
-  security: "Security",
-  medicine: "Medicine",
-  science: "Science",
-};
+// Re-export game constants from core for backward compatibility
+export {
+  ATTRIBUTE_KEYS,
+  DISCIPLINE_KEYS,
+  ATTRIBUTE_LABELS,
+  DISCIPLINE_LABELS,
+  SHIP_SYSTEM_KEYS,
+  SHIP_DEPARTMENT_KEYS,
+  SHIP_SYSTEM_LABELS,
+  SHIP_DEPARTMENT_LABELS,
+} from "../core/gameConstants.js";
 
 export function _getStaSelectionFlag(actor, selectionPath) {
   // These correspond to checkboxes like:
@@ -85,7 +25,7 @@ export function _getStaSelectionFlag(actor, selectionPath) {
     foundry.utils.getProperty(actor, `flags.sta.${key}`) === true ||
     foundry.utils.getProperty(
       actor,
-      `flags.sta.selections.${selectionPath}`
+      `flags.sta.selections.${selectionPath}`,
     ) === true
   );
 }
@@ -144,7 +84,7 @@ export async function _promptText({ title, label, name, placeholder = "" }) {
         <label>${escapeHTML(label)}</label>
         <div class="form-fields">
           <input type="text" name="${escapeHTML(
-            name
+            name,
           )}" placeholder="${escapeHTML(placeholder)}" />
         </div>
       </div>
@@ -239,7 +179,7 @@ export async function _promptSelectAndText({
         <label>${escapeHTML(textLabel)}</label>
         <div class="form-fields">
           <input type="text" name="${escapeHTML(
-            textName
+            textName,
           )}" placeholder="${escapeHTML(textPlaceholder)}" />
         </div>
       </div>
@@ -272,22 +212,20 @@ export async function _promptBenefitType() {
     },
     content: `
       <div data-sta-callbacks-dialog="choose-benefit"></div>
-      <p>${t(
-        "sta-officers-log.dialog.chooseMilestoneBenefit.chooseType"
-      )}</p>
+      <p>${t("sta-officers-log.dialog.chooseMilestoneBenefit.chooseType")}</p>
     `,
     buttons: [
       {
         action: "attr",
         label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.increaseAttribute"
+          "sta-officers-log.dialog.chooseMilestoneBenefit.increaseAttribute",
         ),
         default: true,
       },
       {
         action: "disc",
         label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.increaseDiscipline"
+          "sta-officers-log.dialog.chooseMilestoneBenefit.increaseDiscipline",
         ),
       },
       {
@@ -296,20 +234,18 @@ export async function _promptBenefitType() {
       },
       {
         action: "talent",
-        label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.addTalent"
-        ),
+        label: t("sta-officers-log.dialog.chooseMilestoneBenefit.addTalent"),
       },
       {
         action: "supporting",
         label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.giveToSupportingCharacter"
+          "sta-officers-log.dialog.chooseMilestoneBenefit.giveToSupportingCharacter",
         ),
       },
       {
         action: "ship",
         label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.changeShipStats"
+          "sta-officers-log.dialog.chooseMilestoneBenefit.changeShipStats",
         ),
       },
       {
@@ -355,45 +291,43 @@ export async function _promptArcBenefitType() {
     content: `
       <div data-sta-callbacks-dialog="choose-benefit"></div>
       <p>${t(
-        "sta-officers-log.dialog.chooseMilestoneBenefit.arcChooseType"
+        "sta-officers-log.dialog.chooseMilestoneBenefit.arcChooseType",
       )}</p>
     `,
     buttons: [
       {
         action: "attr",
         label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseAttribute"
+          "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseAttribute",
         ),
         default: true,
       },
       {
         action: "disc",
         label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseDiscipline"
+          "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseDiscipline",
         ),
       },
       {
         action: "value",
-        label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.arcAddValue"
-        ),
+        label: t("sta-officers-log.dialog.chooseMilestoneBenefit.arcAddValue"),
       },
       {
         action: "shipSystem",
         label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseShipSystem"
+          "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseShipSystem",
         ),
       },
       {
         action: "shipDepartment",
         label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseShipDepartment"
+          "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseShipDepartment",
         ),
       },
       {
         action: "shipTalent",
         label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.arcAddShipTalent"
+          "sta-officers-log.dialog.chooseMilestoneBenefit.arcAddShipTalent",
         ),
       },
       {

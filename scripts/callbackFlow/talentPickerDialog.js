@@ -1,9 +1,9 @@
-import { MODULE_ID } from "../constants.js";
-import { t, tf } from "../i18n.js";
+import { MODULE_ID } from "../core/constants.js";
+import { t, tf } from "../core/i18n.js";
 import {
   getTalentPickerCustomCompendiumKeys,
   getTalentPickerCustomFolderFilterEnabled,
-} from "../focusPickerSettings.js";
+} from "../settings/pickerSettings.js";
 import {
   ATTRIBUTE_KEYS,
   ATTRIBUTE_LABELS,

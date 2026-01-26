@@ -1,6 +1,6 @@
-import { MODULE_ID } from "../constants.js";
-import { t, tf } from "../i18n.js";
-import { getGroupShipActorId } from "../mission.js";
+import { MODULE_ID } from "../core/constants.js";
+import { t, tf } from "../core/i18n.js";
+import { getGroupShipActorId } from "../data/mission.js";
 
 function _getBenefitIdentifier(benefit) {
   if (!benefit || typeof benefit !== "object") return "";
@@ -81,7 +81,7 @@ export async function openPendingShipBenefitsDialog() {
       count: pendingBenefits.length,
       summaryKey,
       items,
-    }
+    },
   );
 
   const dialog = new foundry.applications.api.DialogV2({
@@ -123,7 +123,7 @@ export async function openPendingShipBenefitsDialog() {
     const benefit = pendingBenefits.find(
       (b) =>
         String(b.actorId ?? "") === actorId &&
-        String(b.benefitId ?? "") === benefitId
+        String(b.benefitId ?? "") === benefitId,
     );
     const actor = game.actors?.get?.(actorId) ?? benefit?.actor ?? null;
     if (!benefit || !actor) return;
@@ -138,19 +138,19 @@ export async function openPendingShipBenefitsDialog() {
 
       // Update count
       const remaining = dialogElement.querySelectorAll(
-        ".pending-ship-benefit"
+        ".pending-ship-benefit",
       ).length;
       if (remaining === 0) {
         dialog.close();
         ui.notifications?.info(
-          t("sta-officers-log.notifications.pendingShipBenefitsAllProcessed")
+          t("sta-officers-log.notifications.pendingShipBenefitsAllProcessed"),
         );
       }
     } else if (action === "skip") {
       button.closest(".pending-ship-benefit").remove();
 
       const remaining = dialogElement.querySelectorAll(
-        ".pending-ship-benefit"
+        ".pending-ship-benefit",
       ).length;
       if (remaining === 0) {
         dialog.close();
@@ -160,12 +160,12 @@ export async function openPendingShipBenefitsDialog() {
       button.closest(".pending-ship-benefit").remove();
 
       const remaining = dialogElement.querySelectorAll(
-        ".pending-ship-benefit"
+        ".pending-ship-benefit",
       ).length;
       if (remaining === 0) {
         dialog.close();
         ui.notifications?.info(
-          t("sta-officers-log.notifications.pendingShipBenefitsAllRemoved")
+          t("sta-officers-log.notifications.pendingShipBenefitsAllRemoved"),
         );
       }
     }
@@ -184,7 +184,7 @@ async function applyShipBenefit(benefit, characterActor) {
       ui.notifications?.error(
         tf("sta-officers-log.errors.pendingShipBenefitsShipNotFound", {
           id: shipId,
-        })
+        }),
       );
       return;
     }
@@ -197,8 +197,8 @@ async function applyShipBenefit(benefit, characterActor) {
       if (!systemKey) {
         ui.notifications?.error(
           t(
-            "sta-officers-log.errors.pendingShipBenefitsMissingSystemKeyIncrease"
-          )
+            "sta-officers-log.errors.pendingShipBenefitsMissingSystemKeyIncrease",
+          ),
         );
         return;
       }
@@ -214,16 +214,16 @@ async function applyShipBenefit(benefit, characterActor) {
           {
             key: systemKey,
             character: characterActor.name,
-          }
-        )
+          },
+        ),
       );
     } else if (action === "shipDepartmentIncrease") {
       const departmentKey = benefit.departmentKey;
       if (!departmentKey) {
         ui.notifications?.error(
           t(
-            "sta-officers-log.errors.pendingShipBenefitsMissingDepartmentKeyIncrease"
-          )
+            "sta-officers-log.errors.pendingShipBenefitsMissingDepartmentKeyIncrease",
+          ),
         );
         return;
       }
@@ -239,8 +239,8 @@ async function applyShipBenefit(benefit, characterActor) {
           {
             key: departmentKey,
             character: characterActor.name,
-          }
-        )
+          },
+        ),
       );
     } else if (action === "shipSystemSwap") {
       const fromKey = benefit.fromSystemKey;
@@ -248,7 +248,7 @@ async function applyShipBenefit(benefit, characterActor) {
 
       if (!fromKey || !toKey) {
         ui.notifications?.error(
-          t("sta-officers-log.errors.pendingShipBenefitsMissingSystemKeysSwap")
+          t("sta-officers-log.errors.pendingShipBenefitsMissingSystemKeysSwap"),
         );
         return;
       }
@@ -268,8 +268,8 @@ async function applyShipBenefit(benefit, characterActor) {
             from: fromKey,
             to: toKey,
             character: characterActor.name,
-          }
-        )
+          },
+        ),
       );
     } else if (action === "shipDepartmentSwap") {
       const fromKey = benefit.fromDepartmentKey;
@@ -278,8 +278,8 @@ async function applyShipBenefit(benefit, characterActor) {
       if (!fromKey || !toKey) {
         ui.notifications?.error(
           t(
-            "sta-officers-log.errors.pendingShipBenefitsMissingDepartmentKeysSwap"
-          )
+            "sta-officers-log.errors.pendingShipBenefitsMissingDepartmentKeysSwap",
+          ),
         );
         return;
       }
@@ -299,14 +299,14 @@ async function applyShipBenefit(benefit, characterActor) {
             from: fromKey,
             to: toKey,
             character: characterActor.name,
-          }
-        )
+          },
+        ),
       );
     } else if (action === "shipTalentSwap") {
       ui.notifications?.warn(
         tf("sta-officers-log.warnings.pendingShipBenefitsTalentSwapManual", {
           character: characterActor.name,
-        })
+        }),
       );
       // Ship talent swaps are complex and typically require the talent picker dialog
       // This would need additional implementation
@@ -314,7 +314,7 @@ async function applyShipBenefit(benefit, characterActor) {
       ui.notifications?.warn(
         tf("sta-officers-log.warnings.pendingShipBenefitsUnknownAction", {
           action,
-        })
+        }),
       );
     }
 
@@ -326,7 +326,7 @@ async function applyShipBenefit(benefit, characterActor) {
         console.warn(
           `${MODULE_ID} | Failed to set selection flag:`,
           benefit.flagPath,
-          err
+          err,
         );
       }
     }
@@ -337,7 +337,7 @@ async function applyShipBenefit(benefit, characterActor) {
         message:
           err?.message ||
           t("sta-officers-log.errors.pendingShipBenefitsUnknownError"),
-      })
+      }),
     );
   }
 }
@@ -350,7 +350,7 @@ async function removePendingBenefit(actor, benefitIdToRemove) {
     const benefits = actor.getFlag?.(MODULE_ID, "pendingShipBenefits") || [];
     const idToRemove = String(benefitIdToRemove ?? "");
     const updated = benefits.filter(
-      (b) => String(_getBenefitIdentifier(b) ?? "") !== idToRemove
+      (b) => String(_getBenefitIdentifier(b) ?? "") !== idToRemove,
     );
 
     if (updated.length === 0) {

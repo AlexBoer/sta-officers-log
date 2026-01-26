@@ -1,14 +1,13 @@
-import { MODULE_ID } from "../constants.js";
-import { t, tf } from "../i18n.js";
-import { getModuleSocket } from "../socket.js";
+import { MODULE_ID } from "../core/constants.js";
+import { t, tf } from "../core/i18n.js";
+import { getModuleSocket } from "../core/socket.js";
 import {
   getCurrentMissionLogIdForUser,
-  getMissionLogByUser,
   hasUsedCallbackThisMission,
   isLogUsed,
   setUsedCallbackThisMission,
-} from "../mission.js";
-import { isValueChallenged } from "../valueChallenged.js";
+} from "../data/mission.js";
+import { isValueChallenged } from "../data/values.js";
 import {
   escapeHTML,
   getValueIconPathForValueId,
@@ -18,7 +17,7 @@ import {
   mergeValueStateArray,
   isValueTrauma,
   setLogCreatedWithTraumaFlag,
-} from "../values.js";
+} from "../data/values.js";
 import {
   directiveIconPath,
   getDirectiveSnapshotForLog,
@@ -27,12 +26,12 @@ import {
   getMissionDirectives,
   isDirectiveValueId,
   makeDirectiveValueIdFromText,
-} from "../directives.js";
-import { getCharacterArcEligibility } from "../arcChains.js";
+} from "../data/directives.js";
+import { getCharacterArcEligibility } from "../data/arcChains.js";
 import {
   getCompletedArcEndLogIds,
   getPrimaryValueIdForLog,
-} from "../logMetadata.js";
+} from "../data/logMetadata.js";
 import { gainDetermination as _gainDetermination } from "./milestones.js";
 
 export { gainDetermination, spendDetermination } from "./milestones.js";
@@ -502,7 +501,7 @@ async function orchestrateCallbackPrompt({
     return;
   }
 
-  const missionLogId = getMissionLogByUser()?.[targetUser.id] ?? null;
+  const missionLogId = getCurrentMissionLogIdForUser(targetUser.id);
 
   // Derive "already-targeted" logs from the actual callbackLink graph so we
   // don't rely on system.used / flags being perfectly up-to-date.
@@ -643,8 +642,8 @@ async function orchestrateCallbackPrompt({
 
   const showRequestUserId = String(requestUserId ?? targetUser.id);
 
-  // Import CallbackRequestApp dynamically
-  const { CallbackRequestApp } = await import("../CallbackRequestApp.js");
+  // Import CallbackRequestApp dynamically (same folder)
+  const { CallbackRequestApp } = await import("./CallbackRequestApp.js");
 
   // Show callback dialog locally on the current client
   const app = new CallbackRequestApp({

@@ -1,9 +1,9 @@
-import { MODULE_ID } from "../constants.js";
-import { t, tf } from "../i18n.js";
-import { getFocusPickerCustomCompendiumKeys } from "../focusPickerSettings.js";
+import { MODULE_ID } from "../core/constants.js";
+import { t, tf } from "../core/i18n.js";
+import { getFocusPickerCustomCompendiumKeys } from "../settings/pickerSettings.js";
 
 const Base = foundry.applications.api.HandlebarsApplicationMixin(
-  foundry.applications.api.ApplicationV2
+  foundry.applications.api.ApplicationV2,
 );
 
 const SPECIES_FOCUS_NAMES_WITH_IMAGES = new Set(
@@ -22,7 +22,7 @@ const SPECIES_FOCUS_NAMES_WITH_IMAGES = new Set(
     "Klingon",
     "Tellarite",
     "Trill",
-  ].map((s) => s.toLowerCase())
+  ].map((s) => s.toLowerCase()),
 );
 
 function _normalizeIndexEntries(indexLike) {
@@ -241,10 +241,10 @@ class FocusPickerApp extends Base {
 
     const searchInput = root.querySelector('input[name="q"]');
     const listItems = Array.from(
-      root.querySelectorAll(".sta-focus-picker-item[data-name]")
+      root.querySelectorAll(".sta-focus-picker-item[data-name]"),
     );
     const groupEls = Array.from(
-      root.querySelectorAll(".sta-focus-picker-group[data-group]")
+      root.querySelectorAll(".sta-focus-picker-group[data-group]"),
     );
     const countEl = root.querySelector('[data-hook="foundCount"]');
 
@@ -260,14 +260,14 @@ class FocusPickerApp extends Base {
 
       for (const g of groupEls) {
         const anyVisible = Array.from(
-          g.querySelectorAll(".sta-focus-picker-item")
+          g.querySelectorAll(".sta-focus-picker-item"),
         ).some((li) => li.style.display !== "none");
         g.style.display = anyVisible ? "" : "none";
       }
 
       if (countEl) {
         const visible = listItems.filter(
-          (li) => li.style.display !== "none"
+          (li) => li.style.display !== "none",
         ).length;
         const key = "sta-officers-log.dialog.focusPicker.found";
         const formatted = tf(key, { count: visible });
@@ -277,7 +277,7 @@ class FocusPickerApp extends Base {
           const template = t(key) ?? "Found: {count}";
           countEl.textContent = String(template).replace(
             "{count}",
-            String(visible)
+            String(visible),
           );
         }
       }
@@ -310,7 +310,7 @@ class FocusPickerApp extends Base {
         let focusItem = null;
         if (uuid) {
           const selectedFocus = this._focuses.find(
-            (focus) => String(focus?.uuid ?? "") === uuid
+            (focus) => String(focus?.uuid ?? "") === uuid,
           );
           focusItem = selectedFocus?.item ?? null;
           if (!focusItem) {
@@ -382,7 +382,7 @@ export async function promptFocusChoiceFromCompendium({ packKey = "" } = {}) {
     [
       explicit || null,
       ...(Array.isArray(customPackKeys) ? customPackKeys : []),
-    ].filter(Boolean)
+    ].filter(Boolean),
   );
 
   for (const key of packKeys) {
@@ -430,7 +430,7 @@ export async function promptFocusChoiceFromCompendium({ packKey = "" } = {}) {
         ...focus,
         item: _extractFocusItemData(doc),
       };
-    })
+    }),
   );
 
   return new Promise((resolve) => {
