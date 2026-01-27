@@ -1,3 +1,5 @@
-2026/01/26-23:39:03.144 2cd0 Recovering log #34
-2026/01/26-23:39:03.150 2cd0 Delete type=0 #34
-2026/01/26-23:39:03.151 2cd0 Delete type=3 #33
+2026/01/27-23:09:37.089 3ee8 Recovering log #40
+2026/01/27-23:09:37.090 3ee8 Level-0 table #42: started
+2026/01/27-23:09:37.100 3ee8 Level-0 table #42: 3441 bytes OK
+2026/01/27-23:09:37.105 3ee8 Delete type=0 #40
+2026/01/27-23:09:37.106 3ee8 Delete type=3 #39

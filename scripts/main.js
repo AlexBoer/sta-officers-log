@@ -1,5 +1,6 @@
 ﻿import { CallbackRequestApp } from "./callbackFlow/CallbackRequestApp.js";
 import { MODULE_ID, t, initSocket } from "./core/index.js";
+import { warpCalculator } from "./warpCalculator.js";
 import {
   addParticipantToCurrentMission,
   ensureNewSceneMacro,
@@ -57,6 +58,9 @@ function registerApi() {
 
     // Ship benefits review
     reviewPendingShipBenefits: openPendingShipBenefitsDialog,
+
+    // Warp Speed Calculator
+    warpCalculator,
   };
 
   // Back-compat for macros that reference a global symbol.

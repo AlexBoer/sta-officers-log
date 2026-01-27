@@ -387,6 +387,23 @@
       "pendingShipBenefitsMissingDepartmentKeysSwap": "Missing department keys for ship department swap.",
       "pendingShipBenefitsApplyFailed": "Failed to apply ship benefit: {message}",
       "pendingShipBenefitsUnknownError": "Unknown error"
+    },
+    "warpCalculator": {
+      "title": "Warp Speed Calculator",
+      "instructions": "Enter any two values to calculate the third.",
+      "warpFactor": "Warp Factor",
+      "distance": "Distance",
+      "time": "Time",
+      "lightYears": "light-years",
+      "days": "days",
+      "ly": "ly",
+      "lyDay": "ly/day",
+      "velocity": "Velocity",
+      "lyPerDay": "Travel Rate",
+      "enterTwoValues": "Enter any two values above to calculate the third.",
+      "cannotCalculate": "Cannot calculate with the given values.",
+      "sendToChat": "Send to Chat",
+      "close": "Close"
     }
   }
 }

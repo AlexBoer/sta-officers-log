@@ -1,0 +1,39 @@
+<form class="sta-warp-calculator" autocomplete="off">
+  <p class="sta-warp-calculator-instructions">{{instructions}}</p>
+
+  <div class="sta-warp-calculator-inputs">
+    <div class="form-group">
+      <label>{{labels.warpFactor}}</label>
+      <div class="form-fields">
+        <input type="number" name="warp" min="1" max="9.99" step="0.01" placeholder="1.0 – 9.99" value="{{values.warp}}" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{labels.distance}}</label>
+      <div class="form-fields">
+        <input type="number" name="distance" min="0" step="0.1" placeholder="{{labels.lightYears}}" value="{{values.distance}}" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{labels.time}}</label>
+      <div class="form-fields">
+        <input type="number" name="time" min="0" step="0.1" placeholder="{{labels.days}}" value="{{values.time}}" />
+      </div>
+    </div>
+  </div>
+
+  <div class="sta-warp-calculator-results" data-hook="results">
+    <div class="sta-warp-result-placeholder">{{labels.enterTwoValues}}</div>
+  </div>
+
+  <footer class="sta-warp-calculator-footer">
+    <button type="button" class="dialog-button" data-action="send" disabled>
+      <i class="fas fa-comment"></i> {{labels.sendToChat}}
+    </button>
+    <button type="button" class="dialog-button" data-action="close">
+      <i class="fas fa-times"></i> {{labels.close}}
+    </button>
+  </footer>
+</form>

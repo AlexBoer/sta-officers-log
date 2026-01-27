@@ -1544,3 +1544,227 @@ input.selector.attribute.sta-fatigued-attribute {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* =============================================================================
+ * WARP SPEED CALCULATOR
+ * ============================================================================= */
+
+.sta-warp-calculator-dialog {
+  min-width: 360px;
+}
+
+.sta-warp-calculator {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sta-warp-calculator-instructions {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+}
+
+.sta-warp-calculator-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sta-warp-calculator-inputs .form-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sta-warp-calculator-inputs .form-group label {
+  flex: 0 0 100px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.sta-warp-calculator-inputs .form-fields {
+  flex: 1;
+}
+
+.sta-warp-calculator-inputs input[type="number"] {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid rgba(100, 150, 200, 0.4);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+  font-size: 1rem;
+}
+
+.sta-warp-calculator-inputs input[type="number"]:focus {
+  border-color: rgba(100, 200, 255, 0.7);
+  outline: none;
+  box-shadow: 0 0 4px rgba(100, 200, 255, 0.3);
+}
+
+/* Results panel */
+.sta-warp-calculator-results {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(100, 150, 200, 0.15);
+  border: 1px solid rgba(100, 150, 200, 0.3);
+  border-radius: 6px;
+  min-height: 120px;
+}
+
+.sta-warp-result-placeholder {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  padding: 1.5rem 0;
+}
+
+.sta-warp-result-error {
+  text-align: center;
+  color: rgba(255, 100, 100, 0.9);
+  padding: 1.5rem 0;
+}
+
+.sta-warp-results-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sta-warp-result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+}
+
+.sta-warp-result-label {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.sta-warp-result-value {
+  font-family: monospace;
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Highlight calculated value */
+.sta-warp-calculated {
+  background: rgba(100, 200, 255, 0.2);
+  border-left: 3px solid rgba(100, 200, 255, 0.7);
+}
+
+.sta-warp-calculated .sta-warp-result-value {
+  color: rgba(100, 220, 255, 1);
+  font-weight: 700;
+}
+
+.sta-warp-divider {
+  border: none;
+  border-top: 1px solid rgba(100, 150, 200, 0.3);
+  margin: 0.5rem 0;
+}
+
+.sta-warp-derived {
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+.sta-warp-derived .sta-warp-result-label {
+  font-weight: 500;
+}
+
+/* Chat message styling - designed for both light and dark modes */
+.sta-warp-calculator-chat {
+  padding: 0.5rem;
+  color: inherit;
+}
+
+.sta-warp-calculator-chat h3 {
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #3d85c6;
+  font-size: 1.1rem;
+  color: #1a5a8a;
+}
+
+.sta-warp-calculator-chat h3 i {
+  margin-right: 0.5rem;
+}
+
+.sta-warp-calculator-chat .sta-warp-results-grid {
+  gap: 0.3rem;
+}
+
+.sta-warp-calculator-chat .sta-warp-result-row {
+  padding: 0.2rem 0.4rem;
+}
+
+.sta-warp-calculator-chat .sta-warp-result-label {
+  color: #444;
+  font-weight: 600;
+}
+
+.sta-warp-calculator-chat .sta-warp-result-value {
+  color: #222;
+}
+
+.sta-warp-calculator-chat .sta-warp-calculated {
+  background: rgba(61, 133, 198, 0.15);
+  border-left: 3px solid #3d85c6;
+}
+
+.sta-warp-calculator-chat .sta-warp-calculated .sta-warp-result-value {
+  color: #1a5a8a;
+  font-weight: 700;
+}
+
+.sta-warp-calculator-chat .sta-warp-divider {
+  border-top-color: #aaa;
+}
+
+.sta-warp-calculator-chat .sta-warp-derived .sta-warp-result-label {
+  color: #666;
+}
+
+.sta-warp-calculator-chat .sta-warp-derived .sta-warp-result-value {
+  color: #444;
+}
+
+/* Footer buttons */
+.sta-warp-calculator-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(100, 150, 200, 0.3);
+}
+
+.sta-warp-calculator-footer .dialog-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(100, 150, 200, 0.4);
+  border-radius: 4px;
+  background: rgba(100, 150, 200, 0.2);
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.sta-warp-calculator-footer .dialog-button:hover:not(:disabled) {
+  background: rgba(100, 150, 200, 0.35);
+  border-color: rgba(100, 200, 255, 0.6);
+}
+
+.sta-warp-calculator-footer .dialog-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sta-warp-calculator-footer .dialog-button i {
+  margin-right: 0.4rem;
+}
