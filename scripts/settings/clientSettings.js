@@ -3,6 +3,7 @@ import { t } from "../core/i18n.js";
 
 export const CLIENT_SHEET_ENHANCEMENTS_SETTING = "enableSheetEnhancements";
 export const CLIENT_SHOW_LOG_USED_TOGGLE_SETTING = "showLogUsedToggle";
+export const CLIENT_HIDE_CHALLENGED_TOGGLE_SETTING = "hideChallengedToggle";
 export const CLIENT_CHARACTER_LOG_MAX_HEIGHT_SETTING = "characterLogMaxHeight";
 export const CLIENT_CHARACTER_MILESTONE_MAX_HEIGHT_SETTING =
   "characterMilestoneMaxHeight";
@@ -47,6 +48,30 @@ export function registerClientSettings() {
     config: true,
     type: Boolean,
     default: false,
+    onChange: () => {
+      try {
+        // Force existing STA character sheets to redraw so the CSS toggle applies immediately.
+        for (const app of Object.values(ui?.windows ?? {})) {
+          try {
+            if (app?.id?.startsWith?.("STACharacterSheet2e"))
+              app.render?.(true);
+          } catch (_) {
+            // ignore
+          }
+        }
+      } catch (_) {
+        // ignore
+      }
+    },
+  });
+
+  game.settings.register(MODULE_ID, CLIENT_HIDE_CHALLENGED_TOGGLE_SETTING, {
+    name: t("sta-officers-log.settings.hideChallengedToggle.name"),
+    hint: t("sta-officers-log.settings.hideChallengedToggle.hint"),
+    scope: "client",
+    config: true,
+    type: Boolean,
+    default: true,
     onChange: () => {
       try {
         // Force existing STA character sheets to redraw so the CSS toggle applies immediately.
@@ -233,5 +258,15 @@ export function areScarRulesEnabled() {
     );
   } catch (_) {
     return false;
+  }
+}
+
+export function shouldHideChallengedToggle() {
+  try {
+    return Boolean(
+      game.settings.get(MODULE_ID, CLIENT_HIDE_CHALLENGED_TOGGLE_SETTING),
+    );
+  } catch (_) {
+    return true;
   }
 }

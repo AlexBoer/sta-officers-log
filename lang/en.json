@@ -12,6 +12,10 @@
         "name": "Show 'Used' toggle on Logs",
         "hint": "Advanced. Shows the strike-through toggle on Log entries. Normally hidden to prevent accidental changes; 'used' is managed automatically by callback links."
       },
+      "hideChallengedToggle": {
+        "name": "Hide Challenged Value Toggle",
+        "hint": "Hides the 'Chal?' toggle on values until the user challenges the value via the \"Use Value\" button."
+      },
       "groupShip": {
         "name": "Group Ship",
         "hint": "Choose a Starship actor to be treated as the party's Group Ship (stored for later automation).",
@@ -390,7 +394,9 @@
     },
     "warpCalculator": {
       "title": "Warp Speed Calculator",
-      "instructions": "Enter any two values to calculate the third.",
+      "instructions": "Enter any two values and leave the third blank to calculate it.",
+      "formulaTng": "TNG Formula",
+      "formulaTos": "TOS Formula",
       "warpFactor": "Warp Factor",
       "distance": "Distance",
       "time": "Time",

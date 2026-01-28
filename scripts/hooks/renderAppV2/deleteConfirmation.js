@@ -47,23 +47,6 @@ async function _confirmDelete({ title, contentHtml }) {
     }
   }
 
-  // Fallback for older Foundry versions.
-  if (globalThis.Dialog?.confirm) {
-    return await new Promise((resolve) => {
-      try {
-        globalThis.Dialog.confirm({
-          title,
-          content: contentHtml,
-          yes: () => resolve(true),
-          no: () => resolve(false),
-          defaultYes: false,
-        });
-      } catch (_) {
-        resolve(false);
-      }
-    });
-  }
-
   // Last resort.
   // eslint-disable-next-line no-alert
   return globalThis.confirm?.(title) ?? false;

@@ -22,7 +22,11 @@ export function installDicePoolFatigueNotice(app, root, _context) {
 
   if (!isDicePoolDialog) return;
 
-  // Get the speaker actor from the context or from the last used actor
+  // Get the actor directly associated with this dice pool dialog.
+  // We only check sources that are definitively linked to this dialog instance.
+  // We deliberately avoid fallbacks like controlled tokens or game.user.character
+  // because those can incorrectly associate the wrong actor (e.g., showing fatigue
+  // for a player character when rolling for an NPC).
   let actor = null;
 
   // Try to get actor from app's options or context
@@ -34,16 +38,10 @@ export function installDicePoolFatigueNotice(app, root, _context) {
     actor = app.object.actor;
   } else if (_context?.actor) {
     actor = _context.actor;
-  } else {
-    // Try to get the last controlled token's actor
-    const controlledTokens = canvas?.tokens?.controlled ?? [];
-    if (controlledTokens.length > 0) {
-      actor = controlledTokens[0].actor;
-    } else if (game?.user?.character) {
-      actor = game.user.character;
-    }
   }
 
+  // If we can't definitively determine the actor from the dialog itself, bail out.
+  // This prevents false positives where we'd check the wrong actor's fatigue status.
   if (!actor) return;
 
   // Check if character has a trait with isFatigue flag set to true

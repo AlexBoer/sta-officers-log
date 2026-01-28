@@ -5,7 +5,7 @@ import {
 
 /**
  * Returns true if this actor reference is from an unlinked token.
- * Changes made to unlinked token actors do not persist to the world actor.
+ * Changes made to unlinked token actors do not persist to the world actor, which can cause problems with callbacks and mission logs.
  * @param {Actor} actor
  * @returns {boolean}
  */
@@ -85,31 +85,8 @@ export function canCurrentUserChangeActor(actor) {
 
 export function rerenderOpenStaSheetsForActorId(actorId) {
   const renderNoFocus = (app) => {
-    // Foundry has multiple render signatures across generations:
-    // - ApplicationV2: render({ force, focus })
-    // - Legacy: render(force, options)
-    // We try the object form first to ensure focus is not stolen.
-    try {
-      if (typeof app?.render === "function") {
-        app.render({ force: true, focus: false });
-        return;
-      }
-    } catch (_) {
-      // ignore
-    }
-
-    try {
-      app.render?.(true, { focus: false });
-      return;
-    } catch (_) {
-      // ignore
-    }
-
-    try {
-      app.render?.(true);
-    } catch (_) {
-      // ignore
-    }
+    // v13+ ApplicationV2 signature: render({ force, focus })
+    app?.render?.({ force: true, focus: false });
   };
 
   const maybe = (app) => {
@@ -131,33 +108,16 @@ export function rerenderOpenStaSheetsForActorId(actorId) {
   try {
     const instances = foundry?.applications?.instances;
     if (instances) {
-      if (typeof instances.values === "function") {
-        for (const app of instances.values()) maybe(app);
-      } else {
-        for (const app of Object.values(instances)) maybe(app);
-      }
+      for (const app of instances.values()) maybe(app);
     }
   } catch (_) {
     // ignore
   }
 }
 
+/** Returns the root HTMLElement for an ApplicationV2 instance. */
 function _getApplicationRootElement(app) {
-  try {
-    const el = app?.element ?? app?._element ?? null;
-    if (!el) return null;
-    if (el instanceof HTMLElement) return el;
-    // Some Foundry builds expose a jQuery-like wrapper.
-    if (Array.isArray(el) && el[0] instanceof HTMLElement) return el[0];
-    if (typeof el.get === "function") {
-      const got = el.get(0);
-      return got instanceof HTMLElement ? got : null;
-    }
-    if (el?.[0] instanceof HTMLElement) return el[0];
-    return null;
-  } catch (_) {
-    return null;
-  }
+  return app?.element instanceof HTMLElement ? app.element : null;
 }
 
 /**
@@ -189,11 +149,7 @@ export function refreshMissionLogSortingForActorId(actorId) {
   try {
     const instances = foundry?.applications?.instances;
     if (instances) {
-      if (typeof instances.values === "function") {
-        for (const app of instances.values()) maybe(app);
-      } else {
-        for (const app of Object.values(instances)) maybe(app);
-      }
+      for (const app of instances.values()) maybe(app);
     }
   } catch (_) {
     // ignore
@@ -219,8 +175,7 @@ export function openCreatedItemSheetAfterMilestone(actor, createdItemId) {
       const sheet = item?.sheet;
       if (!sheet) return;
       sheet.render?.(true);
-      if (typeof sheet.bringToFront === "function") sheet.bringToFront();
-      else if (typeof sheet.bringToTop === "function") sheet.bringToTop();
+      sheet.bringToFront?.();
     } catch (_) {
       // ignore
     }

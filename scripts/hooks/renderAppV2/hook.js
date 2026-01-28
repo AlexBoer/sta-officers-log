@@ -14,6 +14,7 @@ import {
   areSheetEnhancementsEnabled,
   shouldShowLogUsedToggle,
 } from "../../settings/clientSettings.js";
+import { installChallengedToggleVisibility } from "./challengedToggleVisibility.js";
 
 import { installCharacterLogListResizer } from "./logListResizer.js";
 import { closeStaOfficersLogContextMenu } from "./contextMenu.js";
@@ -209,6 +210,7 @@ export function installRenderApplicationV2Hook() {
         root.dataset.staShowLogUsedToggle = shouldShowLogUsedToggle()
           ? "1"
           : "0";
+        installChallengedToggleVisibility(root);
       }
     } catch (_) {
       // ignore

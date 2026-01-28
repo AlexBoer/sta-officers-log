@@ -66,6 +66,10 @@ export async function showAttributeSelectionDialog(traitItem, actor) {
       // Store which attribute is fatigued in the actor flags
       if (actor) {
         await actor.setFlag?.(MODULE_ID, FATIGUED_ATTRIBUTE_FLAG_KEY, result);
+        // Deselect the fatigued attribute to prevent it from being permanently selected
+        await actor.update({
+          [`system.attributes.${result}.selected`]: false,
+        });
       }
     } catch (err) {
       console.error(`${MODULE_ID} | Failed to update fatigued trait name`, err);

@@ -25,7 +25,38 @@ const LIGHT_YEARS_PER_DAY_AT_C =
 // ≈ 0.002738 ly/day (about 1 ly per 365.25 days)
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TN-2 WARP FACTOR CONVERSION
+// TOS (ORIGINAL SERIES) WARP FORMULA
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Convert warp factor to speed using TOS formula.
+ * Simple cubic relationship: v = w^3 * c
+ * TOS allows warp factors beyond 10 (unlike TNG).
+ *
+ * @param {number} warpFactor - Warp factor (1.0 to 100.0)
+ * @returns {number} Speed in multiples of c
+ */
+export function tosWarpToSpeedMultiplier(warpFactor) {
+  if (warpFactor < 1) return warpFactor; // Sublight
+  return Math.pow(warpFactor, 3);
+}
+
+/**
+ * Convert speed back to warp factor using TOS formula.
+ * Inverts: v = w^3, so w = v^(1/3)
+ * TOS allows warp factors up to 100.
+ *
+ * @param {number} speedMultiplier - Speed in multiples of c
+ * @returns {number|null} Warp factor, or null if invalid
+ */
+export function tosSpeedMultiplierToWarp(speedMultiplier) {
+  if (speedMultiplier <= 0) return null;
+  if (speedMultiplier < 1) return speedMultiplier;
+  return Math.cbrt(speedMultiplier); // Cube root
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TNG WARP FACTOR CONVERSION
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -55,12 +86,12 @@ const TNG_SPEED_TABLE = [
 ];
 
 /**
- * Linearly interpolate speed from the TN-2 lookup table.
+ * Find the speed using the TNG_SPEED_TABLE and linearly finding a midpoint between warp factors.
  * @param {number} warpFactor - Warp factor between 9.0 and 9.99
  * @returns {number} Speed in multiples of c
  */
-function interpolateSpeedAbove9(warpFactor) {
-  // Find the bracketing entries
+function findSpeedAbove9(warpFactor) {
+  // Find the two warp factors on either side of our input
   for (let i = 0; i < TNG_SPEED_TABLE.length - 1; i++) {
     const [w1, s1] = TNG_SPEED_TABLE[i];
     const [w2, s2] = TNG_SPEED_TABLE[i + 1];
@@ -81,7 +112,7 @@ function interpolateSpeedAbove9(warpFactor) {
 
 /**
  * Convert warp factor to speed as a multiple of c (speed of light).
- * Uses TNG-era TN-2 formula.
+ * Uses TNG-era formula.
  *
  * For warp 1-9: v = w^(10/3)
  * For warp 9+:  Uses lookup table with linear interpolation for accuracy
@@ -98,7 +129,7 @@ export function warpToSpeedMultiplier(warpFactor) {
     return Math.pow(warpFactor, 10 / 3);
   } else {
     // Above warp 9: use lookup table for accuracy
-    return interpolateSpeedAbove9(warpFactor);
+    return findSpeedAbove9(warpFactor);
   }
 }
 
@@ -154,7 +185,7 @@ export function speedMultiplierToWarp(speedMultiplier) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Calculate distance traveled given warp factor and time.
+ * Calculate distance traveled given warp factor and time (TNG formula).
  * @param {number} warpFactor - Warp factor (1-9.99)
  * @param {number} timeDays - Time in days
  * @returns {number} Distance in light-years
@@ -166,7 +197,19 @@ export function calculateDistance(warpFactor, timeDays) {
 }
 
 /**
- * Calculate time required given warp factor and distance.
+ * Calculate distance traveled given warp factor and time (TOS formula).
+ * @param {number} warpFactor - Warp factor
+ * @param {number} timeDays - Time in days
+ * @returns {number} Distance in light-years
+ */
+function calculateDistanceTos(warpFactor, timeDays) {
+  const speedC = tosWarpToSpeedMultiplier(warpFactor);
+  const lyPerDay = speedC * LIGHT_YEARS_PER_DAY_AT_C;
+  return lyPerDay * timeDays;
+}
+
+/**
+ * Calculate time required given warp factor and distance (TNG formula).
  * @param {number} warpFactor - Warp factor (1-9.99)
  * @param {number} distanceLY - Distance in light-years
  * @returns {number} Time in days
@@ -179,7 +222,20 @@ export function calculateTime(warpFactor, distanceLY) {
 }
 
 /**
- * Calculate warp factor required given distance and time.
+ * Calculate time required given warp factor and distance (TOS formula).
+ * @param {number} warpFactor - Warp factor
+ * @param {number} distanceLY - Distance in light-years
+ * @returns {number} Time in days
+ */
+function calculateTimeTos(warpFactor, distanceLY) {
+  const speedC = tosWarpToSpeedMultiplier(warpFactor);
+  const lyPerDay = speedC * LIGHT_YEARS_PER_DAY_AT_C;
+  if (lyPerDay <= 0) return Infinity;
+  return distanceLY / lyPerDay;
+}
+
+/**
+ * Calculate warp factor required given distance and time (TNG formula).
  * @param {number} distanceLY - Distance in light-years
  * @param {number} timeDays - Time in days
  * @returns {number|null} Warp factor (1-9.99), or null if impossible
@@ -189,6 +245,19 @@ export function calculateWarpFactor(distanceLY, timeDays) {
   const lyPerDay = distanceLY / timeDays;
   const speedC = lyPerDay / LIGHT_YEARS_PER_DAY_AT_C;
   return speedMultiplierToWarp(speedC);
+}
+
+/**
+ * Calculate warp factor required given distance and time (TOS formula).
+ * @param {number} distanceLY - Distance in light-years
+ * @param {number} timeDays - Time in days
+ * @returns {number|null} Warp factor, or null if impossible
+ */
+function calculateWarpFactorTos(distanceLY, timeDays) {
+  if (timeDays <= 0) return null;
+  const lyPerDay = distanceLY / timeDays;
+  const speedC = lyPerDay / LIGHT_YEARS_PER_DAY_AT_C;
+  return tosSpeedMultiplierToWarp(speedC);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -246,6 +315,7 @@ class WarpCalculatorApp extends Base {
     this._resolve = typeof resolve === "function" ? resolve : null;
     this._resolved = false;
     this._values = { warp: "", distance: "", time: "" };
+    this._formulaType = "tng"; // 'tng' or 'tos'
   }
 
   static DEFAULT_OPTIONS = {
@@ -274,8 +344,11 @@ class WarpCalculatorApp extends Base {
         enterTwoValues: t("sta-officers-log.warpCalculator.enterTwoValues"),
         sendToChat: t("sta-officers-log.warpCalculator.sendToChat"),
         close: t("sta-officers-log.warpCalculator.close"),
+        formulaTng: t("sta-officers-log.warpCalculator.formulaTng"),
+        formulaTos: t("sta-officers-log.warpCalculator.formulaTos"),
       },
       values: this._values,
+      formulaType: this._formulaType,
     };
   }
 
@@ -311,6 +384,7 @@ class WarpCalculatorApp extends Base {
     const resultsDiv = root.querySelector('[data-hook="results"]');
     const sendButton = root.querySelector('button[data-action="send"]');
     const closeButton = root.querySelector('button[data-action="close"]');
+    const formulaRadios = root.querySelectorAll('input[name="formula"]');
 
     const updateCalculation = () => {
       const warp = parseFloat(warpInput?.value) || null;
@@ -324,7 +398,7 @@ class WarpCalculatorApp extends Base {
         time: timeInput?.value ?? "",
       };
 
-      const result = computeResults(warp, distance, time);
+      const result = computeResults(warp, distance, time, this._formulaType);
       if (resultsDiv) resultsDiv.innerHTML = result.html;
       if (sendButton) sendButton.disabled = !result.valid;
     };
@@ -333,6 +407,14 @@ class WarpCalculatorApp extends Base {
     warpInput?.addEventListener("input", updateCalculation);
     distanceInput?.addEventListener("input", updateCalculation);
     timeInput?.addEventListener("input", updateCalculation);
+
+    // Bind formula selector radio buttons
+    formulaRadios?.forEach((radio) => {
+      radio.addEventListener("change", (ev) => {
+        this._formulaType = ev.target.value;
+        updateCalculation();
+      });
+    });
 
     // Handle button clicks
     sendButton?.addEventListener("click", async (ev) => {
@@ -373,10 +455,13 @@ export async function openWarpCalculator() {
  * @param {number|null} warp
  * @param {number|null} distance
  * @param {number|null} time
+ * @param {string} formulaType - 'tng' or 'tos'
  * @returns {{html: string, valid: boolean}}
  */
-function computeResults(warp, distance, time) {
-  const hasWarp = warp !== null && warp >= 1 && warp <= 9.99;
+function computeResults(warp, distance, time, formulaType = "tng") {
+  // Warp factor limits differ by formula
+  const maxWarp = formulaType === "tos" ? 100 : 9.99;
+  const hasWarp = warp !== null && warp >= 1 && warp <= maxWarp;
   const hasDistance = distance !== null && distance > 0;
   const hasTime = time !== null && time > 0;
 
@@ -394,17 +479,28 @@ function computeResults(warp, distance, time) {
   let calculatedTime = time;
   let solveMode = "";
 
+  // Select functions based on formula type
+  const warpToSpeed =
+    formulaType === "tos" ? tosWarpToSpeedMultiplier : warpToSpeedMultiplier;
+  const speedToWarp =
+    formulaType === "tos" ? tosSpeedMultiplierToWarp : speedMultiplierToWarp;
+  const calcDist =
+    formulaType === "tos" ? calculateDistanceTos : calculateDistance;
+  const calcTime = formulaType === "tos" ? calculateTimeTos : calculateTime;
+  const calcWarp =
+    formulaType === "tos" ? calculateWarpFactorTos : calculateWarpFactor;
+
   if (hasWarp && hasTime && !hasDistance) {
     // Calculate distance
-    calculatedDistance = calculateDistance(warp, time);
+    calculatedDistance = calcDist(warp, time);
     solveMode = "distance";
   } else if (hasWarp && hasDistance && !hasTime) {
     // Calculate time
-    calculatedTime = calculateTime(warp, distance);
+    calculatedTime = calcTime(warp, distance);
     solveMode = "time";
   } else if (hasDistance && hasTime && !hasWarp) {
     // Calculate warp factor
-    calculatedWarp = calculateWarpFactor(distance, time);
+    calculatedWarp = calcWarp(distance, time);
     solveMode = "warp";
   } else {
     // All three provided - show what they entered, highlight any inconsistency
@@ -418,7 +514,7 @@ function computeResults(warp, distance, time) {
     };
   }
 
-  const speedC = warpToSpeedMultiplier(calculatedWarp);
+  const speedC = warpToSpeed(calculatedWarp);
   const lyPerDay = speedC * LIGHT_YEARS_PER_DAY_AT_C;
 
   const warpDisplay = formatNumber(calculatedWarp, 2);

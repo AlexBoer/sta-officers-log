@@ -184,10 +184,8 @@ async function rerenderStaTracker() {
 
     const inst = globalThis?.foundry?.applications?.instances;
     const apps = [];
-    if (inst && typeof inst.values === "function") {
+    if (inst) {
       for (const app of inst.values()) apps.push(app);
-    } else if (inst && typeof inst === "object") {
-      for (const app of Object.values(inst)) apps.push(app);
     }
 
     const uniq = Array.from(new Set(apps)).filter(Boolean);
@@ -199,17 +197,9 @@ async function rerenderStaTracker() {
       if (!isTracker) continue;
 
       try {
-        if (typeof app?.render === "function") {
-          await app.render({ force: true });
-        }
+        await app.render?.({ force: true });
       } catch (_) {
-        try {
-          if (typeof app?.render === "function") {
-            await app.render(true);
-          }
-        } catch (_) {
-          // ignore
-        }
+        // ignore
       }
     }
   } catch (_) {
@@ -219,22 +209,36 @@ async function rerenderStaTracker() {
 
 // --- Settings menu ---
 
-export class DirectiveSettingsApp extends FormApplication {
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: `${MODULE_ID}-directive-settings`,
-      title:
-        t("sta-officers-log.settings.directives.menuTitle") ||
-        "Mission Directives",
-      template: `modules/${MODULE_ID}/templates/directives-settings.hbs`,
+// v13+ ApplicationV2 + HandlebarsApplicationMixin
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+
+export class DirectiveSettingsApp extends HandlebarsApplicationMixin(
+  ApplicationV2,
+) {
+  static DEFAULT_OPTIONS = {
+    id: `${MODULE_ID}-directive-settings`,
+    tag: "form",
+    window: {
+      title: "sta-officers-log.settings.directives.menuTitle",
+      contentClasses: ["standard-form"],
+    },
+    position: {
       width: 520,
       height: "auto",
+    },
+    form: {
       closeOnSubmit: true,
-      submitOnChange: false,
-    });
-  }
+      handler: DirectiveSettingsApp.#onSubmit,
+    },
+  };
 
-  getData(_options) {
+  static PARTS = {
+    form: {
+      template: `modules/${MODULE_ID}/templates/directives-settings.hbs`,
+    },
+  };
+
+  async _prepareContext(_options) {
     const list = getMissionDirectives();
     return {
       directivesText: list.join("\n"),
@@ -242,8 +246,8 @@ export class DirectiveSettingsApp extends FormApplication {
     };
   }
 
-  async _updateObject(_event, formData) {
-    const raw = String(formData?.directivesText ?? "");
+  static async #onSubmit(_event, form, formData) {
+    const raw = String(formData.object?.directivesText ?? "");
     const lines = raw
       .split(/\r?\n/g)
       .map((s) => s.trim())

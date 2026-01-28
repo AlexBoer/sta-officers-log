@@ -644,6 +644,32 @@ div.section.milestones li.row.entry a.value-used.control.toggle {
   display: none;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Hide Challenged Toggle on Values
+   When enabled, hide the "Chal?" column header and toggle icons until a value
+   has been challenged (fa-toggle-on). Users can then manually reset.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Hide the "Chal?" column header when setting is enabled and no values are challenged */
+[data-sta-hide-challenged-toggle="1"] div.section.values .header.row.item .value-used {
+  display: none;
+}
+
+/* Show the column header if any value has toggle-on (is challenged) */
+[data-sta-hide-challenged-toggle="1"] div.section.values:has(li.row.entry a.value-used.control.toggle i.fa-toggle-on) .header.row.item .value-used {
+  display: block;
+}
+
+/* Hide the toggle icon on unchallenged values (toggle-off) when setting is enabled */
+[data-sta-hide-challenged-toggle="1"] div.section.values li.row.entry a.value-used.control.toggle:has(i.fa-toggle-off) i[data-action="onStrikeThrough"] {
+  display: none;
+}
+
+/* Show the toggle icon on challenged values (toggle-on) so users can manually reset */
+[data-sta-hide-challenged-toggle="1"] div.section.values li.row.entry a.value-used.control.toggle:has(i.fa-toggle-on) i[data-action="onStrikeThrough"] {
+  display: inline-flex;
+}
+
 /* Icon-only control: show the source log that calls back to this log */
 div.section.milestones li.row.entry[data-item-type="log"] a.value-used.control.toggle .sta-show-source-btn {
   display: inline-flex;
@@ -1560,10 +1586,46 @@ input.selector.attribute.sta-fatigued-attribute {
 }
 
 .sta-warp-calculator-instructions {
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.75rem 0;
   font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.7);
   text-align: center;
+}
+
+/* Formula selector */
+.sta-warp-calculator-formula-selector {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  background: rgba(100, 150, 200, 0.1);
+  border: 1px solid rgba(100, 150, 200, 0.3);
+  border-radius: 4px;
+}
+
+.sta-warp-formula-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.sta-warp-formula-radios {
+  display: flex;
+  gap: 1rem;
+}
+
+.sta-warp-formula-option {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.sta-warp-formula-option input[type="radio"] {
+  cursor: pointer;
+  accent-color: rgba(100, 200, 255, 0.8);
 }
 
 .sta-warp-calculator-inputs {

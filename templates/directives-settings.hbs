@@ -1,15 +1,13 @@
-<form class="sta-officers-log-directives-settings" autocomplete="off">
-  <p class="hint">{{localize "sta-officers-log.settings.directives.editorHint"}}</p>
+<p class="hint">{{localize "sta-officers-log.settings.directives.editorHint"}}</p>
 
-  <div class="form-group">
-    <label>{{localize "sta-officers-log.settings.directives.editorLabel"}}</label>
-    <div class="form-fields">
-      <textarea name="directivesText" rows="10" style="width:100%" spellcheck="true" placeholder="{{localize "sta-officers-log.settings.directives.editorPlaceholder"}}">{{directivesText}}</textarea>
-    </div>
-    <p class="hint">{{localize "sta-officers-log.settings.directives.editorRules" max=maxLen}}</p>
+<div class="form-group">
+  <label>{{localize "sta-officers-log.settings.directives.editorLabel"}}</label>
+  <div class="form-fields">
+    <textarea name="directivesText" rows="10" style="width:100%" spellcheck="true" placeholder="{{localize "sta-officers-log.settings.directives.editorPlaceholder"}}">{{directivesText}}</textarea>
   </div>
+  <p class="hint">{{localize "sta-officers-log.settings.directives.editorRules" max=maxLen}}</p>
+</div>
 
-  <footer class="form-footer">
-    <button type="submit" class="dialog-button"><i class="fa-solid fa-save"></i> {{localize "sta-officers-log.settings.directives.save"}}</button>
-  </footer>
-</form>
+<footer class="form-footer">
+  <button type="submit" class="dialog-button"><i class="fa-solid fa-save"></i> {{localize "sta-officers-log.settings.directives.save"}}</button>
+</footer>

@@ -411,10 +411,8 @@ async function _tryDecrementStaMomentum() {
 
         const inst = globalThis?.foundry?.applications?.instances;
         const apps = [];
-        if (inst && typeof inst.values === "function") {
+        if (inst) {
           for (const app of inst.values()) apps.push(app);
-        } else if (inst && typeof inst === "object") {
-          for (const app of Object.values(inst)) apps.push(app);
         }
 
         const uniq = Array.from(new Set(apps)).filter(Boolean);
@@ -430,41 +428,10 @@ async function _tryDecrementStaMomentum() {
             // ignore
           }
 
-          // Foundry Application (legacy): render(force)
           // Foundry ApplicationV2: render({force: true})
           try {
-            if (typeof app?.render === "function") {
-              await app.render({ force: true });
-              return true;
-            }
-          } catch (_) {
-            // ignore
-          }
-
-          try {
-            if (typeof app?.render === "function") {
-              await app.render(true);
-              return true;
-            }
-          } catch (_) {
-            // ignore
-          }
-
-          try {
-            if (typeof app?.render === "function") {
-              await app.render();
-              return true;
-            }
-          } catch (_) {
-            // ignore
-          }
-
-          // Last resort: some apps still expose the legacy private render.
-          try {
-            if (typeof app?._render === "function") {
-              await app._render(true);
-              return true;
-            }
+            await app.render?.({ force: true });
+            return true;
           } catch (_) {
             // ignore
           }

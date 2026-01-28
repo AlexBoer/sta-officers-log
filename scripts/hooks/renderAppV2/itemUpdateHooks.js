@@ -168,27 +168,11 @@ export function installItemUpdateHooks() {
         // actively interacting with the Milestone sheet (so we don't steal focus).
         if (item?.type === "milestone") {
           const sheet = item?.sheet;
-          const isOpen = sheet?.rendered === true || sheet?._state > 0;
-          if (isOpen) {
+          if (sheet?.rendered) {
             const refocus = () => {
               try {
-                const activeEl =
-                  typeof document === "undefined"
-                    ? null
-                    : document.activeElement;
-
-                const el = sheet?.element ?? sheet?._element ?? null;
-                const rootEl =
-                  el instanceof HTMLElement
-                    ? el
-                    : Array.isArray(el) && el[0] instanceof HTMLElement
-                      ? el[0]
-                      : el?.[0] instanceof HTMLElement
-                        ? el[0]
-                        : typeof el?.get === "function" &&
-                            el.get(0) instanceof HTMLElement
-                          ? el.get(0)
-                          : null;
+                const activeEl = document.activeElement;
+                const rootEl = sheet?.element;
 
                 if (
                   !(
@@ -200,10 +184,7 @@ export function installItemUpdateHooks() {
                   return;
                 }
 
-                if (typeof sheet.bringToFront === "function")
-                  sheet.bringToFront();
-                else if (typeof sheet.bringToTop === "function")
-                  sheet.bringToTop();
+                sheet.bringToFront?.();
               } catch (_) {
                 // ignore
               }
@@ -219,8 +200,7 @@ export function installItemUpdateHooks() {
         if (item?.type === "log") {
           const actor = item?.parent ?? null;
           const sheet = item?.sheet;
-          const isOpen = sheet?.rendered === true || sheet?._state > 0;
-          if (isOpen) {
+          if (sheet?.rendered) {
             // Defer to allow any actor/character-sheet rerenders to finish first.
             // Do a second attempt a bit later in case another window is raised.
             const refocus = () => {
@@ -228,23 +208,8 @@ export function installItemUpdateHooks() {
                 // Only refocus if the user is actively interacting with THIS Log sheet.
                 // Otherwise this can steal focus from other item sheets (e.g. Milestones)
                 // when log sorting updates occur.
-                const activeEl =
-                  typeof document === "undefined"
-                    ? null
-                    : document.activeElement;
-
-                const el = sheet?.element ?? sheet?._element ?? null;
-                const rootEl =
-                  el instanceof HTMLElement
-                    ? el
-                    : Array.isArray(el) && el[0] instanceof HTMLElement
-                      ? el[0]
-                      : el?.[0] instanceof HTMLElement
-                        ? el[0]
-                        : typeof el?.get === "function" &&
-                            el.get(0) instanceof HTMLElement
-                          ? el.get(0)
-                          : null;
+                const activeEl = document.activeElement;
+                const rootEl = sheet?.element;
 
                 if (
                   !(
@@ -256,13 +221,7 @@ export function installItemUpdateHooks() {
                   return;
                 }
 
-                // Foundry v12+: bringToTop was renamed to bringToFront.
-                // Calling bringToTop in v13 triggers a deprecation warning, so only
-                // use it as a fallback for older versions.
-                if (typeof sheet.bringToFront === "function")
-                  sheet.bringToFront();
-                else if (typeof sheet.bringToTop === "function")
-                  sheet.bringToTop();
+                sheet.bringToFront?.();
               } catch (_) {
                 // ignore
               }
@@ -747,18 +706,8 @@ export function installItemUpdateHooks() {
           (typeof getItemFromApp === "function" ? getItemFromApp(app) : null);
         if (!item) return;
 
-        const root =
-          html instanceof HTMLElement
-            ? html
-            : Array.isArray(html) && html[0] instanceof HTMLElement
-              ? html[0]
-              : html?.[0] instanceof HTMLElement
-                ? html[0]
-                : typeof html?.get === "function" &&
-                    html.get(0) instanceof HTMLElement
-                  ? html.get(0)
-                  : null;
-        if (!(root instanceof HTMLElement)) return;
+        const root = html instanceof HTMLElement ? html : null;
+        if (!root) return;
 
         if (item?.type === "log") {
           try {
