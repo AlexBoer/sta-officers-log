@@ -1,5 +1,6 @@
 import { MODULE_ID } from "../../core/constants.js";
 import { t } from "../../core/i18n.js";
+import { isPlainObject } from "../../core/utils.js";
 import {
   wasLogCreatedWithTrauma,
   setLogCreatedWithTraumaFlag,
@@ -72,7 +73,7 @@ export function installLogMetaCollapsible(root, logItem) {
     itemSheet.insertBefore(descTitle, nameRow.nextSibling);
     itemSheet.insertBefore(descNote, descTitle.nextSibling);
   } catch (_) {
-    // ignore
+    // DOM structure may differ across sheet versions
   }
 
   const details = document.createElement("details");
@@ -84,7 +85,7 @@ export function installLogMetaCollapsible(root, logItem) {
       try {
         _staLogMetaDetailsOpenByLogId.set(logId, details.open === true);
       } catch (_) {
-        // ignore
+        // state tracking is optional
       }
     });
   } else {
@@ -100,7 +101,7 @@ export function installLogMetaCollapsible(root, logItem) {
   try {
     const actor = logItem?.parent ?? logItem?.actor ?? null;
     if (actor?.items && actor.type === "character") {
-      const milestones = Array.from(actor.items ?? [])
+      const milestones = actor.items
         .filter((i) => i?.type === "milestone")
         .sort((a, b) =>
           String(a.name ?? "").localeCompare(String(b.name ?? "")),
@@ -144,7 +145,7 @@ export function installLogMetaCollapsible(root, logItem) {
         try {
           const current = logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
           const next = {
-            ...(current && typeof current === "object" ? current : {}),
+            ...(isPlainObject(current) ? current : {}),
           };
 
           if (selectedId) next.milestoneId = selectedId;
@@ -167,10 +168,10 @@ export function installLogMetaCollapsible(root, logItem) {
               }
             }
           } catch (_) {
-            // ignore
+            // icon sync is cosmetic
           }
         } catch (_) {
-          // ignore
+          // flag update failed, possibly permissions
         }
       };
 
@@ -181,7 +182,7 @@ export function installLogMetaCollapsible(root, logItem) {
       details.appendChild(row);
     }
   } catch (_) {
-    // ignore
+    // milestone picker is optional
   }
 
   // Checkbox to mark whether this log was created while its primary value was a trauma.
@@ -216,7 +217,7 @@ export function installLogMetaCollapsible(root, logItem) {
         try {
           await setLogCreatedWithTraumaFlag(logItem, traumaCheckbox.checked);
         } catch (_) {
-          // ignore
+          // flag update can fail if permissions changed
         }
       };
 
@@ -226,21 +227,21 @@ export function installLogMetaCollapsible(root, logItem) {
       createdWithTraumaRow.appendChild(traumaCheckbox);
       details.appendChild(createdWithTraumaRow);
     } catch (_) {
-      // ignore
+      // trauma checkbox is optional feature
     }
   }
 
   try {
     itemSheet.insertBefore(details, descNote.nextSibling);
   } catch (_) {
-    // ignore
+    // details insertion may fail if DOM changed
   }
 
   for (const node of metaNodes) {
     try {
       details.appendChild(node);
     } catch (_) {
-      // ignore
+      // node may have been removed during iteration
     }
   }
 }

@@ -81,13 +81,13 @@ export async function setValueChallenged(valueItem, challenged) {
   if (!valueItem) return;
   const sys = valueItem.system ?? {};
 
-  if (Object.prototype.hasOwnProperty.call(sys, "challenged")) {
+  if ("challenged" in sys) {
     await valueItem.update({ "system.challenged": Boolean(challenged) });
     return;
   }
 
   // Some STA sheets appear to implement this as a strike-through toggle.
-  if (Object.prototype.hasOwnProperty.call(sys, "used")) {
+  if ("used" in sys) {
     await valueItem.update({ "system.used": Boolean(challenged) });
     return;
   }

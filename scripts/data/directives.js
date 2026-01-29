@@ -80,7 +80,7 @@ export function makeDirectiveValueIdFromText(text) {
 
 export function getDirectiveTextFromLabelsMap(labelsMap, directiveKey) {
   if (!directiveKey) return "";
-  const m = labelsMap && typeof labelsMap === "object" ? labelsMap : null;
+  const m = foundry.utils.getType(labelsMap) === "Object" ? labelsMap : null;
   const v = m ? m[String(directiveKey)] : null;
   return typeof v === "string" ? v : "";
 }
@@ -94,7 +94,7 @@ export function getDirectiveTextForValueId(log, directiveValueId) {
     const stored = getDirectiveTextFromLabelsMap(labels, key);
     if (stored) return stored;
   } catch (_) {
-    // ignore
+    // label lookup failed, try decode fallback
   }
 
   // Fallback: decode the key (works for most cases)
@@ -162,7 +162,7 @@ export async function snapshotDirectivesOntoLog(log, directivesList) {
 export function getChallengedDirectivesMap(actor) {
   try {
     const m = actor?.getFlag?.(MODULE_ID, "challengedDirectives") ?? {};
-    return m && typeof m === "object" ? m : {};
+    return foundry.utils.getType(m) === "Object" ? m : {};
   } catch (_) {
     return {};
   }
@@ -199,11 +199,11 @@ async function rerenderStaTracker() {
       try {
         await app.render?.({ force: true });
       } catch (_) {
-        // ignore
+        // tracker may have been closed
       }
     }
   } catch (_) {
-    // ignore
+    // tracker rerender is best-effort
   }
 }
 

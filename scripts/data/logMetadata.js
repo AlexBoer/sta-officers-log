@@ -24,7 +24,7 @@ export function getCompletedArcEndLogIds(actor, logItemsById = null) {
       logItemsById instanceof Map
         ? logItemsById
         : new Map(
-            Array.from(actor?.items ?? [])
+            actor.items
               .filter((i) => i?.type === "log")
               .map((l) => [String(l.id), l]),
           );

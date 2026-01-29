@@ -94,8 +94,8 @@
             <input
               type="checkbox"
               name="p_{{id}}"
-              {{#if checked}}checked{{/if}}
-              {{#unless hasChar}}disabled{{/unless}}
+              {{checked checked}}
+              {{disabled (not hasChar)}}
             />
             {{name}}
             {{#unless hasChar}}

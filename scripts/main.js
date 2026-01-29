@@ -1,6 +1,7 @@
 ﻿import { CallbackRequestApp } from "./callbackFlow/CallbackRequestApp.js";
 import { MODULE_ID, t, initSocket } from "./core/index.js";
 import { warpCalculator } from "./warpCalculator.js";
+import { noteStyler, registerNoteStylerHooks } from "./noteStyler.js";
 import {
   addParticipantToCurrentMission,
   ensureNewSceneMacro,
@@ -61,6 +62,9 @@ function registerApi() {
 
     // Warp Speed Calculator
     warpCalculator,
+
+    // Note Styler (for Pin Cushion and similar modules)
+    noteStyler,
   };
 
   // Back-compat for macros that reference a global symbol.
@@ -182,7 +186,7 @@ function refreshSceneControls() {
     // If controls were already built before our hook registered, force refresh.
     ui.controls?.initialize?.();
   } catch (_) {
-    // ignore
+    // controls may not be ready yet
   }
 }
 
@@ -236,6 +240,13 @@ Hooks.once("init", () => {
   safeRegisterSettings();
   safeRegisterAmbientAudioSettings();
   installAmbientAudioSelectionListenerPatch();
+
+  // Register Note Styler hooks for persistence
+  try {
+    registerNoteStylerHooks();
+  } catch (err) {
+    console.error(`${MODULE_ID} | failed to register note styler hooks`, err);
+  }
 
   // Public API (refresh in case something overwrote it)
   registerApi();

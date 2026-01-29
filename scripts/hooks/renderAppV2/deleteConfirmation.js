@@ -13,35 +13,23 @@ import { escapeHTML } from "../../data/values.js";
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function _confirmDelete({ title, contentHtml }) {
-  // Prefer DialogV2 so we don't end up with mixed dialog versions.
+  // Prefer DialogV2.confirm() for simple yes/no confirmations.
   const DialogV2 = globalThis.foundry?.applications?.api?.DialogV2;
-  if (DialogV2?.wait) {
+  if (DialogV2?.confirm) {
     try {
-      const picked = await DialogV2.wait({
+      const proceed = await DialogV2.confirm({
         window: { title },
         content: `
           <div class="sta-confirm-delete-dialog" data-sta-callbacks-dialog="confirm-delete">
             ${contentHtml}
           </div>
         `.trim(),
-        buttons: [
-          {
-            action: "delete",
-            label: t("sta-officers-log.confirmDelete.delete"),
-            default: false,
-            callback: () => "delete",
-          },
-          {
-            action: "cancel",
-            label: t("sta-officers-log.confirmDelete.cancel"),
-            default: true,
-            callback: () => "cancel",
-          },
-        ],
+        yes: { label: t("sta-officers-log.confirmDelete.delete") },
+        no: { label: t("sta-officers-log.confirmDelete.cancel") },
         rejectClose: false,
         modal: true,
       });
-      return picked === "delete";
+      return proceed === true;
     } catch (_) {
       return false;
     }
@@ -191,7 +179,6 @@ export function installLogDeleteConfirmation(root, actor) {
         title: "Delete Log?",
         contentHtml: `
           <p><strong>Deleting a log can break arc chains</strong></p>
-          <p>You will need to recreate the chain manually by setting the correct callbacks.</p>
           <hr />
           <p>Delete <strong>${escapeHTML(String(name))}</strong> anyway?</p>
         `.trim(),

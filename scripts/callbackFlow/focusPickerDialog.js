@@ -1,5 +1,6 @@
 import { MODULE_ID } from "../core/constants.js";
 import { t, tf } from "../core/i18n.js";
+import { isPlainObject } from "../core/utils.js";
 import { getFocusPickerCustomCompendiumKeys } from "../settings/pickerSettings.js";
 
 const Base = foundry.applications.api.HandlebarsApplicationMixin(
@@ -64,7 +65,6 @@ async function _getFocusIndexEntries({ packKey }) {
 
 async function _getFocusDocumentByUuid(uuid) {
   if (!uuid) return null;
-  if (typeof fromUuid !== "function") return null;
   try {
     const doc = await fromUuid(uuid);
     return doc ?? null;
@@ -77,7 +77,7 @@ async function _getFocusDocumentByUuid(uuid) {
 function _extractFocusItemData(document) {
   if (!document || typeof document.toObject !== "function") return null;
   const data = document.toObject();
-  if (!data || typeof data !== "object") return null;
+  if (!isPlainObject(data)) return null;
   delete data._id;
   return data;
 }

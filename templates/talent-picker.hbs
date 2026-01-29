@@ -50,7 +50,7 @@
                     data-name="{{name}}"
                     data-img="{{img}}"
                     data-uuid="{{uuid}}"
-                    {{#unless meetsRequirements}}disabled aria-disabled="true"{{/unless}}
+                    {{disabled (not meetsRequirements)}}
                     {{#if requirementLabel}}
                       title="{{requirementLabel}}{{#unless meetsRequirements}} (missing){{/unless}}"
                     {{/if}}

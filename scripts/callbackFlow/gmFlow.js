@@ -138,7 +138,7 @@ function buildValuesPayload(
 
 async function markLogUsed(item) {
   const sys = item.system ?? {};
-  if (Object.prototype.hasOwnProperty.call(sys, "used")) {
+  if ("used" in sys) {
     return item.update({ "system.used": true });
   }
   return item.setFlag("world", "used", true);
@@ -209,7 +209,7 @@ async function applyCallbackUpdates(
   // prompt is shown but before the user clicks "Yes".
   try {
     const chosenId = String(chosenLog?.id ?? "");
-    const incomingChildren = Array.from(actorDoc.items ?? []).filter((it) => {
+    const incomingChildren = actorDoc.items.filter((it) => {
       if (it?.type !== "log") return false;
       if (it.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true)
         return false;

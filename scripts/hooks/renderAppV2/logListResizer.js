@@ -155,7 +155,7 @@ export function installCharacterLogListResizer(root) {
       try {
         flushRaf();
       } catch (_) {
-        // ignore
+        // raf callback may have been cancelled
       }
 
       const finalHeight = _clamp(
@@ -171,19 +171,19 @@ export function installCharacterLogListResizer(root) {
         if (typeof pointerId === "number")
           bar.releasePointerCapture?.(pointerId);
       } catch (_) {
-        // ignore
+        // pointer may have already been released
       }
 
       try {
         document.body?.classList?.remove?.("staol-resize-dragging");
       } catch (_) {
-        // ignore
+        // body class cleanup is cosmetic
       }
 
       try {
         await game.settings.set(MODULE_ID, settingKey, finalHeight);
       } catch (_) {
-        // ignore
+        // persist failure shouldn't block drag completion
       }
     };
 
@@ -227,13 +227,13 @@ export function installCharacterLogListResizer(root) {
       try {
         bar.setPointerCapture?.(ev.pointerId);
       } catch (_) {
-        // ignore
+        // capture may not be supported
       }
 
       try {
         document.body?.classList?.add?.("staol-resize-dragging");
       } catch (_) {
-        // ignore
+        // visual feedback class is optional
       }
     };
 
@@ -267,7 +267,7 @@ export function installCharacterLogListResizer(root) {
       try {
         await game.settings.set(MODULE_ID, settingKey, next);
       } catch (_) {
-        // ignore
+        // height will reset on reload if save fails
       }
     });
   };

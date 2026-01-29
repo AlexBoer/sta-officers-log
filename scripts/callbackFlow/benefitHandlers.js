@@ -684,15 +684,7 @@ export async function handleShipPermissionFallback({
   // Queue the pending ship benefit for GM to apply later
   try {
     const pending = actor.getFlag?.(MODULE_ID, "pendingShipBenefits") ?? [];
-    const id = (() => {
-      try {
-        if (typeof foundry?.utils?.randomID === "function")
-          return foundry.utils.randomID();
-      } catch (_) {
-        // ignore
-      }
-      return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    })();
+    const id = foundry.utils.randomID();
     const newBenefit = {
       id,
       timestamp: Date.now(),

@@ -2,7 +2,7 @@
   <label>{{localize "sta-officers-log.dialog.addPlayer.playerLabel"}}</label>
   <select name="userId">
     {{#each available}}
-      <option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>
+      <option value="{{id}}" {{selected selected}}>{{name}}</option>
     {{/each}}
     {{#each already}}
       <option value="{{id}}" disabled>{{name}} ({{localize "sta-officers-log.dialog.addPlayer.alreadyInMission"}})</option>

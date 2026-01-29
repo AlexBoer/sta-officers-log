@@ -7,13 +7,8 @@ import {
   setCurrentMissionLogForActor,
 } from "../data/mission.js";
 import { gainDetermination } from "../callbackFlow/milestones.js";
+import { hasEligibleCallbackTargetForValueId } from "../data/logMetadata.js";
 import {
-  getCompletedArcEndLogIds,
-  getPrimaryValueIdForLog,
-  hasEligibleCallbackTargetForValueId,
-} from "../data/logMetadata.js";
-import {
-  getValueItems,
   mergeValueStateArray,
   normalizeValueStateArray,
   isValueInvokedState,
@@ -486,10 +481,9 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
       try {
         const existing =
           missionLog.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
-        const cloned =
-          existing && typeof existing === "object"
-            ? foundry.utils.deepClone(existing)
-            : {};
+        const cloned = isPlainObject(existing)
+          ? foundry.utils.deepClone(existing)
+          : {};
         cloned[String(directiveKey)] = directiveText;
         await missionLog.setFlag(MODULE_ID, "directiveLabels", cloned);
       } catch (_) {

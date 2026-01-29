@@ -32,7 +32,7 @@ export function installAmbientAudioSelectionListenerPatch() {
     if (game.user?.isGM) return;
 
     // Only refresh aggressively when the patch is enabled.
-    if (_getEnabledSetting()) _safeRefreshSounds("token control changed");
+    if (_getEnabledSetting()) _safeRefreshSounds();
   });
 }
 
@@ -64,12 +64,12 @@ function _applyPatchState(enabled) {
 
   if (enabled) {
     _patchSoundsLayerListenerPositions();
-    _safeRefreshSounds("ambient audio patch enabled");
+    _safeRefreshSounds();
     return;
   }
 
   _unpatchSoundsLayerListenerPositions();
-  _safeRefreshSounds("ambient audio patch disabled");
+  _safeRefreshSounds();
 }
 
 function _patchSoundsLayerListenerPositions() {
@@ -177,13 +177,6 @@ function _userCanObserveToken(token) {
   }
 }
 
-function _safeRefreshSounds(reason) {
-  try {
-    // Different Foundry versions use different refresh hooks.
-    canvas?.sounds?.refresh?.();
-    canvas?.sounds?._refresh?.();
-    canvas?.perception?.update?.({ refreshSounds: true });
-  } catch (err) {
-    console.debug(`${MODULE_ID} | sound refresh skipped (${reason})`, err);
-  }
+function _safeRefreshSounds() {
+  canvas?.perception?.update?.({ refreshSounds: true });
 }

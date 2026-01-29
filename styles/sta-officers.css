@@ -644,32 +644,6 @@ div.section.milestones li.row.entry a.value-used.control.toggle {
   display: none;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   Hide Challenged Toggle on Values
-   When enabled, hide the "Chal?" column header and toggle icons until a value
-   has been challenged (fa-toggle-on). Users can then manually reset.
-   ───────────────────────────────────────────────────────────────────────────── */
-
-/* Hide the "Chal?" column header when setting is enabled and no values are challenged */
-[data-sta-hide-challenged-toggle="1"] div.section.values .header.row.item .value-used {
-  display: none;
-}
-
-/* Show the column header if any value has toggle-on (is challenged) */
-[data-sta-hide-challenged-toggle="1"] div.section.values:has(li.row.entry a.value-used.control.toggle i.fa-toggle-on) .header.row.item .value-used {
-  display: block;
-}
-
-/* Hide the toggle icon on unchallenged values (toggle-off) when setting is enabled */
-[data-sta-hide-challenged-toggle="1"] div.section.values li.row.entry a.value-used.control.toggle:has(i.fa-toggle-off) i[data-action="onStrikeThrough"] {
-  display: none;
-}
-
-/* Show the toggle icon on challenged values (toggle-on) so users can manually reset */
-[data-sta-hide-challenged-toggle="1"] div.section.values li.row.entry a.value-used.control.toggle:has(i.fa-toggle-on) i[data-action="onStrikeThrough"] {
-  display: inline-flex;
-}
-
 /* Icon-only control: show the source log that calls back to this log */
 div.section.milestones li.row.entry[data-item-type="log"] a.value-used.control.toggle .sta-show-source-btn {
   display: inline-flex;
@@ -1829,4 +1803,75 @@ input.selector.attribute.sta-fatigued-attribute {
 
 .sta-warp-calculator-footer .dialog-button i {
   margin-right: 0.4rem;
+}
+
+/* =============================================================================
+ * NOTE STYLER DIALOG
+ * ============================================================================= */
+
+.note-styler-dialog .note-styler-form {
+  padding: 0.5rem;
+}
+
+.note-styler-dialog .note-styler-form .notes-info {
+  font-style: italic;
+  color: var(--color-text-dark-secondary);
+  margin-bottom: 1rem;
+}
+
+.note-styler-dialog .note-styler-form h3 {
+  margin: 0.5rem 0;
+  border-bottom: 1px solid var(--color-border-light-tertiary);
+}
+
+.note-styler-dialog .note-styler-form .form-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.note-styler-dialog .note-styler-form .form-group label {
+  flex: 0 0 140px;
+  font-weight: 500;
+}
+
+.note-styler-dialog .note-styler-form .form-group input[type="text"],
+.note-styler-dialog .note-styler-form .form-group input[type="number"],
+.note-styler-dialog .note-styler-form .form-group select {
+  flex: 1;
+}
+
+.note-styler-dialog .note-styler-form .form-group input[type="checkbox"] {
+  width: auto;
+}
+
+.note-styler-dialog .note-styler-form .form-fields {
+  display: flex;
+  gap: 0.5rem;
+  flex: 1;
+  align-items: center;
+}
+
+.note-styler-dialog .note-styler-form .form-fields input[type="color"] {
+  flex: 0 0 40px;
+  height: 28px;
+  padding: 2px;
+}
+
+.note-styler-dialog .note-styler-form .form-fields label.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 0 0 auto;
+  font-weight: normal;
+}
+
+.note-styler-dialog .note-styler-form .form-fields input[type="range"] {
+  flex: 1;
+}
+
+.note-styler-dialog .note-styler-form .form-fields .range-value {
+  flex: 0 0 40px;
+  text-align: right;
+  font-family: monospace;
 }

@@ -19,7 +19,7 @@ export function filterMilestoneAssociatedLogOptions(root, actor, milestone) {
 
   const isArc = !!milestone?.system?.arc?.isArc;
 
-  const otherMilestones = Array.from(actor?.items ?? [])
+  const otherMilestones = actor.items
     .filter((i) => i?.type === "milestone")
     .filter((ms) => String(ms.id) !== String(milestone?.id ?? ""));
 
@@ -106,7 +106,7 @@ export async function syncCallbackLinksFromMilestone(actor, milestone) {
         await syncMilestoneImgFromLogId(actor, milestone, sourceLogId);
       }
     } catch (_) {
-      // ignore
+      // icon sync is cosmetic
     }
 
     const isArc = !!milestone.system?.arc?.isArc;
@@ -120,9 +120,7 @@ export async function syncCallbackLinksFromMilestone(actor, milestone) {
         : String(milestone.system?.childA ?? "");
       const childA = childAId ? actor.items.get(childAId) : null;
       if (childA?.type === "log") {
-        const valueItems = Array.from(actor?.items ?? []).filter(
-          (i) => i?.type === "value",
-        );
+        const valueItems = actor.items.filter((i) => i?.type === "value");
         const primary = getPrimaryValueIdForLog(actor, childA, valueItems);
         if (primary && String(primary) !== valueId) {
           await milestone.setFlag?.(
@@ -134,7 +132,7 @@ export async function syncCallbackLinksFromMilestone(actor, milestone) {
         }
       }
     } catch (_) {
-      // ignore
+      // value sync is best-effort
     }
 
     const setLink = async ({ logId, fromLogId }) => {
@@ -170,6 +168,6 @@ export async function syncCallbackLinksFromMilestone(actor, milestone) {
       await setLink({ logId, fromLogId });
     }
   } catch (_) {
-    // ignore
+    // link sync failed, likely permissions
   }
 }

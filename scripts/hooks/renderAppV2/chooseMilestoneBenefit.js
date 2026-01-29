@@ -7,6 +7,7 @@
 
 import { MODULE_ID } from "../../core/constants.js";
 import { t } from "../../core/i18n.js";
+import { isPlainObject } from "../../core/utils.js";
 import {
   getValueIconPathForValueId,
   getValueStateArray,
@@ -46,19 +47,17 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
     );
     if (!pendingMilestone) continue;
 
-    const pendingObj =
-      typeof pendingMilestone === "object" && pendingMilestone
-        ? pendingMilestone
-        : null;
+    const pendingObj = isPlainObject(pendingMilestone)
+      ? pendingMilestone
+      : null;
     const arcFromLogForLabel = logItem.getFlag?.(MODULE_ID, "arcInfo") ?? null;
     const arcForLabel = pendingObj?.arc ?? arcFromLogForLabel ?? null;
     const isArcBenefit = arcForLabel?.isArc === true;
 
     // Hide the button only after a benefit has been chosen.
-    const benefitChosen =
-      typeof pendingMilestone === "object" && pendingMilestone
-        ? pendingMilestone.benefitChosen === true
-        : false;
+    const benefitChosen = isPlainObject(pendingMilestone)
+      ? pendingMilestone.benefitChosen === true
+      : false;
     if (benefitChosen) continue;
 
     const toggleEl = entry.querySelector("a.value-used.control.toggle");
@@ -87,10 +86,9 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
       ev.preventDefault();
       ev.stopPropagation();
 
-      const pending =
-        typeof pendingMilestone === "object" && pendingMilestone
-          ? pendingMilestone
-          : { milestoneId: String(pendingMilestone) };
+      const pending = isPlainObject(pendingMilestone)
+        ? pendingMilestone
+        : { milestoneId: String(pendingMilestone) };
 
       // Lightweight association: remember which Milestone this log's "Choose" button
       // is acting on. This is stored alongside existing callbackLink data.
@@ -101,7 +99,7 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
         if (milestoneId) {
           const existing = logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
           const next = {
-            ...(existing && typeof existing === "object" ? existing : {}),
+            ...(isPlainObject(existing) ? existing : {}),
             milestoneId,
           };
           await logItem.update(
@@ -324,10 +322,9 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
           try {
             const currentLink =
               logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
-            const updatedLink =
-              currentLink && typeof currentLink === "object"
-                ? { ...currentLink }
-                : {};
+            const updatedLink = isPlainObject(currentLink)
+              ? { ...currentLink }
+              : {};
             updatedLink.milestoneId = milestone.id;
             await logItem.setFlag(MODULE_ID, "callbackLink", updatedLink);
           } catch (_) {

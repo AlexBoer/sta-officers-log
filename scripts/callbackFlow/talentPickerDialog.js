@@ -1,5 +1,6 @@
 import { MODULE_ID } from "../core/constants.js";
 import { t, tf } from "../core/i18n.js";
+import { isPlainObject } from "../core/utils.js";
 import {
   getTalentPickerCustomCompendiumKeys,
   getTalentPickerCustomFolderFilterEnabled,
@@ -491,7 +492,6 @@ function _isExcludedShipTalentName(name) {
 
 async function _getTalentDocumentByUuid(uuid) {
   if (!uuid) return null;
-  if (typeof fromUuid !== "function") return null;
   try {
     const doc = await fromUuid(uuid);
     return doc ?? null;
@@ -504,7 +504,7 @@ async function _getTalentDocumentByUuid(uuid) {
 function _extractTalentItemData(document) {
   if (!document || typeof document.toObject !== "function") return null;
   const data = document.toObject();
-  if (!data || typeof data !== "object") return null;
+  if (!isPlainObject(data)) return null;
   delete data._id;
   return data;
 }
@@ -520,7 +520,7 @@ function _extractTalentDescription(document) {
   if (!rawDescription) return null;
   if (typeof rawDescription === "string") return rawDescription;
   if (
-    typeof rawDescription === "object" &&
+    isPlainObject(rawDescription) &&
     typeof rawDescription.value === "string"
   ) {
     return rawDescription.value;
@@ -981,7 +981,7 @@ const resolveDisciplineKey = (value) => {
 };
 
 const getTraitNames = (actor) => {
-  const items = Array.from(actor?.items ?? []);
+  const items = actor?.items ?? [];
   return items
     .filter((item) => String(item?.type ?? "").toLowerCase() === "trait")
     .map((trait) => normalizeRequirementString(trait?.name));

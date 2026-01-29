@@ -416,7 +416,7 @@ export async function enforceUniqueFromLogIdTargets(
       return { loserLogIds: [] };
     }
 
-    const logs = Array.from(actor.items ?? []).filter((i) => i?.type === "log");
+    const logs = actor.items.filter((i) => i?.type === "log");
     if (!logs.length) return { loserLogIds: [] };
 
     const byFromLogId = new Map(); // fromLogId -> childLog[]
@@ -530,7 +530,7 @@ export async function syncCallbackTargetUsedFlags(actor) {
       return;
     }
 
-    const logs = Array.from(actor.items ?? []).filter((i) => i?.type === "log");
+    const logs = actor.items.filter((i) => i?.type === "log");
     if (!logs.length) return;
 
     const targetIds = new Set();

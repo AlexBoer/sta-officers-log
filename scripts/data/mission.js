@@ -214,8 +214,7 @@ export function getCurrentMissionLogForActor(actor) {
 
 export function isLogUsed(item) {
   const sys = item.system ?? {};
-  if (Object.prototype.hasOwnProperty.call(sys, "used"))
-    return Boolean(sys.used);
+  if ("used" in sys) return Boolean(sys.used);
 
   const flag = item.getFlag?.("world", "used");
   if (typeof flag !== "undefined") return Boolean(flag);

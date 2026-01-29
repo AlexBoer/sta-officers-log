@@ -12,6 +12,8 @@ export {
 
 export { t, tf } from "./i18n.js";
 
+export { isPlainObject, asObject } from "./utils.js";
+
 export { getModuleSocket, initSocket } from "./socket.js";
 
 export {

@@ -1,4 +1,5 @@
 import { MODULE_ID } from "../../core/constants.js";
+import { isPlainObject } from "../../core/utils.js";
 import {
   STA_DEFAULT_ICON,
   escapeHTML,
@@ -107,10 +108,8 @@ export async function promptLinkLogToChain({ actor, log }) {
   if (!log || log.type !== "log") return;
   if (!canCurrentUserChangeActor(actor)) return;
 
-  const logs = Array.from(actor.items ?? []).filter((i) => i?.type === "log");
-  const values = Array.from(actor.items ?? []).filter(
-    (i) => i?.type === "value",
-  );
+  const logs = actor.items.filter((i) => i?.type === "log");
+  const values = actor.items.filter((i) => i?.type === "value");
 
   const existing = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
   const existingFrom = String(existing?.fromLogId ?? "");
@@ -257,7 +256,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   // We insert into the sheet's <form> when present, so don't require direct-child.
   if (sheetRoot.querySelector(".sta-log-link-controls")) return;
 
-  const logs = Array.from(actor.items ?? [])
+  const logs = actor.items
     .filter((i) => i?.type === "log")
     .filter((l) => String(l.id) !== String(log.id))
     .slice()
@@ -314,7 +313,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   // selected as Primary even if they are not in the current mission list.
   try {
     const existingLabels = log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
-    if (existingLabels && typeof existingLabels === "object") {
+    if (isPlainObject(existingLabels)) {
       for (const [k, v] of Object.entries(existingLabels)) {
         const key = String(k ?? "");
         const text = sanitizeDirectiveText(v ?? "");
@@ -703,13 +702,9 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     }
   };
 
-  let _saveTimer = null;
   let _saveInFlight = false;
 
-  const scheduleSave = () => {
-    if (_saveTimer) clearTimeout(_saveTimer);
-    _saveTimer = setTimeout(() => void persistNow(), 150);
-  };
+  const scheduleSave = foundry.utils.debounce(() => void persistNow(), 150);
 
   const persistNow = async () => {
     if (_saveInFlight) return;
@@ -748,10 +743,9 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       if (key) {
         try {
           const existing = log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
-          const cloned =
-            existing && typeof existing === "object"
-              ? foundry.utils.deepClone(existing)
-              : {};
+          const cloned = isPlainObject(existing)
+            ? foundry.utils.deepClone(existing)
+            : {};
 
           const fromList = directivesByKey.get(String(key)) ?? "";
           const fromExisting =
@@ -1039,10 +1033,9 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
       try {
         const existing = log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
-        const cloned =
-          existing && typeof existing === "object"
-            ? foundry.utils.deepClone(existing)
-            : {};
+        const cloned = isPlainObject(existing)
+          ? foundry.utils.deepClone(existing)
+          : {};
         cloned[String(key)] = cleaned;
         update[`flags.${MODULE_ID}.directiveLabels`] = cloned;
       } catch (_) {
@@ -1336,10 +1329,9 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         try {
           const existingLabels =
             log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
-          const cloned =
-            existingLabels && typeof existingLabels === "object"
-              ? foundry.utils.deepClone(existingLabels)
-              : {};
+          const cloned = isPlainObject(existingLabels)
+            ? foundry.utils.deepClone(existingLabels)
+            : {};
           if (oldKey) delete cloned[String(oldKey)];
           if (newKey) cloned[String(newKey)] = newText;
           update[`flags.${MODULE_ID}.directiveLabels`] = cloned;
@@ -1496,11 +1488,10 @@ export function installInlineLogChainLinkControls(root, actor, log) {
           if (oldKey) {
             const existingLabels =
               log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
-            const cloned =
-              existingLabels && typeof existingLabels === "object"
-                ? foundry.utils.deepClone(existingLabels)
-                : {};
-            if (Object.prototype.hasOwnProperty.call(cloned, String(oldKey))) {
+            const cloned = isPlainObject(existingLabels)
+              ? foundry.utils.deepClone(existingLabels)
+              : {};
+            if (String(oldKey) in cloned) {
               delete cloned[String(oldKey)];
               update[`flags.${MODULE_ID}.directiveLabels`] = cloned;
             }

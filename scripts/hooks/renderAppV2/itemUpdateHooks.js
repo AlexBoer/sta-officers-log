@@ -7,6 +7,7 @@
  */
 
 import { MODULE_ID } from "../../core/constants.js";
+import { isPlainObject } from "../../core/utils.js";
 import { formatChosenBenefitLabel } from "../../callbackFlow.js";
 import {
   isDirectiveValueId,
@@ -145,9 +146,7 @@ export function installItemUpdateHooks() {
                     if (syncPolicy === "once" && !syncedOnce) {
                       try {
                         await ms.setFlag(MODULE_ID, "milestoneBenefit", {
-                          ...(benefit && typeof benefit === "object"
-                            ? benefit
-                            : {}),
+                          ...(isPlainObject(benefit) ? benefit : {}),
                           syncedOnce: true,
                         });
                       } catch (_) {
@@ -600,19 +599,16 @@ export function installItemUpdateHooks() {
                           }
 
                           const nextArcInfo = {
-                            ...(arcInfo && typeof arcInfo === "object"
-                              ? arcInfo
-                              : {}),
+                            ...(isPlainObject(arcInfo) ? arcInfo : {}),
                             isArc: true,
                             steps,
                             valueId: arcValueId,
                             chainLogIds,
                             // Persisted, user-editable arc title. Do NOT derive it from the
                             // Value name so renaming a Value doesn't rename arcs.
-                            arcLabel:
-                              arcInfo && typeof arcInfo === "object"
-                                ? String(arcInfo.arcLabel ?? "")
-                                : "",
+                            arcLabel: isPlainObject(arcInfo)
+                              ? String(arcInfo.arcLabel ?? "")
+                              : "",
                           };
 
                           const normalizeIdArray = (arr) =>

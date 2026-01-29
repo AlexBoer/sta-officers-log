@@ -12,7 +12,7 @@ import {
 export function isUnlinkedTokenActor(actor) {
   try {
     if (!actor) return false;
-    // actor.isToken is true when the actor is a synthetic token actor
+    // actor.isToken is true when the actor is a token actor
     // actor.token?.actorLink being false means it's not linked to the world actor
     if (actor.isToken === true) {
       const tokenDoc = actor.token ?? null;
@@ -34,8 +34,7 @@ export function isUnlinkedTokenActor(actor) {
 export function getPlayerCharactersWithUnlinkedPrototypeTokens() {
   const results = [];
   try {
-    const users = Array.from(game.users ?? []);
-    for (const u of users) {
+    for (const u of game.users) {
       if (u.isGM) continue;
       const char = u.character;
       if (!char || char.type !== "character") continue;
@@ -51,7 +50,7 @@ export function getPlayerCharactersWithUnlinkedPrototypeTokens() {
       }
     }
   } catch (_) {
-    // ignore
+    // user iteration may fail in early init
   }
   return results;
 }
@@ -59,12 +58,11 @@ export function getPlayerCharactersWithUnlinkedPrototypeTokens() {
 export function getUserIdForCharacterActor(actor) {
   if (!actor) return null;
   // Prefer the (non-GM) user whose assigned character is this actor.
-  const users = Array.from(game.users ?? []);
-  const assignedNonGM = users.find(
+  const assignedNonGM = game.users.find(
     (u) => !u.isGM && u.character && u.character.id === actor.id,
   );
   if (assignedNonGM) return assignedNonGM.id;
-  const assignedAny = users.find(
+  const assignedAny = game.users.find(
     (u) => u.character && u.character.id === actor.id,
   );
   return assignedAny?.id ?? null;
@@ -95,14 +93,14 @@ export function rerenderOpenStaSheetsForActorId(actorId) {
       if (!actorId || app?.actor?.id !== actorId) return;
       renderNoFocus(app);
     } catch (_) {
-      // ignore
+      // sheet may have closed mid-iteration
     }
   };
 
   try {
     for (const w of Object.values(ui?.windows ?? {})) maybe(w);
   } catch (_) {
-    // ignore
+    // ui.windows may not exist
   }
 
   try {
@@ -111,7 +109,7 @@ export function rerenderOpenStaSheetsForActorId(actorId) {
       for (const app of instances.values()) maybe(app);
     }
   } catch (_) {
-    // ignore
+    // v13 instances API may not exist
   }
 }
 
@@ -136,14 +134,14 @@ export function refreshMissionLogSortingForActorId(actorId) {
       const mode = getMissionLogSortModeForActor(actor);
       applyMissionLogSorting(root, actor, mode);
     } catch (_) {
-      // ignore
+      // sorting is non-critical
     }
   };
 
   try {
     for (const w of Object.values(ui?.windows ?? {})) maybe(w);
   } catch (_) {
-    // ignore
+    // windows may be unavailable
   }
 
   try {
@@ -152,7 +150,7 @@ export function refreshMissionLogSortingForActorId(actorId) {
       for (const app of instances.values()) maybe(app);
     }
   } catch (_) {
-    // ignore
+    // instances API may not exist
   }
 }
 
@@ -177,7 +175,7 @@ export function openCreatedItemSheetAfterMilestone(actor, createdItemId) {
       sheet.render?.(true);
       sheet.bringToFront?.();
     } catch (_) {
-      // ignore
+      // item may have been deleted before timeout
     }
   }, 0);
 }

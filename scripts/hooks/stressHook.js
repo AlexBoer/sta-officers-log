@@ -288,7 +288,7 @@ async function deleteAllFatigueTraits(actor) {
   if (!actor?.deleteEmbeddedDocuments) return;
   try {
     // Find ALL traits with the isFatigue flag
-    const fatigueTraits = Array.from(actor.items).filter(
+    const fatigueTraits = actor.items.filter(
       (i) =>
         i?.type === "trait" &&
         i.getFlag?.(MODULE_ID, IS_FATIGUE_FLAG_KEY) === true,
@@ -408,7 +408,7 @@ export function installStressMonitoringHook() {
             }
             await createFatiguedTrait(actor);
           } catch (_) {
-            // ignore
+            // trait creation may fail if actor was deleted
           } finally {
             _fatigueOperationInProgress.delete(actorId);
           }
@@ -424,7 +424,7 @@ export function installStressMonitoringHook() {
           try {
             await deleteAllFatigueTraits(actor);
           } catch (_) {
-            // ignore
+            // trait deletion may fail
           } finally {
             _fatigueOperationInProgress.delete(actorId);
           }
@@ -432,7 +432,7 @@ export function installStressMonitoringHook() {
         return;
       }
     } catch (_) {
-      // ignore
+      // stress hook should never throw
     }
   });
 }

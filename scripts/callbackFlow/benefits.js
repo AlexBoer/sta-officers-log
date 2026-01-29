@@ -38,10 +38,9 @@ import {
 } from "./shipSwapHandlers.js";
 
 function _getEligibleSupportingCharacters() {
-  const all = Array.from(game.actors?.contents ?? game.actors ?? []);
   const eligible = [];
 
-  for (const a of all) {
+  for (const a of game.actors) {
     if (!a) continue;
 
     const sheetClass =

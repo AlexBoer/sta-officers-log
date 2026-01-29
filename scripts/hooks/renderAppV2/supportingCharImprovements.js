@@ -134,7 +134,7 @@ async function checkAndAutoCheckNext(actor, improvementType, button) {
             await actor.update(updates);
             foundUncheckedBox = true;
           } catch (_) {
-            // ignore
+            // actor update may fail if permissions changed
           }
         } else if (!foundUncheckedBox) {
           // Another unchecked box that we didn't update
@@ -151,7 +151,7 @@ async function checkAndAutoCheckNext(actor, improvementType, button) {
       button.tabIndex = -1;
     }
   } catch (_) {
-    // ignore
+    // checkbox state tracking is non-critical
   }
 }
 
@@ -175,7 +175,7 @@ async function handleNewValue(actor, button) {
     // Auto-check next checkbox
     await checkAndAutoCheckNext(actor, "newvalue", button);
   } catch (_) {
-    // ignore
+    // value creation may fail
   }
 }
 

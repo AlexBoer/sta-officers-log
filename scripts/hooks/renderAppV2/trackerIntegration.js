@@ -81,7 +81,7 @@ export function installOfficersLogButtonsInStaTracker(app, root) {
           event?.preventDefault?.();
           event?.stopPropagation?.();
         } catch (_) {
-          // ignore
+          // event may be synthetic
         }
 
         try {
@@ -138,7 +138,7 @@ export function installOfficersLogButtonsInStaTracker(app, root) {
     // --- Mission Directives Section ---
     installMissionDirectivesInStaTracker(root, row);
   } catch (_) {
-    // ignore
+    // tracker integration is optional
   }
 }
 
@@ -270,11 +270,11 @@ export function installMissionDirectivesInStaTracker(root) {
           }
         }
       } catch (_) {
-        // ignore
+        // margin tweak is cosmetic
       }
     });
   } catch (_) {
-    // ignore
+    // directives section is optional
   }
 }
 

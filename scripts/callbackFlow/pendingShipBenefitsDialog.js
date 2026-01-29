@@ -1,9 +1,10 @@
 import { MODULE_ID } from "../core/constants.js";
 import { t, tf } from "../core/i18n.js";
+import { isPlainObject } from "../core/utils.js";
 import { getGroupShipActorId } from "../data/mission.js";
 
 function _getBenefitIdentifier(benefit) {
-  if (!benefit || typeof benefit !== "object") return "";
+  if (!isPlainObject(benefit)) return "";
   if (benefit.id) return String(benefit.id);
   // Legacy queued benefits (before we added a stable id).
   // Use a best-effort composite key that should be stable across sessions.

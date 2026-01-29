@@ -26,17 +26,17 @@ export function registerClientSettings() {
             if (app?.id?.startsWith?.("STACharacterSheet2e"))
               app.render?.(true);
           } catch (_) {
-            // ignore
+            // sheet may have closed
           }
         }
       } catch (_) {
-        // ignore
+        // ui.windows not available yet
       }
 
       try {
         ui.controls?.initialize?.();
       } catch (_) {
-        // ignore
+        // controls may not be ready
       }
     },
   });
@@ -56,11 +56,11 @@ export function registerClientSettings() {
             if (app?.id?.startsWith?.("STACharacterSheet2e"))
               app.render?.(true);
           } catch (_) {
-            // ignore
+            // sheet could be mid-render
           }
         }
       } catch (_) {
-        // ignore
+        // windows object may be empty
       }
     },
   });
@@ -80,11 +80,11 @@ export function registerClientSettings() {
             if (app?.id?.startsWith?.("STACharacterSheet2e"))
               app.render?.(true);
           } catch (_) {
-            // ignore
+            // skip if sheet was destroyed
           }
         }
       } catch (_) {
-        // ignore
+        // safe to fail silently
       }
     },
   });
@@ -104,11 +104,11 @@ export function registerClientSettings() {
             if (app?.id?.startsWith?.("STACharacterSheet2e"))
               app.render?.(true);
           } catch (_) {
-            // ignore
+            // sheet no longer exists
           }
         }
       } catch (_) {
-        // ignore
+        // non-critical rerender
       }
     },
   });
@@ -131,11 +131,11 @@ export function registerClientSettings() {
               if (app?.id?.startsWith?.("STACharacterSheet2e"))
                 app.render?.(true);
             } catch (_) {
-              // ignore
+              // app may have been closed
             }
           }
         } catch (_) {
-          // ignore
+          // continue if windows inaccessible
         }
       },
     },
@@ -157,11 +157,11 @@ export function registerClientSettings() {
             if (app?.id?.startsWith?.("STACharacterSheet2e"))
               app.render?.(true);
           } catch (_) {
-            // ignore
+            // sheet might be gone
           }
         }
       } catch (_) {
-        // ignore
+        // rerender is best-effort
       }
     },
   });
@@ -182,11 +182,11 @@ export function registerClientSettings() {
             if (app?.id?.startsWith?.("STACharacterSheet2e"))
               app.render?.(true);
           } catch (_) {
-            // ignore
+            // closed sheets can't rerender
           }
         }
       } catch (_) {
-        // ignore
+        // fail gracefully
       }
     },
   });

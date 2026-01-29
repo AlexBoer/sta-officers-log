@@ -16,7 +16,7 @@
 
   <footer class="form-footer sta-use-value-footer">
     {{#each options as |opt|}}
-      <button type="button" class="dialog-button" data-action="{{opt.action}}" {{#if opt.disabled}}disabled aria-disabled="true"{{/if}}>{{#if opt.buttonLabel}}{{opt.buttonLabel}}{{else}}{{../chooseLabel}}{{/if}}</button>
+      <button type="button" class="dialog-button" data-action="{{opt.action}}" {{disabled opt.disabled}}>{{#if opt.buttonLabel}}{{opt.buttonLabel}}{{else}}{{../chooseLabel}}{{/if}}</button>
     {{/each}}
   </footer>
 </div>

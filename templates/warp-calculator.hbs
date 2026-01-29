@@ -5,11 +5,11 @@
     <label class="sta-warp-formula-label">Formula:</label>
     <div class="sta-warp-formula-radios">
       <label class="sta-warp-formula-option">
-        <input type="radio" name="formula" value="tng" {{#if (eq formulaType "tng")}}checked{{/if}} />
+        <input type="radio" name="formula" value="tng" {{checked (eq formulaType "tng")}} />
         {{labels.formulaTng}}
       </label>
       <label class="sta-warp-formula-option">
-        <input type="radio" name="formula" value="tos" {{#if (eq formulaType "tos")}}checked{{/if}} />
+        <input type="radio" name="formula" value="tos" {{checked (eq formulaType "tos")}} />
         {{labels.formulaTos}}
       </label>
     </div>

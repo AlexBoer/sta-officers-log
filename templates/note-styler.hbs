@@ -1,0 +1,110 @@
+<form class="note-styler-form">
+  <p class="notes-info">Styling {{selectedCount}} selected note(s). Changes preview live.</p>
+  
+  <div class="form-group">
+    <label>Font Family</label>
+    <select name="fontFamily">
+      {{#each fontFamilies}}
+      <option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+      {{/each}}
+    </select>
+  </div>
+  
+  <div class="form-group">
+    <label>Font Size</label>
+    <input type="number" name="fontSize" value="{{fontSize}}" min="8" max="72" step="1">
+  </div>
+  
+  <div class="form-group">
+    <label>Font Weight</label>
+    <select name="fontWeight">
+      <option value="normal" {{#if (eq fontWeight "normal")}}selected{{/if}}>Normal</option>
+      <option value="bold" {{#if (eq fontWeight "bold")}}selected{{/if}}>Bold</option>
+      <option value="lighter" {{#if (eq fontWeight "lighter")}}selected{{/if}}>Lighter</option>
+    </select>
+  </div>
+  
+  <div class="form-group">
+    <label>Font Style</label>
+    <select name="fontStyle">
+      <option value="normal" {{#if (eq fontStyle "normal")}}selected{{/if}}>Normal</option>
+      <option value="italic" {{#if (eq fontStyle "italic")}}selected{{/if}}>Italic</option>
+    </select>
+  </div>
+  
+  <hr>
+  <h3>Colors</h3>
+  
+  <div class="form-group">
+    <label>Text Color (Fill)</label>
+    <div class="form-fields">
+      <input type="color" name="fill" value="{{fill}}">
+    </div>
+  </div>
+  
+  <div class="form-group">
+    <label>Stroke Color</label>
+    <div class="form-fields">
+      <input type="color" name="stroke" value="{{stroke}}">
+    </div>
+  </div>
+  
+  <div class="form-group">
+    <label>Stroke Thickness</label>
+    <input type="number" name="strokeThickness" value="{{strokeThickness}}" min="0" max="20" step="0.5">
+  </div>
+  
+  <hr>
+  <h3>Drop Shadow</h3>
+  
+  <div class="form-group">
+    <label>Enable Drop Shadow</label>
+    <input type="checkbox" name="dropShadow" {{#if dropShadow}}checked{{/if}}>
+  </div>
+  
+  <div class="form-group">
+    <label>Shadow Color</label>
+    <div class="form-fields">
+      <input type="color" name="dropShadowColor" value="{{dropShadowColor}}">
+    </div>
+  </div>
+  
+  <div class="form-group">
+    <label>Shadow Blur</label>
+    <input type="number" name="dropShadowBlur" value="{{dropShadowBlur}}" min="0" max="20" step="1">
+  </div>
+  
+  <div class="form-group">
+    <label>Shadow Distance</label>
+    <input type="number" name="dropShadowDistance" value="{{dropShadowDistance}}" min="0" max="20" step="1">
+  </div>
+  
+  <hr>
+  <h3>Position</h3>
+  
+  <div class="form-group">
+    <label>Vertical Offset</label>
+    <input type="number" name="yOffset" value="{{yOffset}}" min="-100" max="100" step="1">
+  </div>
+  
+  <hr>
+  <h3>Icon</h3>
+  
+  <div class="form-group">
+    <label>Icon Tint</label>
+    <div class="form-fields">
+      <input type="color" name="iconTint" value="{{#if iconTint}}{{iconTint}}{{else}}#ffffff{{/if}}">
+      <label class="checkbox">
+        <input type="checkbox" name="iconTintEnabled" {{#if iconTint}}checked{{/if}}> Enable
+      </label>
+    </div>
+  </div>
+  
+  <div class="form-group">
+    <label>Icon Opacity</label>
+    <div class="form-fields">
+      <input type="range" name="iconAlpha" value="{{iconAlpha}}" min="0" max="1" step="0.05">
+      <span class="range-value">{{iconAlpha}}</span>
+    </div>
+  </div>
+</form>

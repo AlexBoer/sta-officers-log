@@ -24,6 +24,7 @@ import {
 } from "../../callbackFlow.js";
 import { getUserIdForCharacterActor } from "./sheetUtils.js";
 import { hasEligibleCallbackTargetForValueId } from "../../data/logMetadata.js";
+import { shouldHideChallengedToggle } from "../../settings/clientSettings.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Use Value Dialog (ApplicationV2)
@@ -200,6 +201,9 @@ export function installUseValueButtons(root, actor, app) {
     'div.section.values li.row.entry[data-item-type="value"]',
   );
 
+  const hideChallengedToggle = shouldHideChallengedToggle();
+  let anyChallenged = false;
+
   for (const entry of valueEntries) {
     const toggleEl = entry.querySelector(
       'a.value-used.control.toggle, a.value-used.control.toggle > i[data-action="onStrikeThrough"]',
@@ -217,6 +221,18 @@ export function installUseValueButtons(root, actor, app) {
 
     const challenged = isValueChallenged(valueItem);
     const valueIsTrauma = isValueTrauma(valueItem);
+
+    if (challenged) anyChallenged = true;
+
+    // Hide the toggle icon if setting is enabled and value is not challenged
+    if (hideChallengedToggle) {
+      const toggleIcon = toggleAnchor.querySelector(
+        "i[data-action='onStrikeThrough']",
+      );
+      if (toggleIcon) {
+        toggleIcon.style.display = challenged ? "" : "none";
+      }
+    }
 
     const useBtn = document.createElement("span");
     useBtn.className = "sta-use-value-btn sta-inline-sheet-btn";
@@ -493,5 +509,15 @@ export function installUseValueButtons(root, actor, app) {
     }
 
     toggleAnchor.parentElement.insertBefore(useBtn, toggleAnchor);
+  }
+
+  // Hide the "Chal?" column header if setting is enabled and no values are challenged
+  if (hideChallengedToggle) {
+    const headerValueUsed = root.querySelector(
+      "div.section.values .header.row.item .value-used",
+    );
+    if (headerValueUsed) {
+      headerValueUsed.style.display = anyChallenged ? "" : "none";
+    }
   }
 }

@@ -7,6 +7,7 @@
 
 import { MODULE_ID } from "../../core/constants.js";
 import { t } from "../../core/i18n.js";
+import { isPlainObject } from "../../core/utils.js";
 import { getModuleSocket } from "../../core/socket.js";
 import {
   getCurrentMissionLogIdForUser,
@@ -273,10 +274,9 @@ export function installUseDirectiveButton(root, actor, app) {
       // Store a mapping so later UI can display the directive name.
       try {
         const existing = logDoc.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
-        const cloned =
-          existing && typeof existing === "object"
-            ? foundry.utils.deepClone(existing)
-            : {};
+        const cloned = isPlainObject(existing)
+          ? foundry.utils.deepClone(existing)
+          : {};
         cloned[String(directiveKey)] = chosenText;
         await logDoc.setFlag(MODULE_ID, "directiveLabels", cloned);
       } catch (_) {

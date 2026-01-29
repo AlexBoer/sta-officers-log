@@ -51,7 +51,7 @@ function _unwrapArcGroups(containerEl) {
       }
       wrapper.remove();
     } catch (_) {
-      // ignore
+      // DOM node may have been removed already
     }
   }
 }
@@ -98,9 +98,7 @@ export async function setMissionLogSortModeForActor(actor, mode) {
 function _buildCallbackLinkContext(actor, logItems) {
   const byId = new Map(logItems.map((l) => [String(l.id), l]));
   const completedArcEndLogIds = getCompletedArcEndLogIds(actor, byId);
-  const valueItems = Array.from(actor?.items ?? []).filter(
-    (i) => i?.type === "value",
-  );
+  const valueItems = actor.items.filter((i) => i?.type === "value");
 
   const callbackLinkDisabledToLogIds = new Set();
   for (const log of logItems) {
@@ -265,7 +263,7 @@ export function applyMissionLogSorting(root, actor, mode) {
         try {
           milestoneCreate.remove();
         } catch (_) {
-          // ignore
+          // element might already be detached
         }
 
         const btn = document.createElement("a");
@@ -283,7 +281,7 @@ export function applyMissionLogSorting(root, actor, mode) {
           try {
             openNewMilestoneArcDialog(actor);
           } catch (_) {
-            // ignore
+            // dialog open can fail if actor became invalid
           }
         };
 
@@ -296,7 +294,7 @@ export function applyMissionLogSorting(root, actor, mode) {
       }
     }
   } catch (_) {
-    // ignore
+    // non-critical UI enhancement
   }
 
   // Custom mode: do not reorder anything; rely on the sheet's default order
@@ -422,7 +420,7 @@ export function applyMissionLogSorting(root, actor, mode) {
       try {
         delete el.dataset.staCallbacksArcId;
       } catch (_) {
-        // ignore
+        // dataset property may be frozen
       }
       // Reset any display overrides from collapsed state.
       if (el.style?.display) el.style.display = "";
@@ -485,9 +483,7 @@ export function applyMissionLogSorting(root, actor, mode) {
     orderedIds = items.map((i) => String(i.id));
   } else if (sortMode === "chain") {
     clearArcDecorations();
-    const valueItems = Array.from(actor?.items ?? []).filter(
-      (i) => i?.type === "value",
-    );
+    const valueItems = actor.items.filter((i) => i?.type === "value");
 
     const computeChainLogIdsByParentWalk = (
       actorDoc,
@@ -535,6 +531,7 @@ export function applyMissionLogSorting(root, actor, mode) {
 
         return result.reverse();
       } catch (_) {
+        // return empty on any traversal failure
         return [];
       }
     };
@@ -575,6 +572,7 @@ export function applyMissionLogSorting(root, actor, mode) {
 
         return false;
       } catch (_) {
+        // treat as not stale if check fails
         return false;
       }
     };
@@ -656,6 +654,7 @@ export function applyMissionLogSorting(root, actor, mode) {
           );
         }
       } catch (_) {
+        // fall back to empty chain on error
         chainIds = [];
       }
 
@@ -1006,7 +1005,7 @@ export function applyMissionLogSorting(root, actor, mode) {
 
           titleRow.appendChild(editBtn);
         } catch (_) {
-          // ignore
+          // edit button is optional UI
         }
 
         for (const id of ids) {
@@ -1022,7 +1021,7 @@ export function applyMissionLogSorting(root, actor, mode) {
         applyCollapsedState(wrapper, arcId);
       }
     } catch (_) {
-      // ignore
+      // arc grouping is cosmetic; continue without it
     }
   }
 
@@ -1065,7 +1064,7 @@ export function applyMissionLogSorting(root, actor, mode) {
       el.setAttribute("aria-label", tooltip);
     }
   } catch (_) {
-    // ignore
+    // tooltip injection is non-critical
   }
 
   // Removed: milestone button replacement code moved to the top of the function

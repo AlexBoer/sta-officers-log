@@ -90,9 +90,7 @@ export async function syncAllMilestoneIconsOnActor(actor) {
   try {
     if (!actor || actor.type !== "character") return 0;
 
-    const milestones = Array.from(actor.items ?? []).filter(
-      (i) => i?.type === "milestone",
-    );
+    const milestones = actor.items.filter((i) => i?.type === "milestone");
 
     const updates = [];
 
