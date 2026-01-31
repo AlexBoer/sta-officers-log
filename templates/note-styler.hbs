@@ -1,7 +1,13 @@
 <form class="note-styler-form">
-  <p class="notes-info">Styling {{selectedCount}} selected note(s). Changes preview live.</p>
+  <p class="notes-info">Styling {{selectedCount}} selected note(s). Changes preview live. Check boxes to apply settings.</p>
   
-  <div class="form-group">
+  <h3 class="style-group-header">
+    <input type="checkbox" name="applyGroup_font" class="group-checkbox" data-group="font">
+    <span>Font</span>
+  </h3>
+  
+  <div class="form-group" data-group="font">
+    <input type="checkbox" name="apply_fontFamily" class="apply-checkbox">
     <label>Font Family</label>
     <select name="fontFamily">
       {{#each fontFamilies}}
@@ -10,12 +16,14 @@
     </select>
   </div>
   
-  <div class="form-group">
+  <div class="form-group" data-group="font">
+    <input type="checkbox" name="apply_fontSize" class="apply-checkbox">
     <label>Font Size</label>
     <input type="number" name="fontSize" value="{{fontSize}}" min="8" max="72" step="1">
   </div>
   
-  <div class="form-group">
+  <div class="form-group" data-group="font">
+    <input type="checkbox" name="apply_fontWeight" class="apply-checkbox">
     <label>Font Weight</label>
     <select name="fontWeight">
       <option value="normal" {{#if (eq fontWeight "normal")}}selected{{/if}}>Normal</option>
@@ -24,7 +32,8 @@
     </select>
   </div>
   
-  <div class="form-group">
+  <div class="form-group" data-group="font">
+    <input type="checkbox" name="apply_fontStyle" class="apply-checkbox">
     <label>Font Style</label>
     <select name="fontStyle">
       <option value="normal" {{#if (eq fontStyle "normal")}}selected{{/if}}>Normal</option>
@@ -32,65 +41,82 @@
     </select>
   </div>
   
-  <hr>
-  <h3>Colors</h3>
+  <h3 class="style-group-header">
+    <input type="checkbox" name="applyGroup_colors" class="group-checkbox" data-group="colors">
+    <span>Colors</span>
+  </h3>
   
-  <div class="form-group">
+  <div class="form-group" data-group="colors">
+    <input type="checkbox" name="apply_fill" class="apply-checkbox">
     <label>Text Color (Fill)</label>
     <div class="form-fields">
       <input type="color" name="fill" value="{{fill}}">
     </div>
   </div>
   
-  <div class="form-group">
+  <div class="form-group" data-group="colors">
+    <input type="checkbox" name="apply_stroke" class="apply-checkbox">
     <label>Stroke Color</label>
     <div class="form-fields">
       <input type="color" name="stroke" value="{{stroke}}">
     </div>
   </div>
   
-  <div class="form-group">
+  <div class="form-group" data-group="colors">
+    <input type="checkbox" name="apply_strokeThickness" class="apply-checkbox">
     <label>Stroke Thickness</label>
     <input type="number" name="strokeThickness" value="{{strokeThickness}}" min="0" max="20" step="0.5">
   </div>
   
-  <hr>
-  <h3>Drop Shadow</h3>
+  <h3 class="style-group-header">
+    <input type="checkbox" name="applyGroup_shadow" class="group-checkbox" data-group="shadow">
+    <span>Drop Shadow</span>
+  </h3>
   
-  <div class="form-group">
+  <div class="form-group" data-group="shadow">
+    <input type="checkbox" name="apply_dropShadow" class="apply-checkbox">
     <label>Enable Drop Shadow</label>
     <input type="checkbox" name="dropShadow" {{#if dropShadow}}checked{{/if}}>
   </div>
   
-  <div class="form-group">
+  <div class="form-group" data-group="shadow">
+    <input type="checkbox" name="apply_dropShadowColor" class="apply-checkbox">
     <label>Shadow Color</label>
     <div class="form-fields">
       <input type="color" name="dropShadowColor" value="{{dropShadowColor}}">
     </div>
   </div>
   
-  <div class="form-group">
+  <div class="form-group" data-group="shadow">
+    <input type="checkbox" name="apply_dropShadowBlur" class="apply-checkbox">
     <label>Shadow Blur</label>
     <input type="number" name="dropShadowBlur" value="{{dropShadowBlur}}" min="0" max="20" step="1">
   </div>
   
-  <div class="form-group">
+  <div class="form-group" data-group="shadow">
+    <input type="checkbox" name="apply_dropShadowDistance" class="apply-checkbox">
     <label>Shadow Distance</label>
     <input type="number" name="dropShadowDistance" value="{{dropShadowDistance}}" min="0" max="20" step="1">
   </div>
   
-  <hr>
-  <h3>Position</h3>
+  <h3 class="style-group-header">
+    <input type="checkbox" name="applyGroup_position" class="group-checkbox" data-group="position">
+    <span>Position</span>
+  </h3>
   
-  <div class="form-group">
+  <div class="form-group" data-group="position">
+    <input type="checkbox" name="apply_yOffset" class="apply-checkbox">
     <label>Vertical Offset</label>
     <input type="number" name="yOffset" value="{{yOffset}}" min="-100" max="100" step="1">
   </div>
   
-  <hr>
-  <h3>Icon</h3>
+  <h3 class="style-group-header">
+    <input type="checkbox" name="applyGroup_icon" class="group-checkbox" data-group="icon">
+    <span>Icon</span>
+  </h3>
   
-  <div class="form-group">
+  <div class="form-group" data-group="icon">
+    <input type="checkbox" name="apply_iconTint" class="apply-checkbox">
     <label>Icon Tint</label>
     <div class="form-fields">
       <input type="color" name="iconTint" value="{{#if iconTint}}{{iconTint}}{{else}}#ffffff{{/if}}">
@@ -100,7 +126,8 @@
     </div>
   </div>
   
-  <div class="form-group">
+  <div class="form-group" data-group="icon">
+    <input type="checkbox" name="apply_iconAlpha" class="apply-checkbox">
     <label>Icon Opacity</label>
     <div class="form-fields">
       <input type="range" name="iconAlpha" value="{{iconAlpha}}" min="0" max="1" step="0.05">

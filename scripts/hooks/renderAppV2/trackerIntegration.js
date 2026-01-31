@@ -5,11 +5,14 @@ import {
   setMissionDirectives,
 } from "../../data/directives.js";
 
+const TRACKER_BUTTONS_TEMPLATE = `modules/${MODULE_ID}/templates/tracker-buttons.hbs`;
+const TRACKER_DIRECTIVES_TEMPLATE = `modules/${MODULE_ID}/templates/tracker-directives.hbs`;
+
 /**
  * Install Officers Log buttons in the STA Tracker panel.
  * GM-only feature that adds buttons for callback prompts, new mission, and new scene.
  */
-export function installOfficersLogButtonsInStaTracker(app, root) {
+export async function installOfficersLogButtonsInStaTracker(app, root) {
   try {
     if (!(root instanceof HTMLElement)) return;
     if (!game.user?.isGM) return;
@@ -64,19 +67,19 @@ export function installOfficersLogButtonsInStaTracker(app, root) {
       iconContainer.appendChild(columns);
     }
 
-    const makeButton = ({ id, cls, title, icon, onClick }) => {
-      const btn = document.createElement("div");
-      btn.id = id;
-      btn.className = `button ${cls}`;
-      btn.title = title;
-      btn.dataset.action = "staOfficersLog";
+    // Render buttons from template
+    const buttonsHtml = await renderTemplate(TRACKER_BUTTONS_TEMPLATE, {
+      moduleId: MODULE_ID,
+    });
+    columns.insertAdjacentHTML("beforeend", buttonsHtml);
 
-      const i = document.createElement("i");
-      // Use fixed-width icons so the column aligns cleanly with the STA buttons.
-      i.className = `${icon} fa-fw`;
-      btn.appendChild(i);
+    // Attach event listeners to the rendered buttons
+    const officersGroup = columns.querySelector(".sta-officers-log-group");
+    if (officersGroup) {
+      officersGroup.addEventListener("click", (event) => {
+        const btn = event.target?.closest?.("[data-action]");
+        if (!btn) return;
 
-      btn.addEventListener("click", (event) => {
         try {
           event?.preventDefault?.();
           event?.stopPropagation?.();
@@ -84,59 +87,20 @@ export function installOfficersLogButtonsInStaTracker(app, root) {
           // event may be synthetic
         }
 
+        const action = btn.dataset.action;
         try {
-          onClick?.();
+          if (action === "openCallback") {
+            game.staCallbacksHelper.open();
+          } else if (action === "resetMission") {
+            game.staCallbacksHelper.promptNewMissionAndReset();
+          } else if (action === "newScene") {
+            game.staCallbacksHelper.newScene();
+          }
         } catch (err) {
           console.error(`${MODULE_ID} | tracker button failed`, err);
         }
       });
-
-      return btn;
-    };
-
-    const divider = document.createElement("div");
-    divider.className = "sta-tracker-button-divider sta-officers-log-divider";
-
-    const officersGroup = document.createElement("div");
-    officersGroup.className = "sta-tracker-button-group sta-officers-log-group";
-    officersGroup.dataset.module = MODULE_ID;
-
-    // Mirror the Scene Controls actions.
-    officersGroup.appendChild(
-      makeButton({
-        id: "sta-officers-log-open-button",
-        cls: "sta-officers-log-open",
-        title: t("sta-officers-log.tools.sendPrompt"),
-        icon: "fa-solid fa-reply",
-        onClick: () => game.staCallbacksHelper.open(),
-      }),
-    );
-
-    officersGroup.appendChild(
-      makeButton({
-        id: "sta-officers-log-reset-button",
-        cls: "sta-officers-log-reset",
-        title: t("sta-officers-log.tools.resetMission"),
-        icon: "fa-solid fa-book",
-        onClick: () => game.staCallbacksHelper.promptNewMissionAndReset(),
-      }),
-    );
-
-    officersGroup.appendChild(
-      makeButton({
-        id: "sta-officers-log-new-scene-button",
-        cls: "sta-officers-log-new-scene",
-        title: t("sta-officers-log.tools.newScene"),
-        icon: "fa-solid fa-clapperboard",
-        onClick: () => game.staCallbacksHelper.newScene(),
-      }),
-    );
-
-    columns.appendChild(divider);
-    columns.appendChild(officersGroup);
-
-    // --- Mission Directives Section ---
-    installMissionDirectivesInStaTracker(root, row);
+    }
   } catch (_) {
     // tracker integration is optional
   }
@@ -148,7 +112,7 @@ export function installOfficersLogButtonsInStaTracker(app, root) {
  *
  * @param {HTMLElement} root - The root element to search for the tracker container.
  */
-export function installMissionDirectivesInStaTracker(root) {
+export async function installMissionDirectivesInStaTracker(root) {
   try {
     if (!(root instanceof HTMLElement)) return;
 
@@ -173,85 +137,43 @@ export function installMissionDirectivesInStaTracker(root) {
     // Measure current height before adding the section.
     const heightBefore = trackerContainer.offsetHeight;
 
-    // Create the directives section.
-    const section = document.createElement("div");
-    section.className = "sta-tracker-directives-section";
+    // Render the directives section from template
+    const html = await renderTemplate(TRACKER_DIRECTIVES_TEMPLATE, {
+      isGM: game.user?.isGM ?? false,
+      directives,
+      hasDirectives: directives.length > 0,
+      directivesText: directives.join("\n"),
+    });
 
-    const header = document.createElement("div");
-    header.className = "sta-tracker-directives-header";
+    // Parse the HTML and append to get a direct reference to the section
+    const temp = document.createElement("div");
+    temp.innerHTML = html;
+    const section = temp.firstElementChild;
+    if (!section) return;
+    trackerContainer.appendChild(section);
 
-    const headerText = document.createElement("span");
-    headerText.textContent = t("sta-officers-log.tracker.missionDirectives");
-    header.appendChild(headerText);
+    // Attach event listeners
+    const editButton = section.querySelector('[data-action="toggleEdit"]');
+    const saveButton = section.querySelector('[data-action="saveDirectives"]');
 
-    // Add edit button for GM only.
-    if (game.user?.isGM) {
-      const editButton = document.createElement("button");
-      editButton.className = "sta-tracker-directives-edit-btn";
-      editButton.type = "button";
-      editButton.title = t("sta-officers-log.tracker.editDirectives");
-      editButton.innerHTML = '<i class="fas fa-pencil-alt"></i>';
-      editButton.addEventListener("click", () => {
-        toggleDirectivesEditMode(section, trackerContainer, root);
-      });
-      header.appendChild(editButton);
-    }
+    editButton?.addEventListener("click", () => {
+      toggleDirectivesEditMode(section, trackerContainer, root);
+    });
 
-    section.appendChild(header);
+    saveButton?.addEventListener("click", async () => {
+      const textarea = section.querySelector(
+        ".sta-tracker-directives-textarea",
+      );
+      if (!textarea) return;
 
-    // Create display mode content.
-    const displayContainer = document.createElement("div");
-    displayContainer.className = "sta-tracker-directives-display";
-
-    const list = document.createElement("ul");
-    list.className = "sta-tracker-directives-list";
-
-    if (directives.length === 0) {
-      const emptyItem = document.createElement("li");
-      emptyItem.className =
-        "sta-tracker-directive-item sta-tracker-directive-empty";
-      emptyItem.textContent = t("sta-officers-log.tracker.noDirectives");
-      list.appendChild(emptyItem);
-    } else {
-      for (const directive of directives) {
-        const item = document.createElement("li");
-        item.className = "sta-tracker-directive-item";
-        item.textContent = directive;
-        list.appendChild(item);
-      }
-    }
-
-    displayContainer.appendChild(list);
-    section.appendChild(displayContainer);
-
-    // Create edit mode content (hidden by default).
-    const editContainer = document.createElement("div");
-    editContainer.className = "sta-tracker-directives-edit";
-    editContainer.style.display = "none";
-
-    const textarea = document.createElement("textarea");
-    textarea.className = "sta-tracker-directives-textarea";
-    textarea.placeholder = t("sta-officers-log.tracker.directivesPlaceholder");
-    textarea.value = directives.join("\n");
-    editContainer.appendChild(textarea);
-
-    const saveButton = document.createElement("button");
-    saveButton.className = "sta-tracker-directives-save-btn";
-    saveButton.type = "button";
-    saveButton.textContent = t("sta-officers-log.tracker.save");
-    saveButton.addEventListener("click", async () => {
       const newDirectives = textarea.value
         .split("\n")
         .map((line) => line.trim())
         .filter((line) => line.length > 0);
       await setMissionDirectives(newDirectives);
       // Rebuild the section with fresh data.
-      installMissionDirectivesInStaTracker(root, row);
+      await installMissionDirectivesInStaTracker(root);
     });
-    editContainer.appendChild(saveButton);
-
-    section.appendChild(editContainer);
-    trackerContainer.appendChild(section);
 
     // After adding the section, use negative margin-top to shift the tracker up.
     // The STA system continuously resets the inline `top` style, but margin-top

@@ -239,7 +239,6 @@ class FocusPickerApp extends Base {
     if (root.dataset.staFocusPickerBound === "1") return;
     root.dataset.staFocusPickerBound = "1";
 
-    const searchInput = root.querySelector('input[name="q"]');
     const listItems = Array.from(
       root.querySelectorAll(".sta-focus-picker-item[data-name]"),
     );
@@ -248,13 +247,11 @@ class FocusPickerApp extends Base {
     );
     const countEl = root.querySelector('[data-hook="foundCount"]');
 
-    const applyFilter = () => {
-      const q = String(searchInput?.value ?? "")
-        .trim()
-        .toLowerCase();
+    const applyFilter = (query, rgx) => {
       for (const li of listItems) {
         const name = String(li.dataset.name ?? "");
-        const match = !q || name.includes(q);
+        const match =
+          !query || foundry.applications.ux.SearchFilter.testQuery(rgx, name);
         li.style.display = match ? "" : "none";
       }
 
@@ -283,7 +280,13 @@ class FocusPickerApp extends Base {
       }
     };
 
-    searchInput?.addEventListener("input", applyFilter);
+    // Use Foundry's SearchFilter for debounced, standardized filtering
+    const searchFilter = new foundry.applications.ux.SearchFilter({
+      inputSelector: 'input[name="q"]',
+      contentSelector: ".sta-focus-picker-list",
+      callback: (_event, query, rgx, _content) => applyFilter(query, rgx),
+    });
+    searchFilter.bind(root);
 
     root.addEventListener("click", async (ev) => {
       const btn = ev.target?.closest?.("button[data-action]");
@@ -334,10 +337,11 @@ class FocusPickerApp extends Base {
       }
     });
 
-    // Initial filter (in case template has prefilled input later)
-    applyFilter();
+    // Initial filter to set up the count display
+    applyFilter("", null);
 
     // Autofocus for "spotlight" feel
+    const searchInput = root.querySelector('input[name="q"]');
     try {
       searchInput?.focus?.();
       searchInput?.select?.();

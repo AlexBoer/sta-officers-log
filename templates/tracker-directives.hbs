@@ -1,0 +1,27 @@
+<div class="sta-tracker-directives-section">
+  <div class="sta-tracker-directives-header">
+    <span>{{localize "sta-officers-log.tracker.missionDirectives"}}</span>
+    {{#if isGM}}
+    <button class="sta-tracker-directives-edit-btn" type="button" title="{{localize "sta-officers-log.tracker.editDirectives"}}" data-action="toggleEdit">
+      <i class="fas fa-pencil-alt"></i>
+    </button>
+    {{/if}}
+  </div>
+
+  <div class="sta-tracker-directives-display">
+    <ul class="sta-tracker-directives-list">
+      {{#if hasDirectives}}
+        {{#each directives}}
+        <li class="sta-tracker-directive-item">{{this}}</li>
+        {{/each}}
+      {{else}}
+        <li class="sta-tracker-directive-item sta-tracker-directive-empty">{{localize "sta-officers-log.tracker.noDirectives"}}</li>
+      {{/if}}
+    </ul>
+  </div>
+
+  <div class="sta-tracker-directives-edit" style="display: none;">
+    <textarea class="sta-tracker-directives-textarea" placeholder="{{localize "sta-officers-log.tracker.directivesPlaceholder"}}">{{directivesText}}</textarea>
+    <button class="sta-tracker-directives-save-btn" type="button" data-action="saveDirectives">{{localize "sta-officers-log.tracker.save"}}</button>
+  </div>
+</div>

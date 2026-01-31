@@ -113,32 +113,42 @@ function getCurrentStyle(note) {
 
 /**
  * Apply style visually to a note's PIXI tooltip (does not persist)
+ * Only applies properties that are defined (not undefined)
  */
 function applyStyleVisually(note, style) {
   if (!note?.tooltip?.style) return false;
 
-  Object.assign(note.tooltip.style, {
-    fontFamily: style.fontFamily,
-    fontSize: Number(style.fontSize),
-    fill: style.fill,
-    stroke: style.stroke,
-    strokeThickness: Number(style.strokeThickness),
-    dropShadow: Boolean(style.dropShadow),
-    dropShadowColor: style.dropShadowColor,
-    dropShadowBlur: Number(style.dropShadowBlur),
-    dropShadowDistance: Number(style.dropShadowDistance),
-    fontWeight: style.fontWeight,
-    fontStyle: style.fontStyle,
-  });
+  const tooltipStyle = note.tooltip.style;
+
+  if (style.fontFamily !== undefined)
+    tooltipStyle.fontFamily = style.fontFamily;
+  if (style.fontSize !== undefined)
+    tooltipStyle.fontSize = Number(style.fontSize);
+  if (style.fill !== undefined) tooltipStyle.fill = style.fill;
+  if (style.stroke !== undefined) tooltipStyle.stroke = style.stroke;
+  if (style.strokeThickness !== undefined)
+    tooltipStyle.strokeThickness = Number(style.strokeThickness);
+  if (style.dropShadow !== undefined)
+    tooltipStyle.dropShadow = Boolean(style.dropShadow);
+  if (style.dropShadowColor !== undefined)
+    tooltipStyle.dropShadowColor = style.dropShadowColor;
+  if (style.dropShadowBlur !== undefined)
+    tooltipStyle.dropShadowBlur = Number(style.dropShadowBlur);
+  if (style.dropShadowDistance !== undefined)
+    tooltipStyle.dropShadowDistance = Number(style.dropShadowDistance);
+  if (style.fontWeight !== undefined)
+    tooltipStyle.fontWeight = style.fontWeight;
+  if (style.fontStyle !== undefined) tooltipStyle.fontStyle = style.fontStyle;
 
   // Apply vertical offset to the tooltip position
-  const yOffset = Number(style.yOffset) || 0;
-  if (note.tooltip.anchor) {
-    // Store original anchor if not already stored
-    if (note._originalTooltipY === undefined) {
-      note._originalTooltipY = note.tooltip.y;
+  if (style.yOffset !== undefined) {
+    const yOffset = Number(style.yOffset) || 0;
+    if (note.tooltip.anchor) {
+      if (note._originalTooltipY === undefined) {
+        note._originalTooltipY = note.tooltip.y;
+      }
+      note.tooltip.y = note._originalTooltipY + yOffset;
     }
-    note.tooltip.y = note._originalTooltipY + yOffset;
   }
 
   // Apply icon opacity
@@ -153,6 +163,7 @@ function applyStyleVisually(note, style) {
 
 /**
  * Apply style to a single note and save to flags for persistence
+ * Only persists properties that are defined (not undefined)
  */
 async function applyStyleToNote(note, style, persist = true) {
   const applied = applyStyleVisually(note, style);
@@ -161,27 +172,27 @@ async function applyStyleToNote(note, style, persist = true) {
   if (applied && persist && note?.document) {
     const doc = note.document;
 
-    // Update core Foundry note document properties
-    const updateData = {
-      fontFamily: style.fontFamily,
-      fontSize: Number(style.fontSize),
-      textColor: style.fill,
-    };
+    // Update core Foundry note document properties (only defined ones)
+    const updateData = {};
+    if (style.fontFamily !== undefined)
+      updateData.fontFamily = style.fontFamily;
+    if (style.fontSize !== undefined)
+      updateData.fontSize = Number(style.fontSize);
+    if (style.fill !== undefined) updateData.textColor = style.fill;
 
     // Update texture properties (tint)
-    const textureUpdate = { ...doc?.texture };
     if (style.iconTint !== undefined) {
+      const textureUpdate = { ...doc?.texture };
       textureUpdate.tint = style.iconTint || null;
-    }
-    if (Object.keys(textureUpdate).length > 0) {
       updateData.texture = textureUpdate;
     }
 
-    await doc.update(updateData);
+    if (Object.keys(updateData).length > 0) {
+      await doc.update(updateData);
+    }
 
     // Update Pin Cushion flag for vertical offset if Pin Cushion is active
-    if (isPinCushionActive()) {
-      // Pin Cushion uses numberHsSuffixOnNameplate where each unit = 5px, negative = down
+    if (isPinCushionActive() && style.yOffset !== undefined) {
       const pcOffset = Math.round((Number(style.yOffset) || 0) / -5);
       await note.document.setFlag(
         PIN_CUSHION_ID,
@@ -190,8 +201,9 @@ async function applyStyleToNote(note, style, persist = true) {
       );
     }
 
-    // Save only our custom style properties to our flags
-    const ourStyleData = {};
+    // Save only our custom style properties to our flags (merge with existing)
+    const existingFlags = note.document.getFlag(MODULE_ID, FLAG_KEY) || {};
+    const ourStyleData = { ...existingFlags };
     for (const prop of OUR_STYLE_PROPS) {
       if (style[prop] !== undefined) {
         ourStyleData[prop] = style[prop];
@@ -231,8 +243,60 @@ async function applyStyleToAllNotes(style, persist = true) {
   return count;
 }
 
-// Track which notes are currently hovered
+// Track which notes are currently hovered (by document ID for stability)
 const hoveredNotes = new Set();
+
+/**
+ * Set up hover listeners directly on a note's PIXI objects
+ */
+function setupNoteHoverListeners(note) {
+  if (!note) return;
+
+  const target = note.controlIcon;
+  if (!target) return;
+
+  // Cache the alpha value from flags to avoid slow flag reads on hover
+  const saved = note?.document?.getFlag(MODULE_ID, FLAG_KEY) || {};
+  const savedAlpha = saved.iconAlpha ?? 1;
+
+  // Store it on the note for quick access
+  note._noteStylerAlpha = savedAlpha;
+
+  // Remove old listeners if re-setting up
+  if (note._noteStylerHoverIn) {
+    target.off("pointerover", note._noteStylerHoverIn);
+    target.off("pointerout", note._noteStylerHoverOut);
+  }
+
+  const onHoverIn = () => {
+    const alpha = note._noteStylerAlpha ?? 1;
+    const noteId = note.document?.id;
+    if (noteId) hoveredNotes.add(noteId);
+
+    if (alpha < 1) {
+      if (note.tooltip) note.tooltip.alpha = 1;
+      if (note.controlIcon) note.controlIcon.alpha = 1;
+    }
+  };
+
+  const onHoverOut = () => {
+    const alpha = note._noteStylerAlpha ?? 1;
+    const noteId = note.document?.id;
+    if (noteId) hoveredNotes.delete(noteId);
+
+    if (alpha < 1) {
+      if (note.tooltip) note.tooltip.alpha = alpha;
+      if (note.controlIcon) note.controlIcon.alpha = alpha;
+    }
+  };
+
+  // Store references for cleanup
+  note._noteStylerHoverIn = onHoverIn;
+  note._noteStylerHoverOut = onHoverOut;
+
+  target.on("pointerover", onHoverIn);
+  target.on("pointerout", onHoverOut);
+}
 
 /**
  * Reapply saved style to a single note from its flags
@@ -247,33 +311,15 @@ function reapplySavedStyle(note) {
 
     // If this note is currently hovered, restore full opacity
     const savedAlpha = saved.iconAlpha ?? 1;
-    if (hoveredNotes.has(note.id) && savedAlpha < 1) {
+    const noteId = note.document?.id;
+    if (noteId && hoveredNotes.has(noteId) && savedAlpha < 1) {
       if (note.tooltip) note.tooltip.alpha = 1;
       if (note.controlIcon) note.controlIcon.alpha = 1;
     }
   }
-}
 
-/**
- * Handle hover state change for opacity
- */
-function handleNoteHover(note, isHovering) {
-  // Track hover state
-  if (isHovering) {
-    hoveredNotes.add(note.id);
-  } else {
-    hoveredNotes.delete(note.id);
-  }
-
-  const saved = note?.document?.getFlag(MODULE_ID, FLAG_KEY) || {};
-  const savedAlpha = saved.iconAlpha ?? 1;
-
-  // Only do hover effect if alpha is less than 1
-  if (savedAlpha < 1) {
-    const alpha = isHovering ? 1 : savedAlpha;
-    if (note.tooltip) note.tooltip.alpha = alpha;
-    if (note.controlIcon) note.controlIcon.alpha = alpha;
-  }
+  // Set up hover listeners
+  setupNoteHoverListeners(note);
 }
 
 /**
@@ -287,63 +333,102 @@ export function registerNoteStylerHooks() {
 
   // Also handle when canvas is ready (initial load)
   Hooks.on("canvasReady", () => {
+    // Clear hover state on scene change
+    hoveredNotes.clear();
+
     const notes = canvas.notes?.placeables || [];
     for (const note of notes) {
       reapplySavedStyle(note);
     }
   });
-
-  // Handle hover - show full opacity
-  Hooks.on("hoverNote", (note, isHovering) => {
-    handleNoteHover(note, isHovering);
-  });
 }
 
 /**
- * Extract style values from a form element
+ * Extract style values from a form element (only includes checked properties)
  */
 function extractStyleFromElement(element) {
   const form = element.querySelector("form") || element;
+
+  // Use Foundry's FormDataExtended to extract all form values at once
+  const formData = new foundry.applications.ux.FormDataExtended(form);
+  const data = formData.object;
+
+  // Helper to get a value only if its apply checkbox is checked
+  const getIfChecked = (propName, value, defaultValue) => {
+    return data[`apply_${propName}`] ? (value ?? defaultValue) : undefined;
+  };
+
   return {
-    fontFamily:
-      form.querySelector('[name="fontFamily"]')?.value ||
+    fontFamily: getIfChecked(
+      "fontFamily",
+      data.fontFamily || DEFAULT_STYLE.fontFamily,
       DEFAULT_STYLE.fontFamily,
-    fontSize:
-      Number(form.querySelector('[name="fontSize"]')?.value) ||
+    ),
+    fontSize: getIfChecked(
+      "fontSize",
+      Number(data.fontSize) || DEFAULT_STYLE.fontSize,
       DEFAULT_STYLE.fontSize,
-    fill: form.querySelector('[name="fill"]')?.value || DEFAULT_STYLE.fill,
-    stroke:
-      form.querySelector('[name="stroke"]')?.value || DEFAULT_STYLE.stroke,
-    strokeThickness:
-      Number(form.querySelector('[name="strokeThickness"]')?.value) ??
+    ),
+    fill: getIfChecked(
+      "fill",
+      data.fill || DEFAULT_STYLE.fill,
+      DEFAULT_STYLE.fill,
+    ),
+    stroke: getIfChecked(
+      "stroke",
+      data.stroke || DEFAULT_STYLE.stroke,
+      DEFAULT_STYLE.stroke,
+    ),
+    strokeThickness: getIfChecked(
+      "strokeThickness",
+      Number(data.strokeThickness) ?? DEFAULT_STYLE.strokeThickness,
       DEFAULT_STYLE.strokeThickness,
-    dropShadow:
-      form.querySelector('[name="dropShadow"]')?.checked ??
+    ),
+    dropShadow: getIfChecked(
+      "dropShadow",
+      data.dropShadow ?? DEFAULT_STYLE.dropShadow,
       DEFAULT_STYLE.dropShadow,
-    dropShadowColor:
-      form.querySelector('[name="dropShadowColor"]')?.value ||
+    ),
+    dropShadowColor: getIfChecked(
+      "dropShadowColor",
+      data.dropShadowColor || DEFAULT_STYLE.dropShadowColor,
       DEFAULT_STYLE.dropShadowColor,
-    dropShadowBlur:
-      Number(form.querySelector('[name="dropShadowBlur"]')?.value) ??
+    ),
+    dropShadowBlur: getIfChecked(
+      "dropShadowBlur",
+      Number(data.dropShadowBlur) ?? DEFAULT_STYLE.dropShadowBlur,
       DEFAULT_STYLE.dropShadowBlur,
-    dropShadowDistance:
-      Number(form.querySelector('[name="dropShadowDistance"]')?.value) ??
+    ),
+    dropShadowDistance: getIfChecked(
+      "dropShadowDistance",
+      Number(data.dropShadowDistance) ?? DEFAULT_STYLE.dropShadowDistance,
       DEFAULT_STYLE.dropShadowDistance,
-    fontWeight:
-      form.querySelector('[name="fontWeight"]')?.value ||
+    ),
+    fontWeight: getIfChecked(
+      "fontWeight",
+      data.fontWeight || DEFAULT_STYLE.fontWeight,
       DEFAULT_STYLE.fontWeight,
-    fontStyle:
-      form.querySelector('[name="fontStyle"]')?.value ||
+    ),
+    fontStyle: getIfChecked(
+      "fontStyle",
+      data.fontStyle || DEFAULT_STYLE.fontStyle,
       DEFAULT_STYLE.fontStyle,
-    yOffset:
-      Number(form.querySelector('[name="yOffset"]')?.value) ??
+    ),
+    yOffset: getIfChecked(
+      "yOffset",
+      Number(data.yOffset) ?? DEFAULT_STYLE.yOffset,
       DEFAULT_STYLE.yOffset,
-    iconTint: form.querySelector('[name="iconTintEnabled"]')?.checked
-      ? form.querySelector('[name="iconTint"]')?.value || null
-      : null,
-    iconAlpha:
-      Number(form.querySelector('[name="iconAlpha"]')?.value) ??
+    ),
+    iconTint: getIfChecked(
+      "iconTint",
+      data.iconTintEnabled ? data.iconTint || null : null,
+      null,
+    ),
+    iconAlpha: getIfChecked(
+      "iconAlpha",
+      Number(data.iconAlpha) ?? DEFAULT_STYLE.iconAlpha,
       DEFAULT_STYLE.iconAlpha,
+    ),
   };
 }
 
@@ -423,11 +508,21 @@ class NoteStylerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   _onRender(context, options) {
     super._onRender(context, options);
 
-    // Live preview on input change
-    this.element.querySelectorAll("input, select").forEach((input) => {
-      input.addEventListener("input", () => this.#onPreview());
-      input.addEventListener("change", () => this.#onPreview());
-    });
+    // Live preview on input change (exclude apply checkboxes and group checkboxes)
+    this.element
+      .querySelectorAll(
+        "input:not(.apply-checkbox):not(.group-checkbox), select",
+      )
+      .forEach((input) => {
+        input.addEventListener("input", () => {
+          this.#autoCheckInput(input);
+          this.#onPreview();
+        });
+        input.addEventListener("change", () => {
+          this.#autoCheckInput(input);
+          this.#onPreview();
+        });
+      });
 
     // Update range value displays
     this.element.querySelectorAll('input[type="range"]').forEach((range) => {
@@ -438,6 +533,59 @@ class NoteStylerApp extends HandlebarsApplicationMixin(ApplicationV2) {
         });
       }
     });
+
+    // Group checkbox toggle behavior
+    this.element
+      .querySelectorAll(".group-checkbox")
+      .forEach((groupCheckbox) => {
+        groupCheckbox.addEventListener("change", () => {
+          const group = groupCheckbox.dataset.group;
+          const checked = groupCheckbox.checked;
+          this.element
+            .querySelectorAll(
+              `.form-group[data-group="${group}"] .apply-checkbox`,
+            )
+            .forEach((cb) => {
+              cb.checked = checked;
+            });
+          this.#onPreview();
+        });
+      });
+
+    // Individual apply checkbox triggers preview
+    this.element.querySelectorAll(".apply-checkbox").forEach((checkbox) => {
+      checkbox.addEventListener("change", () => {
+        this.#updateGroupCheckbox(checkbox);
+        this.#onPreview();
+      });
+    });
+  }
+
+  #autoCheckInput(input) {
+    const formGroup = input.closest(".form-group");
+    if (!formGroup) return;
+    const applyCheckbox = formGroup.querySelector(".apply-checkbox");
+    if (applyCheckbox && !applyCheckbox.checked) {
+      applyCheckbox.checked = true;
+      this.#updateGroupCheckbox(applyCheckbox);
+    }
+  }
+
+  #updateGroupCheckbox(checkbox) {
+    const formGroup = checkbox.closest(".form-group");
+    const group = formGroup?.dataset.group;
+    if (!group) return;
+
+    const allInGroup = this.element.querySelectorAll(
+      `.form-group[data-group="${group}"] .apply-checkbox`,
+    );
+    const allChecked = Array.from(allInGroup).every((cb) => cb.checked);
+    const groupCheckbox = this.element.querySelector(
+      `.group-checkbox[data-group="${group}"]`,
+    );
+    if (groupCheckbox) {
+      groupCheckbox.checked = allChecked;
+    }
   }
 
   #onPreview() {

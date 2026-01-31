@@ -10,7 +10,7 @@ import { getCreatedKey, compareKeys } from "./sortingUtils.js";
 import { rerenderOpenStaSheetsForActorId as refreshOpenSheet } from "./sheetUtils.js";
 import {
   closeStaOfficersLogContextMenu,
-  openStaOfficersLogContextMenu,
+  setupMissionLogContextMenu,
 } from "./contextMenu.js";
 
 // Module-level state for tracking normalization operations
@@ -231,45 +231,32 @@ export function installCallbackSourceButtons(root, actor) {
       }
     };
 
+    // Set up right-click context menu for mission log rows using Foundry's ContextMenu API
+    const milestonesSection = root.querySelector("div.section.milestones");
+    if (milestonesSection instanceof HTMLElement) {
+      setupMissionLogContextMenu({
+        container: milestonesSection,
+        selector: 'li.row.entry[data-item-type="log"][data-item-id]',
+        label: makeCurrentMissionText,
+        onSelect: async (element) => {
+          const logId = element?.dataset?.itemId
+            ? String(element.dataset.itemId)
+            : "";
+          if (!logId) {
+            console.error(
+              `${MODULE_ID} | cannot set current mission log (missing log id on row)`,
+            );
+            return;
+          }
+          await requestSetCurrentMissionLog(logId);
+        },
+      });
+    }
+
     for (const row of Array.from(logRows)) {
       if (!(row instanceof HTMLElement)) continue;
 
       const entryId = row?.dataset?.itemId ? String(row.dataset.itemId) : "";
-
-      // Right-click context menu: Make Current Mission Log
-      if (row.dataset.staMissionLogContextBound !== "1") {
-        row.dataset.staMissionLogContextBound = "1";
-        row.addEventListener(
-          "contextmenu",
-          (ev) => {
-            try {
-              ev?.preventDefault?.();
-              ev?.stopPropagation?.();
-              ev?.stopImmediatePropagation?.();
-            } catch (_) {
-              // ignore
-            }
-
-            const logId = row?.dataset?.itemId
-              ? String(row.dataset.itemId)
-              : "";
-            if (!logId) {
-              console.error(
-                `${MODULE_ID} | cannot set current mission log (missing log id on row)`,
-              );
-              return;
-            }
-
-            openStaOfficersLogContextMenu({
-              x: ev?.clientX ?? 0,
-              y: ev?.clientY ?? 0,
-              label: makeCurrentMissionText,
-              onClick: async () => requestSetCurrentMissionLog(logId),
-            });
-          },
-          true,
-        );
-      }
 
       const toggleAnchor = row.querySelector("a.value-used.control.toggle");
       if (!(toggleAnchor instanceof HTMLElement)) continue;

@@ -220,7 +220,6 @@ export function bindTalentPickerInteractions(
   }
   root.dataset.staTalentPickerBound = "1";
 
-  const searchInput = root.querySelector('input[name="q"]');
   const listItems = Array.from(
     root.querySelectorAll(".sta-focus-picker-item[data-name]"),
   );
@@ -230,15 +229,22 @@ export function bindTalentPickerInteractions(
   const countEl = root.querySelector('[data-hook="foundCount"]');
   const eligibleToggle = root.querySelector('input[name="eligibleOnly"]');
 
-  const applyFilter = () => {
-    const q = String(searchInput?.value ?? "")
-      .trim()
-      .toLowerCase();
+  // Track current search state for the eligibility toggle to use
+  let currentQuery = "";
+  let currentRgx = null;
+
+  const applyFilter = (query, rgx) => {
+    // Update tracked state if provided (from SearchFilter callback)
+    if (query !== undefined) currentQuery = query;
+    if (rgx !== undefined) currentRgx = rgx;
+
     const showEligibleOnly = Boolean(eligibleToggle?.checked);
 
     for (const li of listItems) {
       const name = String(li.dataset.name ?? "");
-      const match = !q || name.includes(q);
+      const match =
+        !currentQuery ||
+        foundry.applications.ux.SearchFilter.testQuery(currentRgx, name);
       const meets = li.dataset.meets === "true";
       const failsEligibility = showEligibleOnly && !meets;
       if (match && !failsEligibility) {
@@ -272,6 +278,17 @@ export function bindTalentPickerInteractions(
       }
     }
   };
+
+  // Use Foundry's SearchFilter for debounced, standardized filtering
+  const searchFilter = new foundry.applications.ux.SearchFilter({
+    inputSelector: 'input[name="q"]',
+    contentSelector: ".sta-focus-picker-list",
+    callback: (_event, query, rgx, _content) => applyFilter(query, rgx),
+  });
+  searchFilter.bind(root);
+
+  // Eligibility toggle reapplies filter with current search state
+  eligibleToggle?.addEventListener("change", () => applyFilter());
 
   const lookup = new Map();
   for (const talent of Array.isArray(talents) ? talents : []) {
@@ -352,10 +369,7 @@ export function bindTalentPickerInteractions(
     }
   });
 
-  searchInput?.addEventListener("input", applyFilter);
-  eligibleToggle?.addEventListener("change", applyFilter);
-
-  return { applyFilter };
+  return { applyFilter: () => applyFilter() };
 }
 
 // ensures the index of Talents is an array.
