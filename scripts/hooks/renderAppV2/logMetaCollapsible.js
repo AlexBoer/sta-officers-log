@@ -1,12 +1,10 @@
 import { MODULE_ID } from "../../core/constants.js";
 import { t } from "../../core/i18n.js";
-import { isPlainObject } from "../../core/utils.js";
 import {
   wasLogCreatedWithTrauma,
   setLogCreatedWithTraumaFlag,
   getLogIconPathForValue,
 } from "../../data/values.js";
-import { syncMilestoneImgFromLog } from "../../data/milestoneIcons.js";
 import { areTraumaRulesEnabled } from "../../settings/clientSettings.js";
 
 const LOG_META_TEMPLATE = `modules/${MODULE_ID}/templates/log-meta-collapsible.hbs`;
@@ -26,28 +24,6 @@ function prepareLogMetaTemplateData(logItem) {
     ? _staLogMetaDetailsOpenByLogId.get(logId) === true
     : false;
 
-  const actor = logItem?.parent ?? logItem?.actor ?? null;
-  const showMilestoneSelect = actor?.items && actor.type === "character";
-
-  let milestones = [];
-  let existingMilestoneId = "";
-
-  if (showMilestoneSelect) {
-    const existingLink = logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
-    existingMilestoneId = existingLink?.milestoneId
-      ? String(existingLink.milestoneId)
-      : "";
-
-    milestones = actor.items
-      .filter((i) => i?.type === "milestone")
-      .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")))
-      .map((ms) => ({
-        id: String(ms.id),
-        name: String(ms.name ?? "").trim() || String(ms.id),
-        selected: String(ms.id) === existingMilestoneId,
-      }));
-  }
-
   const showTraumaCheckbox = areTraumaRulesEnabled();
 
   // Read the showMilestoneArcButton flag from the log item (default false)
@@ -66,8 +42,6 @@ function prepareLogMetaTemplateData(logItem) {
 
   return {
     isOpen,
-    showMilestoneSelect,
-    milestones,
     showTraumaCheckbox,
     createdWithTrauma: showTraumaCheckbox
       ? wasLogCreatedWithTrauma(logItem)
@@ -101,50 +75,6 @@ function attachLogMetaEventListeners(details, itemSheet, logItem) {
         _staLogMetaDetailsOpenByLogId.set(logId, details.open === true);
       } catch (_) {
         // state tracking is optional
-      }
-    });
-  }
-
-  // Milestone select change handler
-  const milestoneSelect = details.querySelector(
-    'select[data-sta-callbacks-field="callbackLinkMilestoneId"]',
-  );
-  if (milestoneSelect) {
-    milestoneSelect.addEventListener("change", async (ev) => {
-      ev?.preventDefault?.();
-      ev?.stopPropagation?.();
-
-      const selectedId = String(milestoneSelect.value ?? "");
-      try {
-        const current = logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
-        const next = {
-          ...(isPlainObject(current) ? current : {}),
-        };
-
-        if (selectedId) next.milestoneId = selectedId;
-        else delete next.milestoneId;
-
-        await logItem.update(
-          { [`flags.${MODULE_ID}.callbackLink`]: next },
-          { renderSheet: false },
-        );
-
-        // If the user associates a Milestone/Arc with this log, keep the milestone icon
-        // aligned with this log's icon (value icon).
-        try {
-          if (selectedId && actor?.items) {
-            const ms = actor.items.get(String(selectedId)) ?? null;
-            if (ms?.type === "milestone") {
-              await syncMilestoneImgFromLog(ms, logItem, {
-                setSourceFlag: true,
-              });
-            }
-          }
-        } catch (_) {
-          // icon sync is cosmetic
-        }
-      } catch (_) {
-        // flag update failed, possibly permissions
       }
     });
   }
@@ -320,18 +250,7 @@ export async function installLogMetaCollapsible(root, logItem) {
   const details = temp.querySelector("details");
   if (!details) return;
 
-  // If milestone select exists in template, move it to the arc row if available
-  const milestoneWrapper = details.querySelector(
-    ".sta-milestone-select-wrapper",
-  );
-  if (milestoneWrapper) {
-    const arcRow = itemSheet.querySelector(".sta-log-arc-row");
-    if (arcRow) {
-      arcRow.insertBefore(milestoneWrapper, arcRow.firstChild);
-    }
-  }
-
-  // Attach event listeners
+  // Attach event listeners (before moving elements, so refs are valid)
   attachLogMetaEventListeners(details, itemSheet, logItem);
 
   // Insert the details element into the DOM

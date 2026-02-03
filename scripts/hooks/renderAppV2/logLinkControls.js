@@ -292,6 +292,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   const existing = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
   const existingFrom = String(existing?.fromLogId ?? "");
   const existingValue = String(existing?.valueId ?? "");
+  const existingMilestoneId = String(existing?.milestoneId ?? "");
   const isDisabled = log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true;
 
   const persistedPrimary = String(
@@ -495,6 +496,24 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     return options.join("");
   };
 
+  // Build milestone options for the milestone select
+  const buildMilestoneOptionsHtml = () => {
+    const milestones = actor.items
+      .filter((i) => i?.type === "milestone")
+      .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
+
+    const options = ['<option value="">— None —</option>'];
+    for (const ms of milestones) {
+      const msId = String(ms.id ?? "");
+      const msName = String(ms.name ?? "").trim() || msId;
+      const sel = msId === existingMilestoneId ? " selected" : "";
+      options.push(
+        `<option value="${escapeHTML(msId)}"${sel}>${escapeHTML(msName)}</option>`,
+      );
+    }
+    return options.join("");
+  };
+
   const wrapper = document.createElement("div");
   wrapper.className = "sta-log-link-controls";
   wrapper.innerHTML = `
@@ -519,6 +538,12 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       </div>
     </div>
     <div class="sta-log-link-row sta-log-arc-row">
+      <div class="column sta-milestone-select-wrapper">
+        <div class="title">Milestone</div>
+        <select data-sta-callbacks-field="callbackLinkMilestoneId" title="Associate a Milestone/Arc with this log's callbackLink metadata">
+          ${buildMilestoneOptionsHtml()}
+        </select>
+      </div>
       <div class="column sta-arc-column">
         <div class="title">Arc</div>
         <div class="sta-arc-fields">
@@ -551,6 +576,9 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   const valueSelect = wrapper.querySelector(
     'select[data-sta-callbacks-field="valueId"]',
   );
+  const milestoneSelect = wrapper.querySelector(
+    'select[data-sta-callbacks-field="callbackLinkMilestoneId"]',
+  );
   const arcToggle = wrapper.querySelector(
     'input[data-sta-callbacks-field="isArcEnd"]',
   );
@@ -565,6 +593,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   );
   if (!(fromSelect instanceof HTMLSelectElement)) return;
   if (!(valueSelect instanceof HTMLSelectElement)) return;
+  if (!(milestoneSelect instanceof HTMLSelectElement)) return;
   if (!(arcToggle instanceof HTMLInputElement)) return;
   if (!(arcStepsInput instanceof HTMLInputElement)) return;
   if (!(callbackLinkValueIdInput instanceof HTMLInputElement)) return;
@@ -787,15 +816,33 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     }
 
     // Calls-back-to link
+    // Preserve existing milestoneId when updating callbackLink
+    const existingCallbackLink =
+      log.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+    const existingMilestoneId = isPlainObject(existingCallbackLink)
+      ? existingCallbackLink.milestoneId
+      : undefined;
+
     if (!fromLogId) {
-      update[`flags.${MODULE_ID}.callbackLink`] = null;
+      // When clearing the callback link, preserve milestoneId if it exists
+      if (existingMilestoneId) {
+        update[`flags.${MODULE_ID}.callbackLink`] = {
+          milestoneId: existingMilestoneId,
+        };
+      } else {
+        update[`flags.${MODULE_ID}.callbackLink`] = null;
+      }
       update[`flags.${MODULE_ID}.callbackLinkDisabled`] = true;
     } else {
       update[`flags.${MODULE_ID}.callbackLinkDisabled`] = null;
-      update[`flags.${MODULE_ID}.callbackLink`] = {
+      const newCallbackLink = {
         fromLogId: String(fromLogId),
         valueId: String(valueId),
       };
+      if (existingMilestoneId) {
+        newCallbackLink.milestoneId = existingMilestoneId;
+      }
+      update[`flags.${MODULE_ID}.callbackLink`] = newCallbackLink;
     }
 
     // Arc info
@@ -920,6 +967,34 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     }
     syncFormFields();
     scheduleSave();
+  });
+
+  // Milestone select change handler - saves directly to the callbackLink flag
+  milestoneSelect.addEventListener("change", async (ev) => {
+    try {
+      ev?.stopPropagation?.();
+      ev?.preventDefault?.();
+    } catch (_) {
+      // ignore
+    }
+
+    const selectedMilestoneId = String(milestoneSelect.value ?? "");
+    try {
+      const current = log.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+      const next = {
+        ...(isPlainObject(current) ? current : {}),
+      };
+
+      if (selectedMilestoneId) next.milestoneId = selectedMilestoneId;
+      else delete next.milestoneId;
+
+      await log.update(
+        { [`flags.${MODULE_ID}.callbackLink`]: next },
+        { render: false, renderSheet: false },
+      );
+    } catch (_) {
+      // flag update failed, possibly permissions
+    }
   });
 
   // Ensure the fromLog options reflect the current primary value on initial render.

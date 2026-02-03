@@ -1,18 +1,6 @@
 <details class="sta-callbacks-log-meta" {{#if isOpen}}open{{/if}}>
   <summary class="sta-callbacks-log-meta-summary">Edit Log Data</summary>
 
-  {{#if showMilestoneSelect}}
-  <div class="column sta-milestone-select-wrapper">
-    <div class="title">Milestone</div>
-    <select data-sta-callbacks-field="callbackLinkMilestoneId" title="Associate a Milestone/Arc with this log's callbackLink metadata">
-      <option value="">— None —</option>
-      {{#each milestones}}
-      <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.name}}</option>
-      {{/each}}
-    </select>
-  </div>
-  {{/if}}
-
   {{#if showTraumaCheckbox}}
   <div class="row sta-log-created-with-trauma-row">
     <div class="sta-log-meta-field" title="{{traumaTooltip}}">
