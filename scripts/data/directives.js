@@ -9,7 +9,12 @@ export const DIRECTIVE_LABELS_FLAG = "directiveLabels"; // map key -> display te
 export const PRIMARY_DIRECTIVE_KEY_FLAG = "primaryDirectiveKey";
 
 export const DIRECTIVE_VALUE_ID_PREFIX = "directive:";
-export const DIRECTIVE_MAX_LEN = 100;
+export const NO_VALUE_USED_ID = "no-value-used";
+export const DIRECTIVE_MAX_LEN = 200;
+
+export function isNoValueUsedId(valueId) {
+  return String(valueId ?? "") === NO_VALUE_USED_ID;
+}
 
 export function directiveIconPath() {
   return `modules/${MODULE_ID}/assets/ValueIcons/Directive.webp`;

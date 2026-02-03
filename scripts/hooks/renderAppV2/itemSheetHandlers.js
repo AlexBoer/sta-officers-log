@@ -6,7 +6,10 @@
  */
 
 import { getActorFromAppOrItem, getItemFromApp } from "./sheetUtils.js";
-import { filterMilestoneAssociatedLogOptions } from "./milestoneLinks.js";
+import {
+  filterMilestoneAssociatedLogOptions,
+  hideAssociatedLogDropdowns,
+} from "./milestoneLinks.js";
 import { installInlineLogChainLinkControls } from "./logLinkControls.js";
 import { installLogMetaCollapsible } from "./logMetaCollapsible.js";
 import {
@@ -26,14 +29,17 @@ import {
  * @param {Application} app - The application being rendered.
  * @param {HTMLElement} root - The root element of the sheet.
  */
-export function handleItemSheetRender(app, root) {
+export async function handleItemSheetRender(app, root) {
   // Milestone/Log item sheets: enforce associations and allow manual linking.
   try {
     const item = getItemFromApp(app);
     if (item?.type === "milestone") {
       const actor = getActorFromAppOrItem(app, item);
       if (actor?.type === "character") {
+        // Keep the dropdown filtering logic (still needed for underlying functionality)
         filterMilestoneAssociatedLogOptions(root, actor, item);
+        // Hide dropdowns and show simple "From: <log name>" text instead
+        hideAssociatedLogDropdowns(root, actor, item);
       }
     } else if (item?.type === "log") {
       const actor = getActorFromAppOrItem(app, item);
@@ -42,7 +48,7 @@ export function handleItemSheetRender(app, root) {
       }
 
       // Log item sheet UX: show Name + Description first, collapse the rest.
-      installLogMetaCollapsible(root, item);
+      await installLogMetaCollapsible(root, item);
     }
   } catch (_) {
     // ignore

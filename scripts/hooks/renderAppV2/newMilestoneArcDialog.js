@@ -104,6 +104,10 @@ class NewMilestoneArcApp extends Base {
             "sta-officers-log.dialog.chooseMilestoneBenefit.changeShipStats",
           ),
         },
+        {
+          action: "customMilestone",
+          label: "Custom Milestone",
+        },
       ],
       arcButtons: [
         {
@@ -142,6 +146,10 @@ class NewMilestoneArcApp extends Base {
             "sta-officers-log.dialog.chooseMilestoneBenefit.arcAddShipTalent",
           ),
         },
+        {
+          action: "customArc",
+          label: "Custom Arc",
+        },
         // Conditionally add Remove Trauma if this arc is a trauma arc
         ...(this._traumaValueId
           ? [
@@ -173,21 +181,25 @@ class NewMilestoneArcApp extends Base {
       ? String(applied.createdItemId)
       : "";
 
+    const isCustomAction =
+      action === "customMilestone" || action === "customArc";
     const syncPolicy = action === "arcValue" ? "once" : "always";
 
-    const milestoneBenefit = {
-      action,
-      syncPolicy,
-      syncedOnce: false,
-      ...(createdItemId ? { createdItemId } : {}),
-    };
+    const milestoneBenefit = isCustomAction
+      ? null
+      : {
+          action,
+          syncPolicy,
+          syncedOnce: false,
+          ...(createdItemId ? { createdItemId } : {}),
+        };
 
     const itemData = {
       name: safeName,
       type: "milestone",
       flags: {
         [MODULE_ID]: {
-          milestoneBenefit,
+          ...(milestoneBenefit ? { milestoneBenefit } : {}),
         },
       },
       system: {
@@ -308,6 +320,25 @@ class NewMilestoneArcApp extends Base {
 
       btn.disabled = true;
       try {
+        if (action === "customMilestone" || action === "customArc") {
+          const isArc = action === "customArc" || group === "arc";
+          const applied = { applied: true, action };
+          const label = formatChosenBenefitLabel(applied);
+
+          if (this._onApplied) {
+            await this._onApplied({ applied, label, isArc, group });
+          } else {
+            await this._createStandaloneMilestone({
+              name: label || (isArc ? "Custom Arc" : "Custom Milestone"),
+              applied,
+              isArc,
+            });
+          }
+
+          await this.close();
+          return;
+        }
+
         const applied =
           group === "arc"
             ? await applyArcMilestoneBenefit(this._actor, {

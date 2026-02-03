@@ -1,6 +1,8 @@
 import { MODULE_ID } from "../../core/constants.js";
 import { findFatiguedTrait } from "../stressHook.js";
 
+const cleanedUpFatigueActors = new Set();
+
 /**
  * Mark fatigued attribute checkbox as disabled on the character sheet.
  * Only if a fatigued trait actually exists (not just orphaned flags).
@@ -14,11 +16,17 @@ export function installFatiguedAttributeDisplay(root, actor) {
 
   // Clean up orphaned flags if no trait exists but flags are set
   if (!fatiguedTrait && fatiguedAttribute) {
-    console.log(
-      `${MODULE_ID} | Cleaning up orphaned fatigue flags for ${actor.name}`,
-    );
-    void actor.unsetFlag?.(MODULE_ID, "fatiguedAttribute");
-    void actor.unsetFlag?.(MODULE_ID, "fatiguedTraitUuid");
+    const actorKey = actor?.id ?? actor?.uuid ?? actor?.name;
+    if (!cleanedUpFatigueActors.has(actorKey)) {
+      cleanedUpFatigueActors.add(actorKey);
+      console.log(
+        `${MODULE_ID} | Cleaning up orphaned fatigue flags for ${actor.name}`,
+      );
+      void actor.unsetFlag?.(MODULE_ID, "fatiguedAttribute");
+      void actor.unsetFlag?.(MODULE_ID, "fatiguedTraitUuid");
+      // Allow future cleanups after the async updates settle
+      setTimeout(() => cleanedUpFatigueActors.delete(actorKey), 2000);
+    }
   }
 
   if (fatiguedTrait && fatiguedAttribute) {

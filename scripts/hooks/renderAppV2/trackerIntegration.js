@@ -1,12 +1,31 @@
 import { MODULE_ID } from "../../core/constants.js";
 import { t } from "../../core/i18n.js";
 import {
+  DIRECTIVE_MAX_LEN,
   getMissionDirectives,
   setMissionDirectives,
 } from "../../data/directives.js";
+import { setupMissionLogContextMenu } from "./contextMenu.js";
 
 const TRACKER_BUTTONS_TEMPLATE = `modules/${MODULE_ID}/templates/tracker-buttons.hbs`;
 const TRACKER_DIRECTIVES_TEMPLATE = `modules/${MODULE_ID}/templates/tracker-directives.hbs`;
+const TRACKER_MOMENTUM_INFO_TEMPLATE = `modules/${MODULE_ID}/templates/tracker-momentum-info.hbs`;
+const TRACKER_THREAT_INFO_TEMPLATE = `modules/${MODULE_ID}/templates/tracker-threat-info.hbs`;
+
+const TRACKER_INFO_CONFIG = [
+  {
+    label: "Momentum",
+    key: "momentum",
+    title: "Momentum",
+    template: TRACKER_MOMENTUM_INFO_TEMPLATE,
+  },
+  {
+    label: "Threat",
+    key: "threat",
+    title: "Threat",
+    template: TRACKER_THREAT_INFO_TEMPLATE,
+  },
+];
 
 /**
  * Install Officers Log buttons in the STA Tracker panel.
@@ -68,9 +87,12 @@ export async function installOfficersLogButtonsInStaTracker(app, root) {
     }
 
     // Render buttons from template
-    const buttonsHtml = await renderTemplate(TRACKER_BUTTONS_TEMPLATE, {
-      moduleId: MODULE_ID,
-    });
+    const buttonsHtml = await foundry.applications.handlebars.renderTemplate(
+      TRACKER_BUTTONS_TEMPLATE,
+      {
+        moduleId: MODULE_ID,
+      },
+    );
     columns.insertAdjacentHTML("beforeend", buttonsHtml);
 
     // Attach event listeners to the rendered buttons
@@ -138,12 +160,15 @@ export async function installMissionDirectivesInStaTracker(root) {
     const heightBefore = trackerContainer.offsetHeight;
 
     // Render the directives section from template
-    const html = await renderTemplate(TRACKER_DIRECTIVES_TEMPLATE, {
-      isGM: game.user?.isGM ?? false,
-      directives,
-      hasDirectives: directives.length > 0,
-      directivesText: directives.join("\n"),
-    });
+    const html = await foundry.applications.handlebars.renderTemplate(
+      TRACKER_DIRECTIVES_TEMPLATE,
+      {
+        isGM: game.user?.isGM ?? false,
+        directives,
+        hasDirectives: directives.length > 0,
+        directivesText: directives.join("\n"),
+      },
+    );
 
     // Parse the HTML and append to get a direct reference to the section
     const temp = document.createElement("div");
@@ -155,15 +180,53 @@ export async function installMissionDirectivesInStaTracker(root) {
     // Attach event listeners
     const editButton = section.querySelector('[data-action="toggleEdit"]');
     const saveButton = section.querySelector('[data-action="saveDirectives"]');
+    const textarea = section.querySelector(".sta-tracker-directives-textarea");
 
     editButton?.addEventListener("click", () => {
       toggleDirectivesEditMode(section, trackerContainer, root);
     });
 
+    // Prevent input that would exceed the max character limit per line.
+    textarea?.addEventListener("keydown", (event) => {
+      // Always allow: Enter, Backspace, Delete, arrow keys, and modifier combos.
+      if (
+        event.key === "Enter" ||
+        event.key === "Backspace" ||
+        event.key === "Delete" ||
+        event.key.startsWith("Arrow") ||
+        event.ctrlKey ||
+        event.metaKey
+      ) {
+        return;
+      }
+
+      // For printable characters, check if the current line would exceed the limit.
+      if (event.key.length === 1) {
+        const lines = textarea.value.split("\n");
+        const cursorPos = textarea.selectionStart;
+
+        // Find which line the cursor is on.
+        let charCount = 0;
+        let currentLineIndex = 0;
+        for (let i = 0; i < lines.length; i++) {
+          const lineEnd = charCount + lines[i].length;
+          if (cursorPos <= lineEnd) {
+            currentLineIndex = i;
+            break;
+          }
+          charCount += lines[i].length + 1; // +1 for newline
+        }
+
+        const currentLine = lines[currentLineIndex] || "";
+
+        // Block input if this line is already at the max length.
+        if (currentLine.length >= DIRECTIVE_MAX_LEN) {
+          event.preventDefault();
+        }
+      }
+    });
+
     saveButton?.addEventListener("click", async () => {
-      const textarea = section.querySelector(
-        ".sta-tracker-directives-textarea",
-      );
       if (!textarea) return;
 
       const newDirectives = textarea.value
@@ -178,25 +241,134 @@ export async function installMissionDirectivesInStaTracker(root) {
     // After adding the section, use negative margin-top to shift the tracker up.
     // The STA system continuously resets the inline `top` style, but margin-top
     // via CSS should persist and effectively move the tracker upward.
+    // We use multiple animation frames to account for text wrapping and layout shifts.
     requestAnimationFrame(() => {
-      try {
-        const heightAfter = trackerContainer.offsetHeight;
-        const heightDiff = heightAfter - heightBefore;
+      requestAnimationFrame(() => {
+        try {
+          const sectionHeight = section?.offsetHeight ?? 0;
 
-        if (heightDiff > 0) {
-          // Apply negative margin to the outermost app element to shift it up.
-          // This works even when the STA system resets the `top` style.
-          const appElement = root.closest?.("[id^='app-']") ?? root;
-          if (appElement instanceof HTMLElement) {
-            appElement.style.marginTop = `-${heightDiff}px`;
+          if (sectionHeight > 0) {
+            // Apply negative margin to the outermost app element to shift it up.
+            // This works even when the STA system resets the `top` style.
+            const appElement = root.closest?.("[id^='app-']") ?? root;
+            if (appElement instanceof HTMLElement) {
+              appElement.style.marginTop = `-${sectionHeight}px`;
+            }
           }
+        } catch (_) {
+          // margin tweak is cosmetic
         }
-      } catch (_) {
-        // margin tweak is cosmetic
-      }
+      });
     });
   } catch (_) {
     // directives section is optional
+  }
+}
+
+/**
+ * Install info buttons next to Momentum and Threat labels in the STA Tracker.
+ *
+ * @param {HTMLElement} root - The root element to search for the tracker container.
+ */
+export function installTrackerInfoButtonsInStaTracker(root) {
+  try {
+    if (!(root instanceof HTMLElement)) return;
+
+    const trackerContainer =
+      root.querySelector?.(".tracker-container[data-application-part]") ??
+      root.querySelector?.(".tracker-container") ??
+      null;
+    if (!trackerContainer) return;
+
+    for (const config of TRACKER_INFO_CONFIG) {
+      const parents = findTrackerLabelParents(trackerContainer, config.label);
+      for (const parent of parents) {
+        if (!parent || !(parent instanceof HTMLElement)) continue;
+
+        if (
+          parent.querySelector?.(
+            `.sta-officers-log-info-btn[data-info="${config.key}"]`,
+          )
+        ) {
+          continue;
+        }
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "sta-officers-log-info-btn";
+        button.dataset.info = config.key;
+        button.title = `${config.title} info`;
+        button.setAttribute("aria-label", `${config.title} info`);
+        button.innerHTML = '<i class="fas fa-info-circle"></i>';
+
+        button.addEventListener("click", async (event) => {
+          try {
+            event?.preventDefault?.();
+            event?.stopPropagation?.();
+          } catch (_) {
+            // ignore synthetic event
+          }
+
+          try {
+            const content = config.template
+              ? await foundry.applications.handlebars.renderTemplate(
+                  config.template,
+                  {},
+                )
+              : config.body;
+
+            await foundry.applications.api.DialogV2.wait({
+              window: { title: config.title },
+              content: content ?? "",
+              render: (_event, dialog) => {
+                try {
+                  const html = dialog?.element;
+                  if (!(html instanceof HTMLElement)) return;
+
+                  setupMissionLogContextMenu({
+                    container: html,
+                    selector: ".row",
+                    label: "Send to Chat",
+                    onSelect: async (row) => {
+                      const chatContent = buildCheatsheetRowChatContent(
+                        row,
+                        config.title,
+                      );
+                      if (!chatContent) return;
+
+                      await ChatMessage.create({
+                        content: chatContent,
+                        speaker: ChatMessage.getSpeaker(),
+                      });
+                    },
+                  });
+                } catch (err) {
+                  console.error(
+                    `${MODULE_ID} | tracker info context menu failed`,
+                    err,
+                  );
+                }
+              },
+              buttons: [
+                {
+                  action: "ok",
+                  label: "OK",
+                  default: true,
+                },
+              ],
+              rejectClose: false,
+              modal: false,
+            });
+          } catch (err) {
+            console.error(`${MODULE_ID} | tracker info dialog failed`, err);
+          }
+        });
+
+        parent.appendChild(button);
+      }
+    }
+  } catch (_) {
+    // info buttons are optional
   }
 }
 
@@ -239,27 +411,102 @@ function toggleDirectivesEditMode(section, trackerContainer, root) {
 
   // Recalculate margin-top after switching modes, since the edit mode
   // (especially with 0 directives) can be significantly taller than display mode.
+  // Use multiple animation frames to ensure layout has settled.
   requestAnimationFrame(() => {
-    try {
-      const appElement = root.closest?.("[id^='app-']") ?? root;
-      if (!(appElement instanceof HTMLElement)) return;
-      if (!(trackerContainer instanceof HTMLElement)) return;
+    requestAnimationFrame(() => {
+      try {
+        const appElement = root.closest?.("[id^='app-']") ?? root;
+        if (!(appElement instanceof HTMLElement)) return;
 
-      // Temporarily remove margin-top to measure the "base" height
-      // (i.e., the tracker without our margin adjustment).
-      const previousMargin = appElement.style.marginTop || "";
-      appElement.style.marginTop = "";
+        const sectionHeight = section?.offsetHeight ?? 0;
 
-      // The directives section is now rendered; measure its contribution.
-      const sectionHeight = section?.offsetHeight ?? 0;
-
-      if (sectionHeight > 0) {
-        appElement.style.marginTop = `-${sectionHeight}px`;
-      } else {
-        appElement.style.marginTop = previousMargin;
+        if (sectionHeight > 0) {
+          appElement.style.marginTop = `-${sectionHeight}px`;
+        } else {
+          appElement.style.marginTop = "";
+        }
+      } catch (_) {
+        // ignore
       }
-    } catch (_) {
-      // ignore
-    }
+    });
   });
+}
+
+/**
+ * Find parent elements that contain a text node matching the target label.
+ *
+ * @param {HTMLElement} root - Root element to search within.
+ * @param {string} label - Exact label to match.
+ * @returns {HTMLElement[]} Parent elements containing matching text nodes.
+ */
+function findTrackerLabelParents(root, label) {
+  const matches = new Set();
+  const target = String(label ?? "")
+    .trim()
+    .toLowerCase();
+  if (!target) return [];
+
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => {
+      const text = String(node?.textContent ?? "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+      return text === target
+        ? NodeFilter.FILTER_ACCEPT
+        : NodeFilter.FILTER_SKIP;
+    },
+  });
+
+  let current = walker.nextNode();
+  while (current) {
+    const parent = current.parentElement;
+    if (parent) matches.add(parent);
+    current = walker.nextNode();
+  }
+
+  return Array.from(matches);
+}
+
+/**
+ * Build chat HTML for a cheatsheet row.
+ *
+ * @param {HTMLElement} row - Row element containing a cheatsheet entry.
+ * @param {string} dialogTitle - The dialog title (Momentum/Threat).
+ * @returns {string|null} HTML string or null if row is not a cheatsheet entry.
+ */
+function buildCheatsheetRowChatContent(row, dialogTitle) {
+  if (!(row instanceof HTMLElement)) return null;
+
+  const titleEl = row.querySelector(".tracktitle");
+  if (!titleEl) return null;
+
+  const titleText = String(titleEl.textContent ?? "").trim();
+  if (!titleText) return null;
+
+  const valueEl = row.querySelector(".column.value");
+  const valueText = String(valueEl?.textContent ?? "").trim();
+  const tooltipText = String(titleEl.getAttribute("title") ?? "").trim();
+
+  const escape = foundry.utils?.escapeHTML ?? ((s) => s);
+  const safeTitle = escape(titleText);
+  const safeValue = valueText ? escape(valueText) : "";
+  const safeTooltip = tooltipText ? escape(tooltipText) : "";
+  const safeDialogTitle = dialogTitle ? escape(dialogTitle) : "";
+
+  const valueSuffix = safeValue ? ` — ${safeValue}` : "";
+  const tooltipHtml = safeTooltip
+    ? `<div class="hint">${safeTooltip}</div>`
+    : "";
+  const headerHtml = safeDialogTitle
+    ? `<div class="sta-cheatsheet-chat-title">${safeDialogTitle}</div>`
+    : "";
+
+  return `
+    <div class="sta-cheatsheet-chat">
+      ${headerHtml}
+      <div><strong>${safeTitle}</strong>${valueSuffix}</div>
+      ${tooltipHtml}
+    </div>
+  `;
 }

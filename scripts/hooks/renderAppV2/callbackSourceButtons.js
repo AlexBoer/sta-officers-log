@@ -6,6 +6,7 @@ import {
   isLogUsed,
   setCurrentMissionLogForActor,
 } from "../../data/mission.js";
+import { getMilestoneChildLogIds } from "../../data/logMetadata.js";
 import { getCreatedKey, compareKeys } from "./sortingUtils.js";
 import { rerenderOpenStaSheetsForActorId as refreshOpenSheet } from "./sheetUtils.js";
 import {
@@ -372,6 +373,145 @@ export function installCallbackSourceButtons(root, actor) {
       });
 
       toggleAnchor.appendChild(btn);
+    }
+  } catch (_) {
+    // ignore
+  }
+}
+
+/**
+ * Install "Show Associated Logs" buttons on milestone rows in the character sheet.
+ * When clicked, it highlights the logs that are children of that milestone.
+ */
+export function installMilestoneHighlightButtons(root, actor) {
+  try {
+    if (!(root instanceof HTMLElement)) return;
+    if (!actor?.items) return;
+
+    const milestoneRows = root.querySelectorAll(
+      'div.section.milestones li.row.entry[data-item-type="milestone"]',
+    );
+
+    const escapeItemIdForSelector = (value) => {
+      const raw = String(value ?? "").trim();
+      if (!raw) return "";
+      if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+        return CSS.escape(raw);
+      }
+      return raw.replace(/"/g, '\\"');
+    };
+
+    const findLogRowById = (logId) => {
+      const normalized = escapeItemIdForSelector(logId);
+      if (!normalized) return null;
+      const selector =
+        'div.section.milestones li.row.entry[data-item-type="log"][data-item-id="' +
+        normalized +
+        '"]';
+      const rowEl = root.querySelector(selector);
+      return rowEl instanceof HTMLElement ? rowEl : null;
+    };
+
+    const flashRow = (rowEl) => {
+      if (!(rowEl instanceof HTMLElement)) return;
+      try {
+        rowEl.classList.remove("sta-callbacks-source-flash");
+        // Force a reflow so the animation can restart.
+        void rowEl.offsetWidth;
+        rowEl.classList.add("sta-callbacks-source-flash");
+        setTimeout(() => {
+          try {
+            rowEl.classList.remove("sta-callbacks-source-flash");
+          } catch (_) {
+            // ignore
+          }
+        }, 1100);
+      } catch (_) {
+        // ignore
+      }
+    };
+
+    for (const row of Array.from(milestoneRows)) {
+      if (!(row instanceof HTMLElement)) continue;
+
+      const milestoneId = row?.dataset?.itemId
+        ? String(row.dataset.itemId)
+        : "";
+      if (!milestoneId) continue;
+
+      const milestone = actor.items.get(milestoneId);
+      if (!milestone || milestone.type !== "milestone") continue;
+
+      // Get associated log IDs
+      const childLogIds = getMilestoneChildLogIds(milestone);
+
+      // Avoid duplicates
+      if (row.querySelector(".sta-show-milestone-logs-btn")) continue;
+
+      // Find the control div to insert before it
+      const controlDiv = row.querySelector(".control");
+      if (!(controlDiv instanceof HTMLElement)) continue;
+
+      const btn = document.createElement("a");
+      btn.className = "sta-show-milestone-logs-btn";
+      btn.title = childLogIds.length
+        ? "Show Associated Logs"
+        : "No associated logs to highlight";
+      btn.setAttribute(
+        "aria-label",
+        childLogIds.length
+          ? "Show Associated Logs"
+          : "No associated logs to highlight",
+      );
+      btn.style.paddingRight = "7px";
+      btn.style.marginLeft = "-7px";
+      btn.innerHTML = '<i class="fa-solid fa-diagram-project"></i>';
+
+      if (!childLogIds.length) {
+        btn.classList.add("is-disabled");
+        btn.setAttribute("aria-disabled", "true");
+      }
+
+      btn.addEventListener("click", (ev) => {
+        try {
+          ev.preventDefault();
+          ev.stopPropagation();
+          ev.stopImmediatePropagation?.();
+        } catch (_) {
+          // ignore
+        }
+
+        if (btn.classList.contains("is-disabled")) return;
+
+        let foundAny = false;
+        let firstRow = null;
+
+        for (const logId of childLogIds) {
+          const logRow = findLogRowById(logId);
+          if (logRow) {
+            foundAny = true;
+            if (!firstRow) firstRow = logRow;
+            flashRow(logRow);
+          }
+        }
+
+        if (!foundAny) {
+          ui.notifications?.warn?.("Associated logs not found on this sheet.");
+          return;
+        }
+
+        // Scroll to the first associated log
+        if (firstRow) {
+          try {
+            firstRow.scrollIntoView({ behavior: "smooth", block: "center" });
+          } catch (_) {
+            // ignore
+          }
+        }
+      });
+
+      // Insert before the control div
+      row.insertBefore(btn, controlDiv);
     }
   } catch (_) {
     // ignore

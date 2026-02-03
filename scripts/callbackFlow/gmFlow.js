@@ -421,6 +421,11 @@ async function applyCallbackUpdates(
       }),
     );
 
+    // Also set the showMilestoneArcButton flag so the checkbox reflects the pending state
+    currentLogUpdates.push(
+      currentLog.setFlag(MODULE_ID, "showMilestoneArcButton", true),
+    );
+
     // Update image if needed
     if (valueImg) {
       currentLogUpdates.push(currentLog.update({ img: valueImg }));

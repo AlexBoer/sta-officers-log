@@ -39,13 +39,14 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
 
     const itemId = entry?.dataset?.itemId;
     const logItem = itemId ? actor.items.get(itemId) : null;
+
     if (!logItem) continue;
 
+    // Check for pending milestone data (used for arc detection and benefit tracking)
     const pendingMilestone = logItem.getFlag?.(
       MODULE_ID,
       "pendingMilestoneBenefit",
     );
-    if (!pendingMilestone) continue;
 
     const pendingObj = isPlainObject(pendingMilestone)
       ? pendingMilestone
@@ -54,11 +55,21 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
     const arcForLabel = pendingObj?.arc ?? arcFromLogForLabel ?? null;
     const isArcBenefit = arcForLabel?.isArc === true;
 
-    // Hide the button only after a benefit has been chosen.
+    // Check if benefit has already been chosen
     const benefitChosen = isPlainObject(pendingMilestone)
       ? pendingMilestone.benefitChosen === true
       : false;
-    if (benefitChosen) continue;
+
+    // Check manual override checkbox (default false)
+    // The checkbox is the master control for button visibility
+    let showMilestoneArcButton = false;
+    try {
+      const flag = logItem.getFlag?.(MODULE_ID, "showMilestoneArcButton");
+      if (typeof flag === "boolean") showMilestoneArcButton = flag;
+    } catch (_) {}
+
+    // Only show button if the checkbox is checked
+    if (!showMilestoneArcButton) continue;
 
     const toggleEl = entry.querySelector("a.value-used.control.toggle");
     if (!toggleEl) continue;
@@ -318,6 +329,13 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
             milestoneId: milestone.id,
             benefitChosen: true,
           });
+
+          // Auto-uncheck the showMilestoneArcButton flag after benefit is chosen
+          try {
+            await logItem.setFlag(MODULE_ID, "showMilestoneArcButton", false);
+          } catch (_) {
+            // ignore
+          }
 
           try {
             const currentLink =

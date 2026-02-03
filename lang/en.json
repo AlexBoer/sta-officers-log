@@ -16,6 +16,10 @@
         "name": "Hide Challenged Value Toggle",
         "hint": "Hides the 'Chal?' toggle on values until the user challenges the value via the \"Use Value\" button."
       },
+      "showInfoButtons": {
+        "name": "Show Info Buttons",
+        "hint": "Show info buttons next to Stress Track, Determination, and Values headers that display quick reference popups."
+      },
       "groupShip": {
         "name": "Group Ship",
         "hint": "Choose a Starship actor to be treated as the party's Group Ship (stored for later automation).",
@@ -75,7 +79,8 @@
       "editDirectives": "Edit Directives",
       "cancelEdit": "Cancel Edit",
       "save": "Save",
-      "directivesPlaceholder": "Enter one directive per line..."
+      "directivesPlaceholder": "Enter one directive per line...",
+      "directivesCharLimit": "Each directive has a 200 character limit."
     },
     "traits": {
       "scarLabel": "Scar",
@@ -116,6 +121,86 @@
       "pendingShipBenefitsAppliedSystemSwap": "Applied ship system swap: {from} → {to} for {character}.",
       "pendingShipBenefitsAppliedDepartmentSwap": "Applied ship department swap: {from} → {to} for {character}."
     },
+    "stress": {
+      "infoTooltip": "Stress Recovery Info",
+      "recoveryTitle": "Stress Recovery",
+      "breatherTitle": "Breather:",
+      "breatherDesc": "Rest for a few minutes. Recover 4 stress.",
+      "breakTitle": "Break:",
+      "breakDesc": "Rest for 30 minutes to a couple hours. Recover 8 Stress.",
+      "sleepTitle": "Sleep:",
+      "sleepDesc": "A full night's rest or similar amount of time. Recover all stress.",
+      "ok": "OK"
+    },
+    "determination": {
+      "infoTooltip": "Determination Info",
+      "infoTitle": "Determination",
+      "gainSpend": "Gain or Spend Determination by using values.",
+      "spendCrit": "Spend determination before rolling for a guaranteed crit.",
+      "spendReroll": "Spend determination after rolling to reroll any failed dice.",
+      "ok": "OK"
+    },
+    "valuesInfo": {
+      "infoTooltip": "Values Info",
+      "infoTitle": "Values",
+      "intro": "Use Values to gain or spend determination:",
+      "positiveTitle": "Positive use:",
+      "positiveDesc": "Spend determination when your value is motivating you.",
+      "negativeTitle": "Negative use:",
+      "negativeDesc": "Gain determination when your value causes a complication.",
+      "challengedTitle": "Challenged use:",
+      "challengedDesc": "Gain determination when you act against your values and change them.",
+      "ok": "OK"
+    },
+    "talentsInfo": {
+      "infoTooltip": "Talents Info",
+      "infoTitle": "Talents",
+      "desc": "Talents give you special abilities that let you do things outside the normal rules.",
+      "ok": "OK"
+    },
+    "focusesInfo": {
+      "infoTooltip": "Focuses Info",
+      "infoTitle": "Focuses",
+      "desc": "If a focus applies, dice will crit when they are equal to or less than your discipline used in the task.",
+      "ok": "OK"
+    },
+    "traitsInfo": {
+      "infoTooltip": "Traits Info",
+      "infoTitle": "Traits",
+      "intro": "If a trait is both TRUE and IMPORTANT, it can:",
+      "possible": "Make something possible",
+      "easier": "Make something easier",
+      "harder": "Make something harder",
+      "impossible": "Make something impossible",
+      "ok": "OK"
+    },
+    "injuriesInfo": {
+      "infoTooltip": "Injuries Info",
+      "infoTitle": "Injuries",
+      "desc": "Injuries are negative traits. Removing them requires a task roll with a difficulty equal to the severity of the attack that caused them.",
+      "ok": "OK"
+    },
+    "logsInfo": {
+      "infoTooltip": "Character Logs Info",
+      "infoTitle": "Character Logs",
+      "desc1": "Character logs track your journey.",
+      "desc2": "Logs track which values you used in a mission.",
+      "desc3": "String together multiple missions using the same value by making a callback during play to earn milestone advancements.",
+      "ok": "OK"
+    },
+    "milestonesInfo": {
+      "infoTooltip": "Milestones Info",
+      "infoTitle": "Milestones",
+      "desc1": "Milestones are improvements to your character.",
+      "desc2": "Earn them by making a callback to another mission using the same value as the current task roll.",
+      "ok": "OK"
+    },
+    "directiveInfo": {
+      "infoTooltip": "Directives Info",
+      "infoTitle": "Directives",
+      "desc": "Directives are group values, and can be used in all the same ways as a value. Ask the GM what your Mission Directives are.",
+      "ok": "OK"
+    },
     "values": {
       "useValue": "Use Value",
       "useValueTooltip": "Use this Value.",
@@ -137,7 +222,9 @@
     "logSheet": {
       "arcComplete": "Arc Complete",
       "createdWithTraumaLabel": "Created With Trauma",
-      "createdWithTraumaTooltip": "If checked, this log's icon will use the Trauma prefix (T#) instead of the Value prefix (V#) when values are relabeled."
+      "createdWithTraumaTooltip": "If checked, this log's icon will use the Trauma prefix (T#) instead of the Value prefix (V#) when values are relabeled.",
+      "noValueUsed": "No Value Used",
+      "noValueUsedGroupTitle": "Logs with no value used"
     },
     "logs": {
       "currentMissionIndicator": "Current mission log",

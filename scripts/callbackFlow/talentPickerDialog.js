@@ -106,7 +106,17 @@ export async function loadTalentPickerTalents(options = {}) {
 
 // Just a wrapper around _deriveTalentCategoryFromImg for talent entries.
 function _deriveCategoryFromEntry(entry) {
-  return _deriveTalentCategoryFromImg(entry?.img, entry?.name);
+  const talenttype = entry?.talenttype ?? null;
+  const type = normalizeRequirementString(talenttype?.typeenum);
+  if (type === "species") {
+    const rawLabel = String(talenttype?.description ?? "").trim();
+    const label = rawLabel || "Species";
+    const key = `species:${normalizeRequirementString(rawLabel) || "species"}`;
+    return { key, label, img: null, isSpeciesGroup: true };
+  }
+
+  const cat = _deriveTalentCategoryFromImg(entry?.img, entry?.name);
+  return { ...cat, isSpeciesGroup: cat.key === "species" };
 }
 
 export function prepareTalentPickerContext(
@@ -116,6 +126,7 @@ export function prepareTalentPickerContext(
 ) {
   const showCustomButton = options.showCustomButton !== false;
   const groupsMap = new Map();
+  const speciesImgCounts = new Map();
   for (const talent of Array.isArray(talents) ? talents : []) {
     const cat = _deriveCategoryFromEntry(talent);
     const requirementLabel = formatTalentRequirementLabel(talent?.talenttype);
@@ -134,10 +145,22 @@ export function prepareTalentPickerContext(
         key: cat.key,
         label: cat.label,
         img: cat.img,
+        isSpeciesGroup: Boolean(cat.isSpeciesGroup),
         items: [],
       });
     }
     groupsMap.get(cat.key).items.push(entry);
+
+    if (cat.isSpeciesGroup) {
+      const img = String(entry.img ?? "").trim();
+      if (img) {
+        if (!speciesImgCounts.has(cat.key)) {
+          speciesImgCounts.set(cat.key, new Map());
+        }
+        const counts = speciesImgCounts.get(cat.key);
+        counts.set(img, (counts.get(img) ?? 0) + 1);
+      }
+    }
   }
 
   const ROLE_GROUP_KEY = "role";
@@ -149,7 +172,7 @@ export function prepareTalentPickerContext(
     items: [],
   };
   for (const [key, group] of Array.from(groupsMap.entries())) {
-    if (key === "species" || key === ROLE_GROUP_KEY) continue;
+    if (group.isSpeciesGroup || key === ROLE_GROUP_KEY) continue;
     const label = String(group.label ?? "").toLowerCase();
     if (label.includes("role") || key.includes("role")) {
       roleGroup.items.push(...group.items);
@@ -172,11 +195,32 @@ export function prepareTalentPickerContext(
   }
   miscGroup.label = MISC_GROUP_LABEL;
   for (const [key, group] of Array.from(groupsMap.entries())) {
-    if (key === "species" || key === ROLE_GROUP_KEY || key === MISC_GROUP_KEY)
+    if (
+      group.isSpeciesGroup ||
+      key === ROLE_GROUP_KEY ||
+      key === MISC_GROUP_KEY
+    )
       continue;
     if ((group.items?.length ?? 0) < 3) {
       miscGroup.items.push(...group.items);
       groupsMap.delete(key);
+    }
+  }
+
+  for (const [key, group] of Array.from(groupsMap.entries())) {
+    if (!group.isSpeciesGroup) continue;
+    const counts = speciesImgCounts.get(key);
+    if (!counts || counts.size === 0) continue;
+    let bestImg = null;
+    let bestCount = 0;
+    for (const [img, count] of counts.entries()) {
+      if (count > bestCount) {
+        bestImg = img;
+        bestCount = count;
+      }
+    }
+    if (bestImg) {
+      group.img = bestImg;
     }
   }
 
@@ -185,11 +229,7 @@ export function prepareTalentPickerContext(
     group.items.sort((a, b) => String(a.name).localeCompare(String(b.name)));
   }
 
-  groups.sort((a, b) => {
-    if (a.key === "species" && b.key !== "species") return -1;
-    if (b.key === "species" && a.key !== "species") return 1;
-    return String(a.label).localeCompare(String(b.label));
-  });
+  groups.sort((a, b) => String(a.label).localeCompare(String(b.label)));
 
   return {
     searchLabel: t("sta-officers-log.dialog.talentPicker.search") ?? "Search",

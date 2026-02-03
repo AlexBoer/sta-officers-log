@@ -3,6 +3,8 @@ import {
   getCompletedArcEndLogIds,
   getPrimaryValueIdForLog,
 } from "../../data/logMetadata.js";
+import { NO_VALUE_USED_ID, isNoValueUsedId } from "../../data/directives.js";
+import { t } from "../../core/i18n.js";
 import { openNewMilestoneArcDialog } from "./newMilestoneArcDialog.js";
 
 export { getCompletedArcEndLogIds, getPrimaryValueIdForLog };
@@ -442,6 +444,21 @@ export function applyMissionLogSorting(root, actor, mode) {
   let arcWrapGroups = null;
 
   const getCreatedTimeKey = (item) => {
+    // Check for custom date first (stored as YYYY-MM-DD string in flags)
+    try {
+      const customDate = item?.flags?.[MODULE_ID]?.customDate;
+      if (customDate && typeof customDate === "string") {
+        // Parse YYYY-MM-DD to timestamp (midnight UTC)
+        const parsed = Date.parse(customDate + "T00:00:00Z");
+        if (Number.isFinite(parsed)) {
+          return parsed;
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+
+    // Fall back to actual creation time
     // Prefer the live document stats, but fall back to _source for safety.
     // (Some document instances may not expose _stats directly.)
     const direct = item?._stats?.createdTime;
@@ -1019,6 +1036,102 @@ export function applyMissionLogSorting(root, actor, mode) {
         // The title row is always visible and acts as the control.
 
         applyCollapsedState(wrapper, arcId);
+      }
+
+      // ----- "No Value Used" grouping -----
+      // Group logs with "No Value Used" primary value if there are 2 or more.
+      try {
+        const noValueValueItems = actor.items.filter(
+          (i) => i?.type === "value",
+        );
+        const noValueLogIds = [];
+        for (const log of logItems) {
+          const primaryId = getPrimaryValueIdForLog(
+            actor,
+            log,
+            noValueValueItems,
+          );
+          if (isNoValueUsedId(primaryId)) {
+            noValueLogIds.push(String(log.id));
+          }
+        }
+
+        if (noValueLogIds.length >= 2) {
+          const noValueGroupId = NO_VALUE_USED_ID;
+          const noValueLabel = t(
+            "sta-officers-log.logSheet.noValueUsedGroupTitle",
+          );
+
+          // Create the wrapper - we'll insert it at the end of the logs section.
+          const onNoValueToggle = (ev) => {
+            ev?.preventDefault?.();
+            ev?.stopPropagation?.();
+            const next = !_isArcCollapsed(actorId, noValueGroupId);
+            _setArcCollapsed(actorId, noValueGroupId, next);
+            applyCollapsedState(noValueWrapper, noValueGroupId);
+          };
+
+          const noValueWrapper = document.createElement("div");
+          noValueWrapper.className =
+            "sta-callbacks-arc-group sta-no-value-group";
+          noValueWrapper.dataset.staArcId = noValueGroupId;
+          noValueWrapper.dataset.staArcLabel = noValueLabel;
+
+          // Insert at the end of logs (before milestones if present).
+          if (insertBeforeEl) {
+            insertionParent.insertBefore(noValueWrapper, insertBeforeEl);
+          } else {
+            insertionParent.appendChild(noValueWrapper);
+          }
+
+          const noValueTitleRow = document.createElement("div");
+          noValueTitleRow.className =
+            "sta-callbacks-arc-title sta-no-value-title";
+          noValueTitleRow.dataset.staArcId = noValueGroupId;
+          noValueTitleRow.dataset.staArcLabel = noValueLabel;
+          noValueWrapper.appendChild(noValueTitleRow);
+
+          noValueTitleRow.addEventListener("click", onNoValueToggle);
+          noValueTitleRow.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter" || ev.key === " ") onNoValueToggle(ev);
+          });
+          noValueTitleRow.setAttribute("role", "button");
+          noValueTitleRow.tabIndex = 0;
+
+          const noValueTitleBtn = document.createElement("span");
+          noValueTitleBtn.className = "sta-arc-collapse-btn";
+          noValueTitleBtn.title = `${noValueLabel} (collapse/expand)`;
+          noValueTitleBtn.setAttribute("aria-label", noValueTitleBtn.title);
+          noValueTitleBtn.setAttribute("role", "button");
+          noValueTitleBtn.tabIndex = 0;
+
+          const noValueIcon = document.createElement("i");
+          noValueIcon.className = "fa-solid fa-chevron-down";
+          noValueTitleBtn.appendChild(noValueIcon);
+
+          const noValueLabelEl = document.createElement("span");
+          noValueLabelEl.className = "sta-arc-collapse-label";
+          noValueLabelEl.textContent = noValueLabel;
+          noValueTitleBtn.appendChild(noValueLabelEl);
+
+          noValueTitleBtn.addEventListener("click", onNoValueToggle);
+          noValueTitleBtn.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter" || ev.key === " ") onNoValueToggle(ev);
+          });
+          noValueTitleRow.appendChild(noValueTitleBtn);
+
+          // Move all "No Value Used" logs into the wrapper.
+          for (const id of noValueLogIds) {
+            const el = byElId.get(String(id));
+            if (!el) continue;
+            el.dataset.staCallbacksArcId = noValueGroupId;
+            noValueWrapper.appendChild(el);
+          }
+
+          applyCollapsedState(noValueWrapper, noValueGroupId);
+        }
+      } catch (_) {
+        // "No Value Used" grouping is cosmetic; continue without it
       }
     } catch (_) {
       // arc grouping is cosmetic; continue without it

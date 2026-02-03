@@ -346,11 +346,56 @@
     width: 1.3em;
 }
 
+/* STA system tracker: Momentum/Threat info buttons */
+.tracker-container .sta-officers-log-info-btn {
+  margin-left: 0.25rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.tracker-container .sta-officers-log-info-btn:hover {
+  color: #89CFF0;
+}
+
+/* STA system tracker: widen container slightly */
+.tracker-container[data-application-part="tracker"] {
+  width: 235px;
+}
+
+.tracker-container[data-application-part="tracker"] .tracker {
+  width: 150px;
+}
+
+.tracker-container[data-application-part="tracker"] .tracker .header,
+.tracker-container[data-application-part="tracker"] .tracker .button-group {
+  width: 150px;
+}
+
 /* STA system tracker: Mission Directives section */
 .tracker-container .sta-tracker-directives-section {
   margin-top: 0.5rem;
   padding: 0.5rem 0.75rem;
   background: var(--sidebar-background);
+  max-width: 235px;
+}
+
+/* STA system tracker: align Momentum/Threat header text + info button */
+.tracker-container .tracker .header {
+  position: relative;
+  display: block;
+  text-align: center;
+}
+
+.tracker-container .tracker .header .sta-officers-log-info-btn {
+  position: absolute;
+  right: 0.15rem;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .tracker-container .sta-tracker-directives-header {
@@ -422,6 +467,13 @@
   background: #a8dbf5;
 }
 
+.tracker-container .sta-tracker-directives-hint {
+  font-size: 0.65rem;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0.2rem 0;
+}
+
 .tracker-container .sta-tracker-directives-list {
   list-style: none;
   margin: 0;
@@ -433,6 +485,8 @@
   color: #e0e0e0;
   padding: 0.15rem 0;
   line-height: 1.3;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .tracker-container .sta-tracker-directive-item::before {
@@ -514,21 +568,67 @@
 .sta-values-title-with-button {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-}
-
-.sta-title-actions {
-  display: inline-flex;
-  align-items: center;
   gap: 0.35rem;
 }
 
+/* Container for left-side items in values title (Values text + info button) */
+.sta-values-title-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Label Values button - positioned with small gap from left group */
 .sta-label-values-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0 0.25rem;
   cursor: pointer;
+  margin-left: 1rem;
+}
+
+.sta-label-values-btn i {
+  margin-left: 0.35rem;
+}
+
+/* Use Directive button - pushed to far right */
+.sta-use-directive-btn {
+  margin-left: auto;
+}
+
+.sta-use-directive-btn i {
+  margin-left: 0.35rem;
+}
+
+/* Directive info button - next to Use Directive */
+.sta-directive-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.7;
+  font-size: 0.9em;
+  margin-left: 0.35rem;
+  margin-right: 0.35rem;
+}
+
+.sta-directive-info-btn:hover {
+  opacity: 1;
+}
+
+/* Generic left container for title text + info button */
+.sta-title-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sta-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
 }
 
 .sta-log-sort-btn {
@@ -538,6 +638,10 @@
   padding: 0 0.25rem;
   cursor: pointer;
   white-space: nowrap;
+}
+
+.sta-log-sort-btn i {
+  margin-left: 0.35rem;
 }
 
 .sta-new-milestone-arc-btn {
@@ -558,6 +662,92 @@
 .sta-log-sort-btn[aria-disabled="true"] {
   pointer-events: none;
   opacity: 0.6;
+}
+
+.sta-tracktitle-with-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sta-stress-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.7;
+  font-size: 0.9em;
+}
+
+.sta-stress-info-btn:hover {
+  opacity: 1;
+}
+
+.sta-determination-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.7;
+  font-size: 0.9em;
+}
+
+.sta-determination-info-btn:hover {
+  opacity: 1;
+}
+
+.sta-values-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.7;
+  font-size: 0.9em;
+}
+
+.sta-values-info-btn:hover {
+  opacity: 1;
+}
+
+.sta-stress-recovery-info p,
+.sta-determination-info p,
+.sta-values-info p,
+.sta-info-dialog p {
+  margin: 0.5em 0;
+}
+
+.sta-info-dialog ul {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.sta-info-dialog li {
+  margin: 0.25em 0;
+}
+
+/* Generic section info button styling */
+.sta-talents-info-btn,
+.sta-focuses-info-btn,
+.sta-traits-info-btn,
+.sta-injuries-info-btn,
+.sta-logs-info-btn,
+.sta-milestones-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.7;
+  font-size: 0.9em;
+  margin-left: 0.35rem;
+}
+
+.sta-talents-info-btn:hover,
+.sta-focuses-info-btn:hover,
+.sta-traits-info-btn:hover,
+.sta-injuries-info-btn:hover,
+.sta-logs-info-btn:hover,
+.sta-milestones-info-btn:hover {
+  opacity: 1;
 }
 
 .sta-use-value-btn {
@@ -657,6 +847,26 @@ div.section.milestones li.row.entry[data-item-type="log"] a.value-used.control.t
 
 div.section.milestones li.row.entry[data-item-type="log"] a.value-used.control.toggle .sta-show-source-btn:hover {
   opacity: 1;
+}
+
+/* Icon-only control: show associated logs from milestone rows */
+div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milestone-logs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  opacity: 0.75;
+  cursor: pointer;
+}
+
+div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milestone-logs-btn:hover {
+  opacity: 1;
+}
+
+div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milestone-logs-btn.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 @keyframes sta-callbacks-double-flash {
@@ -819,6 +1029,40 @@ div.section.milestones li.row.entry[data-item-type="log"] .item-name a {
   opacity: 0.5;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+/* Milestone item sheet: "From: <log name>" display */
+.sta-milestone-from-log-display {
+  margin: 0.25rem 0 0.5rem 0;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.9em;
+  color: var(--color-text-light-6, rgba(255, 255, 255, 0.7));
+}
+
+.sta-milestone-from-label {
+  opacity: 0.8;
+}
+
+.sta-milestone-from-logs {
+  font-style: italic;
+}
+
+/* Milestone item sheet: combined arc checkbox and steps row */
+.sta-milestone-arc-row {
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.sta-milestone-arc-row .grid-numbers {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sta-milestone-arc-row .tracktitle {
+  white-space: nowrap;
 }
 
 /* =============================================================================
@@ -1012,13 +1256,119 @@ div.section.milestones li.row.entry[data-item-type="log"] .item-name a {
  * ITEM SHEETS (Log sheet injections)
  * ============================================================================= */
 
+/* Log item sheet: constrain height on small screens with scrolling */
+.window-content:has(.sta-callbacks-log-meta) {
+  max-height: 90vh;
+  overflow-y: auto;
+}
 
 /* Log sheet: inline callback link controls */
-.sta-officers-log .item-sheet .sta-log-link-controls {
+.sta-officers-log .item-sheet .sta-log-link-controls,
+.item-sheet .sta-log-link-controls,
+.sta-log-link-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.35rem 0 0.5rem 0;
+}
+
+/* Log sheet: rows within the link controls */
+.sta-log-link-controls .sta-log-link-row {
   display: flex;
   flex-direction: row;
   gap: 0.75rem;
-  margin: 0.35rem 0 0.5rem 0;
+  align-items: flex-end;
+}
+
+.sta-log-link-controls .sta-log-link-row > .column {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Log sheet: arc row with milestone selector */
+.sta-log-link-controls .sta-log-arc-row {
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sta-log-link-controls .sta-milestone-select-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 120px;
+}
+
+.sta-log-link-controls .sta-milestone-select-wrapper select {
+  width: 100%;
+}
+
+/* Log sheet: Arc column styling */
+.sta-log-link-controls .sta-arc-column {
+  flex: 0 0 auto;
+}
+
+/* Log sheet: trauma checkbox inline in arc row */
+.sta-log-link-controls .sta-trauma-checkbox-wrapper,
+.sta-log-arc-row .sta-trauma-checkbox-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.sta-log-link-controls .sta-trauma-checkbox-wrapper input[type="checkbox"],
+.sta-log-arc-row .sta-trauma-checkbox-wrapper input[type="checkbox"] {
+  margin: 0;
+}
+
+/* Log sheet: log meta row with stacked labels */
+.sta-log-created-with-trauma-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.sta-log-meta-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.sta-log-meta-label {
+  font-size: 0.8rem;
+  color: var(--color-text-light-6, #aaa);
+  white-space: nowrap;
+}
+
+.sta-log-meta-field input[type="checkbox"] {
+  margin: 0;
+}
+
+/* Log sheet: custom date picker inline layout */
+.sta-custom-date-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sta-custom-date-input-row input[type="date"] {
+  padding: 0.15rem 0.3rem;
+  font-size: 0.85rem;
+  min-width: 8rem;
+}
+
+.sta-custom-date-input-row button {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
 /* Log sheet: inline invoked directives (rendered as value-state rows) */

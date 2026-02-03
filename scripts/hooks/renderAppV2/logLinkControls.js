@@ -13,12 +13,14 @@ import { isCallbackTargetCompatibleWithValue } from "../../data/callbackEligibil
 import { t } from "../../core/i18n.js";
 import {
   DIRECTIVE_VALUE_ID_PREFIX,
+  NO_VALUE_USED_ID,
   directiveIconPath,
   getDirectiveKeyFromValueId,
   getDirectiveSnapshotForLog,
   getDirectiveTextForValueId,
   getMissionDirectives,
   isDirectiveValueId,
+  isNoValueUsedId,
   makeDirectiveKeyFromText,
   makeDirectiveValueIdFromText,
   sanitizeDirectiveText,
@@ -438,6 +440,13 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     const emptySel = !curId ? " selected" : "";
     options.push(`<option value=""${emptySel}>-</option>`);
 
+    // "No Value Used" option (for organizational purposes)
+    const noValueSel = curId === NO_VALUE_USED_ID ? " selected" : "";
+    const noValueLabel = t("sta-officers-log.logSheet.noValueUsed");
+    options.push(
+      `<option value="${escapeHTML(NO_VALUE_USED_ID)}"${noValueSel}>${escapeHTML(noValueLabel)}</option>`,
+    );
+
     // Values first
     for (const v of values) {
       const id = String(v.id);
@@ -495,36 +504,37 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     <input type="hidden" data-sta-callbacks-field="arcValueId" value="${escapeHTML(
       String(existingArcValueId || existingValue || selectedValueId || ""),
     )}" />
-    <div class="column">
-      <div class="title">Calls back to:</div>
-      <select data-sta-callbacks-field="fromLogId">
-        ${buildFromOptionsHtml(selectedValueId)}
-      </select>
+    <div class="sta-log-link-row">
+      <div class="column">
+        <div class="title">Calls back to:</div>
+        <select data-sta-callbacks-field="fromLogId">
+          ${buildFromOptionsHtml(selectedValueId)}
+        </select>
+      </div>
+      <div class="column">
+        <div class="title">Primary Value</div>
+        <select data-sta-callbacks-field="valueId">
+          ${buildPrimaryValueOptionsHtml(selectedValueId)}
+        </select>
+      </div>
     </div>
-
-    <div class="column">
-      <div class="title">Primary Value</div>
-      <select data-sta-callbacks-field="valueId">
-        ${buildPrimaryValueOptionsHtml(selectedValueId)}
-      </select>
-    </div>
-
-    <div class="column">
-      <div class="title">Arc</div>
-      <div class="sta-arc-fields">
-        <label class="sta-arc-toggle">
-          <input type="checkbox" data-sta-callbacks-field="isArcEnd" ${
-            isArcEnd ? "checked" : ""
-          } />
-          <span>${escapeHTML(t("sta-officers-log.logSheet.arcComplete"))}</span>
-        </label>
-
-        <label class="sta-arc-steps">
-          <span class="sta-arc-label">Steps</span>
-          <input type="number" data-sta-callbacks-field="arcSteps" min="1" step="1" value="${escapeHTML(
-            String(initialArcSteps),
-          )}" />
-        </label>
+    <div class="sta-log-link-row sta-log-arc-row">
+      <div class="column sta-arc-column">
+        <div class="title">Arc</div>
+        <div class="sta-arc-fields">
+          <label class="sta-arc-toggle">
+            <input type="checkbox" data-sta-callbacks-field="isArcEnd" ${
+              isArcEnd ? "checked" : ""
+            } />
+            <span>${escapeHTML(t("sta-officers-log.logSheet.arcComplete"))}</span>
+          </label>
+          <label class="sta-arc-steps">
+            <span class="sta-arc-label">Steps</span>
+            <input type="number" data-sta-callbacks-field="arcSteps" min="1" step="1" value="${escapeHTML(
+              String(initialArcSteps),
+            )}" />
+          </label>
+        </div>
       </div>
     </div>
   `;
@@ -667,6 +677,12 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       fromLogId = "";
     }
 
+    // "No Value Used" logs cannot form callback chains.
+    if (fromLogId && isNoValueUsedId(valueId)) {
+      fromSelect.value = "";
+      fromLogId = "";
+    }
+
     // Enforce: cannot call back to a log that is already used.
     // BUT: allow the currently-saved selection (grandfathered) so opening a log
     // cannot auto-clear its existing callback link.
@@ -684,12 +700,14 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     // Keep callbackLink.valueId in sync with Primary Value.
     callbackLinkValueIdInput.value = valueId;
 
-    // Arc end toggle: requires a stable Primary Value.
+    // Arc end toggle: requires a stable Primary Value (and not "No Value Used").
     if (wantsArcEnd) {
       const arcValueId = valueId || _baselineArcValueId;
-      if (!arcValueId) {
+      if (!arcValueId || isNoValueUsedId(arcValueId)) {
         ui.notifications?.warn?.(
-          "Select a Primary Value before marking an Arc end.",
+          isNoValueUsedId(arcValueId)
+            ? "Cannot mark an Arc end for 'No Value Used' logs."
+            : "Select a Primary Value before marking an Arc end.",
         );
         arcToggle.checked = false;
       } else {
@@ -721,9 +739,11 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       Number.isFinite(stepsRaw) && stepsRaw > 0 ? Math.floor(stepsRaw) : 1;
     const arcValueId = String(arcValueIdInput.value ?? "");
 
-    if (wantsArcEnd && !arcValueId) {
+    if (wantsArcEnd && (!arcValueId || isNoValueUsedId(arcValueId))) {
       ui.notifications?.warn?.(
-        "Select a Primary Value before marking an Arc end.",
+        isNoValueUsedId(arcValueId)
+          ? "Cannot mark an Arc end for 'No Value Used' logs."
+          : "Select a Primary Value before marking an Arc end.",
       );
       return;
     }

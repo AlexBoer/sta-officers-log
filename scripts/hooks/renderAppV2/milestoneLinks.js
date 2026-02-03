@@ -11,6 +11,175 @@ import {
 
 export { getMilestoneChildLogIds };
 
+/**
+ * Hides the associated log dropdowns on milestone sheets and replaces them
+ * with simple "From: <log name>" text display. The underlying dropdowns
+ * remain in the DOM (just hidden) so the sheet still works if the module
+ * is disabled or uninstalled.
+ *
+ * Also reorganizes the layout:
+ * - Moves "From:" display right under the name row
+ * - Makes "Milestone is an Arc" and "Steps" fields adjacent
+ * - Hides the "Associated logs" header
+ *
+ * @param {HTMLElement} root - The root element of the milestone sheet
+ * @param {Actor} actor - The actor that owns the milestone
+ * @param {Item} milestone - The milestone item
+ */
+export function hideAssociatedLogDropdowns(root, actor, milestone) {
+  const selects = Array.from(
+    root?.querySelectorAll?.('select[name^="system.child"]') ?? [],
+  );
+  if (!selects.length) return;
+
+  // Already processed
+  if (root.querySelector(".sta-milestone-from-log-display")) return;
+
+  const itemSheet =
+    root?.querySelector?.('.item-sheet[data-application-part="itemsheet"]') ||
+    root?.querySelector?.(".item-sheet") ||
+    null;
+
+  const isArc = !!milestone?.system?.arc?.isArc;
+
+  // For arcs, we show all associated logs; for non-arcs, just childA and childB
+  const childIds = isArc
+    ? getMilestoneChildLogIds(milestone)
+    : [
+        String(milestone?.system?.childA ?? ""),
+        String(milestone?.system?.childB ?? ""),
+      ].filter(Boolean);
+
+  // Get log names
+  const logNames = childIds
+    .map((id) => {
+      const log = id ? actor.items.get(id) : null;
+      return log?.type === "log" ? String(log.name ?? "") : null;
+    })
+    .filter(Boolean);
+
+  // Hide the "Associated logs" header (dropdowns will be moved under "From:" text)
+  if (itemSheet) {
+    const titles = itemSheet.querySelectorAll(".title");
+    for (const title of titles) {
+      if (
+        String(title.textContent ?? "")
+          .trim()
+          .toLowerCase() === "associated logs"
+      ) {
+        title.style.display = "none";
+        break;
+      }
+    }
+  }
+
+  // Make "Milestone is an Arc" and "Steps in this Arc" adjacent
+  if (itemSheet) {
+    const arcCheckboxRow = itemSheet.querySelector(
+      '.row:has(input[name="system.arc.isArc"])',
+    );
+    const stepsRow = itemSheet.querySelector(
+      '.row:has(input[name="system.arc.steps"])',
+    );
+
+    if (arcCheckboxRow && stepsRow) {
+      // Create a combined row
+      const combinedRow = document.createElement("div");
+      combinedRow.className = "row sta-milestone-arc-row";
+
+      // Move the contents into the combined row
+      const arcContent = arcCheckboxRow.querySelector(".grid-numbers");
+      const stepsContent = stepsRow.querySelector(".grid-numbers");
+
+      if (arcContent && stepsContent) {
+        combinedRow.appendChild(arcContent.cloneNode(true));
+        combinedRow.appendChild(stepsContent.cloneNode(true));
+
+        // Insert combined row and hide originals
+        arcCheckboxRow.before(combinedRow);
+        arcCheckboxRow.style.display = "none";
+        stepsRow.style.display = "none";
+      }
+    }
+  }
+
+  // Create display text with expandable dropdowns
+  if (logNames.length > 0 && itemSheet) {
+    const displayContainer = document.createElement("div");
+    displayContainer.className = "sta-milestone-from-log-display";
+
+    // Create a details-like structure
+    const summaryRow = document.createElement("div");
+    summaryRow.className = "sta-milestone-from-summary";
+    summaryRow.setAttribute("role", "button");
+    summaryRow.tabIndex = 0;
+    summaryRow.style.cursor = "pointer";
+
+    const expandIcon = document.createElement("i");
+    expandIcon.className =
+      "fa-solid fa-chevron-right sta-milestone-expand-icon";
+    expandIcon.style.marginRight = "4px";
+    expandIcon.style.transition = "transform 0.2s";
+
+    const label = document.createElement("span");
+    label.className = "sta-milestone-from-label";
+    label.textContent = "From: ";
+
+    const logNamesSpan = document.createElement("span");
+    logNamesSpan.className = "sta-milestone-from-logs";
+    logNamesSpan.textContent = logNames.join(" ← ");
+
+    summaryRow.appendChild(expandIcon);
+    summaryRow.appendChild(label);
+    summaryRow.appendChild(logNamesSpan);
+
+    // Create a container for the dropdowns
+    const dropdownsContainer = document.createElement("div");
+    dropdownsContainer.className = "sta-milestone-dropdowns-container";
+    dropdownsContainer.style.display = "none";
+    dropdownsContainer.style.paddingLeft = "1em";
+    dropdownsContainer.style.marginTop = "0.25em";
+
+    // Move the select dropdowns into the container
+    for (const select of selects) {
+      // Find the parent row that contains this select
+      const parentRow = select.closest(".row");
+      if (parentRow) {
+        parentRow.style.display = ""; // Reset display
+        dropdownsContainer.appendChild(parentRow);
+      } else {
+        select.style.display = ""; // Reset display
+        dropdownsContainer.appendChild(select);
+      }
+    }
+
+    displayContainer.appendChild(summaryRow);
+    displayContainer.appendChild(dropdownsContainer);
+
+    // Toggle handler
+    const toggleDropdowns = (ev) => {
+      ev?.preventDefault?.();
+      const isExpanded = dropdownsContainer.style.display !== "none";
+      dropdownsContainer.style.display = isExpanded ? "none" : "block";
+      expandIcon.style.transform = isExpanded ? "" : "rotate(90deg)";
+    };
+
+    summaryRow.addEventListener("click", toggleDropdowns);
+    summaryRow.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") toggleDropdowns(ev);
+    });
+
+    // Insert right after the name row (first .row with input[name="name"])
+    const nameRow = itemSheet.querySelector('.row:has(input[name="name"])');
+    if (nameRow) {
+      nameRow.after(displayContainer);
+    } else {
+      // Fallback: prepend to item sheet
+      itemSheet.prepend(displayContainer);
+    }
+  }
+}
+
 export function filterMilestoneAssociatedLogOptions(root, actor, milestone) {
   const selects = Array.from(
     root?.querySelectorAll?.('select[name^="system.child"]') ?? [],

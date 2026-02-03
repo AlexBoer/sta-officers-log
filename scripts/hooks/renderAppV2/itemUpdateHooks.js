@@ -692,7 +692,7 @@ export function installItemUpdateHooks() {
   if (!_staCallbacksHelperItemSheetRenderHookInstalled) {
     _staCallbacksHelperItemSheetRenderHookInstalled = true;
 
-    Hooks.on("renderItemSheet", (app, html) => {
+    Hooks.on("renderItemSheet", async (app, html) => {
       try {
         if (!areSheetEnhancementsEnabled()) return;
 
@@ -715,7 +715,7 @@ export function installItemUpdateHooks() {
             // ignore
           }
 
-          installLogMetaCollapsible(root, item);
+          await installLogMetaCollapsible(root, item);
         }
       } catch (_) {
         // ignore

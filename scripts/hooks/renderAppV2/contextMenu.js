@@ -8,9 +8,14 @@ let _staContextMenu = null;
  */
 export function closeStaOfficersLogContextMenu() {
   try {
-    _staContextMenu?.close();
+    // Only attempt to close if the menu exists and has a valid element
+    if (_staContextMenu?.element) {
+      _staContextMenu.close();
+    }
   } catch (_) {
     // ignore
+  } finally {
+    _staContextMenu = null;
   }
 }
 
@@ -63,6 +68,6 @@ export function setupMissionLogContextMenu({
     container,
     selector,
     menuItems,
-    { fixed: true },
+    { fixed: true, jQuery: false },
   );
 }

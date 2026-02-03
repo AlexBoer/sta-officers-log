@@ -86,6 +86,10 @@ export function formatChosenBenefitLabel(applied) {
       return applied.newName
         ? `Remove Trauma: ${applied.newName}`
         : "Remove Trauma";
+    case "customMilestone":
+      return "Custom Milestone";
+    case "customArc":
+      return "Custom Arc";
     default:
       return String(applied.action ?? "");
   }

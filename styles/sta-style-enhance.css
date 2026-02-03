@@ -125,3 +125,14 @@ body.system-sta .note .editor-content {
 .tracker-container .tracker .button-group {
     height: 34px;
 }
+
+.title {
+height: 1.5rem;
+display: flex;
+align-items: center;
+}
+
+/* Hide Mission Directives section */
+body.system-sta .starship-sheet .right-column .section.values:has([data-type="value"]) {
+display: none;
+}

@@ -4,6 +4,7 @@ import { t } from "../core/i18n.js";
 export const CLIENT_SHEET_ENHANCEMENTS_SETTING = "enableSheetEnhancements";
 export const CLIENT_SHOW_LOG_USED_TOGGLE_SETTING = "showLogUsedToggle";
 export const CLIENT_HIDE_CHALLENGED_TOGGLE_SETTING = "hideChallengedToggle";
+export const CLIENT_SHOW_INFO_BUTTONS_SETTING = "showInfoButtons";
 export const CLIENT_CHARACTER_LOG_MAX_HEIGHT_SETTING = "characterLogMaxHeight";
 export const CLIENT_CHARACTER_MILESTONE_MAX_HEIGHT_SETTING =
   "characterMilestoneMaxHeight";
@@ -81,6 +82,30 @@ export function registerClientSettings() {
               app.render?.(true);
           } catch (_) {
             // skip if sheet was destroyed
+          }
+        }
+      } catch (_) {
+        // safe to fail silently
+      }
+    },
+  });
+
+  game.settings.register(MODULE_ID, CLIENT_SHOW_INFO_BUTTONS_SETTING, {
+    name: t("sta-officers-log.settings.showInfoButtons.name"),
+    hint: t("sta-officers-log.settings.showInfoButtons.hint"),
+    scope: "client",
+    config: true,
+    type: Boolean,
+    default: true,
+    onChange: () => {
+      try {
+        // Force existing STA character sheets to redraw so info buttons appear/disappear.
+        for (const app of Object.values(ui?.windows ?? {})) {
+          try {
+            if (app?.id?.startsWith?.("STACharacterSheet2e"))
+              app.render?.(true);
+          } catch (_) {
+            // sheet may have closed
           }
         }
       } catch (_) {
@@ -213,6 +238,16 @@ export function shouldShowLogUsedToggle() {
     );
   } catch (_) {
     return false;
+  }
+}
+
+export function shouldShowInfoButtons() {
+  try {
+    return Boolean(
+      game.settings.get(MODULE_ID, CLIENT_SHOW_INFO_BUTTONS_SETTING),
+    );
+  } catch (_) {
+    return true; // default to true
   }
 }
 
