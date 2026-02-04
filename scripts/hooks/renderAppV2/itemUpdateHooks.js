@@ -95,10 +95,16 @@ export function installItemUpdateHooks() {
                 };
 
                 // If renamed item is on a character, only that character can have the matching milestone.
-                // Ship talents live on the Group Ship actor, so we search all characters.
+                // Ship talents live on the Group Ship actor, so we search characters that own them.
+                // Optimization: avoid iterating all actors when possible.
                 const candidateActors = (() => {
                   const parent = item?.parent ?? null;
                   if (parent?.type === "character") return [parent];
+                  // For ship talents, only search actors that might reference this item.
+                  // Skip the expensive all-actors search if the item has no parent.
+                  if (!parent) return [];
+                  // Only ship talents on non-character parents need broader search
+                  if (itemType !== "shipTalent") return [];
                   return (game.actors ?? []).filter(
                     (a) => a?.type === "character",
                   );

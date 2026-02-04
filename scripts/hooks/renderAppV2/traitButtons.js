@@ -15,6 +15,26 @@ import {
   hasFatiguedAttributeChosen,
 } from "../stressHook.js";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Debounced Render Helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+const _pendingRenders = new WeakMap();
+const RENDER_DEBOUNCE_MS = 50;
+
+function scheduleRender(app) {
+  if (!app?.render) return;
+  const existing = _pendingRenders.get(app);
+  if (existing) clearTimeout(existing);
+  const timer = setTimeout(() => {
+    _pendingRenders.delete(app);
+    try {
+      app.render({ force: false, focus: false });
+    } catch (_) {}
+  }, RENDER_DEBOUNCE_MS);
+  _pendingRenders.set(app, timer);
+}
+
 /**
  * Install "Use Scar" buttons on trait entries that are marked as scars.
  *
@@ -102,7 +122,7 @@ export function installUseScarButtons(root, actor, app) {
         ui.notifications?.error(t("sta-officers-log.dialog.useValue.error"));
         useBtn.disabled = false;
       } finally {
-        app.render();
+        scheduleRender(app);
       }
     };
 
@@ -161,7 +181,7 @@ export function installChooseAttributeButtons(root, actor, app) {
 
       try {
         await showAttributeSelectionDialog(traitItem, actor);
-        app.render();
+        scheduleRender(app);
       } catch (err) {
         console.error("sta-officers-log | Choose Attribute failed", err);
         chooseBtn.disabled = false;

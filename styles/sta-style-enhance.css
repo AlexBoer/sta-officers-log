@@ -126,7 +126,8 @@ body.system-sta .note .editor-content {
     height: 34px;
 }
 
-.title {
+body.system-sta .character-sheet .title,
+body.system-sta .starship-sheet .title {
 height: 1.5rem;
 display: flex;
 align-items: center;

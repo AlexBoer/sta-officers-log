@@ -27,6 +27,39 @@ import { hasEligibleCallbackTargetForValueId } from "../../data/logMetadata.js";
 import { shouldHideChallengedToggle } from "../../settings/clientSettings.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Debounced Render Helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Debounce state for sheet renders
+const _pendingRenders = new WeakMap();
+const RENDER_DEBOUNCE_MS = 50;
+
+/**
+ * Schedule a debounced render for an application.
+ * Multiple rapid calls will be coalesced into one render.
+ * @param {Application} app - The application to render
+ */
+function scheduleRender(app) {
+  if (!app?.render) return;
+
+  const existing = _pendingRenders.get(app);
+  if (existing) {
+    clearTimeout(existing);
+  }
+
+  const timer = setTimeout(() => {
+    _pendingRenders.delete(app);
+    try {
+      app.render({ force: false, focus: false });
+    } catch (_) {
+      // app may have closed
+    }
+  }, RENDER_DEBOUNCE_MS);
+
+  _pendingRenders.set(app, timer);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Use Value Dialog (ApplicationV2)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -376,7 +409,7 @@ export function installUseValueButtons(root, actor, app) {
           }
         }
 
-        app.render();
+        scheduleRender(app);
         return;
       }
 
@@ -420,7 +453,7 @@ export function installUseValueButtons(root, actor, app) {
           }
         }
 
-        app.render();
+        scheduleRender(app);
         return;
       }
 
@@ -466,7 +499,7 @@ export function installUseValueButtons(root, actor, app) {
           }
         }
 
-        app.render();
+        scheduleRender(app);
         return;
       }
 
@@ -498,7 +531,7 @@ export function installUseValueButtons(root, actor, app) {
         ui.notifications?.error(t("sta-officers-log.dialog.useValue.error"));
       }
 
-      app.render();
+      scheduleRender(app);
     };
 
     if (!challenged) {

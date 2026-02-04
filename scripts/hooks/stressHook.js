@@ -155,9 +155,6 @@ function getUserToHandleFatigue(actor) {
     (u) => !u.isGM && u.active && u.character?.id === actor.id,
   );
   if (owningPlayer) {
-    console.log(
-      `${MODULE_ID} | Fatigue handler: owning player ${owningPlayer.name}`,
-    );
     return owningPlayer;
   }
 
@@ -167,7 +164,6 @@ function getUserToHandleFatigue(actor) {
   );
   if (playerOwners?.length > 0) {
     const handler = playerOwners.sort((a, b) => a.id.localeCompare(b.id))[0];
-    console.log(`${MODULE_ID} | Fatigue handler: player owner ${handler.name}`);
     return handler;
   }
 
@@ -175,9 +171,6 @@ function getUserToHandleFatigue(actor) {
   const activeGMs = game.users?.filter((u) => u.isGM && u.active) ?? [];
   const gmHandler =
     activeGMs.sort((a, b) => a.id.localeCompare(b.id))[0] ?? null;
-  console.log(
-    `${MODULE_ID} | Fatigue handler: GM fallback ${gmHandler?.name ?? "none"}`,
-  );
   return gmHandler;
 }
 
@@ -303,9 +296,6 @@ async function deleteAllFatigueTraits(actor) {
 
     // Delete all fatigue traits at once
     const idsToDelete = fatigueTraits.map((t) => t.id);
-    console.log(
-      `${MODULE_ID} | Deleting ${idsToDelete.length} fatigue trait(s) from ${actor.name}`,
-    );
     await actor.deleteEmbeddedDocuments("Item", idsToDelete);
 
     // Clear the stored flags
@@ -377,9 +367,6 @@ export function installStressMonitoringHook() {
 
       // Use player-first responsibility: owning player handles if online, otherwise GM
       const shouldHandle = shouldCurrentUserHandleFatigue(actor);
-      console.log(
-        `${MODULE_ID} | Stress changed for ${actor.name}, shouldHandle=${shouldHandle}, currentUser=${game.user?.name}`,
-      );
       if (!shouldHandle) return;
 
       // Prevent concurrent operations on the same actor
@@ -403,7 +390,6 @@ export function installStressMonitoringHook() {
             await new Promise((r) => setTimeout(r, 50));
             const recheck = findFatiguedTrait(actor);
             if (recheck) {
-              console.log(`${MODULE_ID} | Fatigue trait already exists.`);
               return;
             }
             await createFatiguedTrait(actor);

@@ -93,7 +93,7 @@ function handleDialogRender(app, root, context) {
     );
   }
 
-  // DialogV2: force vertical benefit button layout by wrapping footer buttons.
+  // force vertical benefit button layout by wrapping footer buttons.
   if (handleBenefitDialogRender(root)) {
     return true; // Not a sheet render; stop here.
   }
@@ -275,6 +275,9 @@ function handleCharacterSheetRender(app, root) {
 // Main Hook
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Guard to prevent duplicate hook installation
+let _staRenderApplicationV2HookInstalled = false;
+
 /**
  * Install the main renderApplicationV2 hook for STA Officers Log.
  *
@@ -286,10 +289,27 @@ function handleCharacterSheetRender(app, root) {
  * installRenderApplicationV2Hook();
  */
 export function installRenderApplicationV2Hook() {
+  if (_staRenderApplicationV2HookInstalled) return;
+  _staRenderApplicationV2HookInstalled = true;
+
   // Install item update hooks (createItem, updateItem, renderItemSheet, closeItemSheet)
   installItemUpdateHooks();
 
   Hooks.on("renderApplicationV2", (app, root /* HTMLElement */, context) => {
+    // Early exit for non-STA applications to minimize overhead
+    const appId = app?.id ?? "";
+    const isStaApp =
+      appId.startsWith("STACharacterSheet2e") ||
+      appId.startsWith("STASupportingSheet2e") ||
+      appId.startsWith("STATracker") ||
+      appId.startsWith("sta-") ||
+      app?.constructor?.name?.startsWith?.("STA");
+    const isDialog =
+      app?.constructor?.name === "DialogV2" || appId.startsWith("dialog-");
+    const isItemSheet = appId.includes("ItemSheet") || app?.object?.type;
+
+    // Skip entirely if this is clearly not an STA-related application
+    if (!isStaApp && !isDialog && !isItemSheet) return;
     // Ensure our custom context menu never survives a rerender.
     try {
       closeStaOfficersLogContextMenu();

@@ -125,9 +125,10 @@ function attachLogMetaEventListeners(details, itemSheet, logItem) {
           showMilestoneArcCheckbox.checked,
         );
         // Re-render the parent character sheet to update the log list UI
+        // Use force: false and focus: false to avoid stealing focus and unnecessary work
         const parentActor = logItem.parent ?? logItem.actor;
         if (parentActor && parentActor.sheet?.render) {
-          parentActor.sheet.render();
+          parentActor.sheet.render({ force: false, focus: false });
         }
       } catch (_) {
         // flag update can fail if permissions changed

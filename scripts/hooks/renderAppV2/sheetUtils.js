@@ -1,7 +1,13 @@
+import { MODULE_ID } from "../../core/constants.js";
 import {
   applyMissionLogSorting,
   getMissionLogSortModeForActor,
 } from "./logSorting.js";
+
+// Debounce state for refreshMissionLogSortingForActorId
+const _pendingRefreshActorIds = new Set();
+let _refreshDebounceTimer = null;
+const REFRESH_DEBOUNCE_MS = 50;
 
 /**
  * Returns true if this actor reference is from an unlinked token.
@@ -119,10 +125,10 @@ function _getApplicationRootElement(app) {
 }
 
 /**
- * Re-applies mission-log sorting to any already-open STA character sheets for this actor.
- * This updates the DOM in-place (no render) to avoid stealing focus or causing window flash.
+ * Internal function that actually performs the refresh.
+ * @param {string} actorId - The actor ID to refresh
  */
-export function refreshMissionLogSortingForActorId(actorId) {
+function _doRefreshMissionLogSortingForActorId(actorId) {
   const maybe = (app) => {
     try {
       if (!app?.id?.startsWith?.("STACharacterSheet2e")) return;
@@ -152,6 +158,33 @@ export function refreshMissionLogSortingForActorId(actorId) {
   } catch (_) {
     // instances API may not exist
   }
+}
+
+/**
+ * Flush all pending refresh requests.
+ */
+function _flushPendingRefreshes() {
+  _refreshDebounceTimer = null;
+  const actorIds = Array.from(_pendingRefreshActorIds);
+  _pendingRefreshActorIds.clear();
+  for (const actorId of actorIds) {
+    _doRefreshMissionLogSortingForActorId(actorId);
+  }
+}
+
+/**
+ * Re-applies mission-log sorting to any already-open STA character sheets for this actor.
+ * This updates the DOM in-place (no render) to avoid stealing focus or causing window flash.
+ * Debounced to coalesce multiple rapid calls into one.
+ */
+export function refreshMissionLogSortingForActorId(actorId) {
+  if (!actorId) return;
+  _pendingRefreshActorIds.add(actorId);
+  if (_refreshDebounceTimer) return;
+  _refreshDebounceTimer = setTimeout(
+    _flushPendingRefreshes,
+    REFRESH_DEBOUNCE_MS,
+  );
 }
 
 export function getItemFromApp(app) {

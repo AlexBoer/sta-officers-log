@@ -30,6 +30,26 @@ import {
 import { promptUseValueChoice } from "./useValue.js";
 import { getUserIdForCharacterActor } from "./sheetUtils.js";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Debounced Render Helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+const _pendingRenders = new WeakMap();
+const RENDER_DEBOUNCE_MS = 50;
+
+function scheduleRender(app) {
+  if (!app?.render) return;
+  const existing = _pendingRenders.get(app);
+  if (existing) clearTimeout(existing);
+  const timer = setTimeout(() => {
+    _pendingRenders.delete(app);
+    try {
+      app.render({ force: false, focus: false });
+    } catch (_) {}
+  }, RENDER_DEBOUNCE_MS);
+  _pendingRenders.set(app, timer);
+}
+
 /**
  * Check if there are eligible callback targets with any invoked directive.
  *
@@ -316,7 +336,7 @@ export function installUseDirectiveButton(root, actor, app) {
         }
       }
 
-      app.render();
+      scheduleRender(app);
       return;
     }
 
@@ -354,7 +374,7 @@ export function installUseDirectiveButton(root, actor, app) {
         }
       }
 
-      app.render();
+      scheduleRender(app);
       return;
     }
 
@@ -383,7 +403,7 @@ export function installUseDirectiveButton(root, actor, app) {
       ui.notifications?.error(t("sta-officers-log.dialog.useValue.error"));
     }
 
-    app.render();
+    scheduleRender(app);
   });
 
   titleEl.appendChild(dirBtn);
