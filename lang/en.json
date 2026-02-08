@@ -130,6 +130,8 @@
       "breakDesc": "Rest for 30 minutes to a couple hours. Recover 8 Stress.",
       "sleepTitle": "Sleep:",
       "sleepDesc": "A full night's rest or similar amount of time. Recover all stress.",
+      "momentumTitle": "Momentum:",
+      "momentumDesc": "Recover 1 stress per 2 Momentum spent after a successful task, max 3.",
       "ok": "OK"
     },
     "determination": {
@@ -390,7 +392,7 @@
         "missionTitle": "Mission Title",
         "missionTitlePlaceholder": "e.g. Journey to Alpha Centauri",
         "directivesTitle": "Mission Directives",
-        "directivesHint": "One directive per line. These will be copied into each created mission log and remain there forever.",
+        "directivesHint": "One directive per line.",
         "noAssignedCharacter": "no assigned character",
         "resetOptions": "Reset Options",
         "resetCallbacks": "Reset Callbacks for all players",
@@ -398,6 +400,8 @@
         "resetStress": "Reset Stress for all characters",
         "resetShipStats": "Reset ship stats (Shields / Reserve Power / Shaken)",
         "resetScars": "Reset all Scars to unused",
+        "resetMomentum": "Reset Momentum to 0",
+        "setThreat": "Set Threat to 2× player count",
         "createLogs": "Create new mission logs for selected participants",
         "createLogsHint": "If unchecked, no new logs will be created and existing mission-log links will be kept.",
         "participants": "Participants",

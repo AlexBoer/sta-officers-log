@@ -105,6 +105,7 @@ async function showStressRecoveryDialog() {
       <p><strong>${t("sta-officers-log.stress.breatherTitle")}</strong> ${t("sta-officers-log.stress.breatherDesc")}</p>
       <p><strong>${t("sta-officers-log.stress.breakTitle")}</strong> ${t("sta-officers-log.stress.breakDesc")}</p>
       <p><strong>${t("sta-officers-log.stress.sleepTitle")}</strong> ${t("sta-officers-log.stress.sleepDesc")}</p>
+      <p><strong>${t("sta-officers-log.stress.momentumTitle")}</strong> ${t("sta-officers-log.stress.momentumDesc")}</p>
     </div>
   `;
 

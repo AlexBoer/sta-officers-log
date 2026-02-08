@@ -2,6 +2,7 @@ import { MODULE_ID } from "../core/constants.js";
 import { t, tf } from "../core/i18n.js";
 import {
   getMissionDirectives,
+  rerenderStaTracker,
   sanitizeDirectiveText,
   setMissionDirectives,
 } from "./directives.js";
@@ -389,71 +390,27 @@ export async function resetScarUsed({ notify = true } = {}) {
   }
 }
 
-async function _tryDecrementStaMomentum() {
+/**
+ * Set a STA tracker value (momentum or threat) using the system's settings API.
+ * Falls back to direct Setting document update if needed.
+ * @param {"momentum"|"threat"} key - The tracker key to set
+ * @param {number} value - The value to set
+ * @returns {Promise<boolean>} - Whether the operation succeeded
+ */
+async function _setStaTrackerValue(key, value) {
   try {
+    const settingKey = `sta.${key}`;
     const world = game.settings.storage?.get?.("world");
     const doc =
-      world?.find?.((s) => s?.key === "sta.momentum") ??
-      world?.contents?.find?.((s) => s?.key === "sta.momentum") ??
+      world?.find?.((s) => s?.key === settingKey) ??
+      world?.contents?.find?.((s) => s?.key === settingKey) ??
       null;
 
-    const cur = Number(doc?.value);
-    if (!Number.isFinite(cur)) return false;
-    const next = Math.max(0, cur - 1);
-
-    const rerenderStaTracker = async () => {
-      try {
-        // Foundry v13+ tracker windows live in the ApplicationV2 registry.
-        // In some environments, `instanceof STATracker` can fail (module realms/bundling),
-        // so prefer matching by constructor name.
-        const Tracker = globalThis?.STATracker;
-
-        const inst = globalThis?.foundry?.applications?.instances;
-        const apps = [];
-        if (inst) {
-          for (const app of inst.values()) apps.push(app);
-        }
-
-        const uniq = Array.from(new Set(apps)).filter(Boolean);
-
-        const forceRefreshApp = async (app) => {
-          // Some tracker implementations cache derived state and need an explicit refresh.
-          try {
-            if (typeof app?.refresh === "function") {
-              await app.refresh();
-              return true;
-            }
-          } catch (_) {
-            // ignore
-          }
-
-          // Foundry ApplicationV2: render({force: true})
-          try {
-            await app.render?.({ force: true });
-            return true;
-          } catch (_) {
-            // ignore
-          }
-
-          return false;
-        };
-
-        for (const app of uniq) {
-          const ctorName = String(app?.constructor?.name ?? "");
-          const isTracker =
-            ctorName === "STATracker" || (Tracker && app instanceof Tracker);
-          if (!isTracker) continue;
-
-          await forceRefreshApp(app);
-        }
-      } catch (_) {
-        // ignore
-      }
-    };
+    const numValue = Math.max(0, Math.floor(value));
 
     // Prefer the system's normal settings API so any onChange handlers rerender the tracker.
     try {
-      await game.settings.set("sta", "momentum", next);
+      await game.settings.set("sta", key, numValue);
       rerenderStaTracker();
       setTimeout(() => rerenderStaTracker(), 50);
       setTimeout(() => rerenderStaTracker(), 250);
@@ -461,7 +418,7 @@ async function _tryDecrementStaMomentum() {
     } catch (_) {
       // Some system versions store this as a string; try again.
       try {
-        await game.settings.set("sta", "momentum", String(next));
+        await game.settings.set("sta", key, String(numValue));
         rerenderStaTracker();
         setTimeout(() => rerenderStaTracker(), 50);
         setTimeout(() => rerenderStaTracker(), 250);
@@ -472,12 +429,12 @@ async function _tryDecrementStaMomentum() {
     }
 
     if (!doc) return false;
-    await doc.update({ value: String(next) });
+    await doc.update({ value: String(numValue) });
 
     // If the system registered the setting, best-effort invoke its onChange handler.
     try {
-      const cfg = game.settings.settings?.get?.("sta.momentum");
-      cfg?.onChange?.(String(next));
+      const cfg = game.settings.settings?.get?.(settingKey);
+      cfg?.onChange?.(String(numValue));
     } catch (_) {
       // ignore
     }
@@ -490,6 +447,51 @@ async function _tryDecrementStaMomentum() {
   } catch (_) {
     return false;
   }
+}
+
+/**
+ * Set Momentum to a specific value.
+ * @param {number} value - The momentum value to set
+ * @returns {Promise<boolean>} - Whether the operation succeeded
+ */
+async function _setMomentum(value) {
+  return _setStaTrackerValue("momentum", value);
+}
+
+/**
+ * Set Threat to a specific value.
+ * @param {number} value - The threat value to set
+ * @returns {Promise<boolean>} - Whether the operation succeeded
+ */
+async function _setThreat(value) {
+  return _setStaTrackerValue("threat", value);
+}
+
+/**
+ * Get the current momentum value from the STA system settings.
+ * @returns {number|null} - The current momentum value, or null if not found
+ */
+function _getCurrentMomentum() {
+  try {
+    const world = game.settings.storage?.get?.("world");
+    const doc =
+      world?.find?.((s) => s?.key === "sta.momentum") ??
+      world?.contents?.find?.((s) => s?.key === "sta.momentum") ??
+      null;
+
+    const cur = Number(doc?.value);
+    return Number.isFinite(cur) ? cur : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function _tryDecrementStaMomentum() {
+  const cur = _getCurrentMomentum();
+  if (cur === null) return false;
+
+  const next = Math.max(0, cur - 1);
+  return _setMomentum(next);
 }
 
 async function _decreaseMomentumByOne() {
@@ -766,6 +768,8 @@ export async function promptNewMissionAndReset() {
   const doResetStress = Boolean(result.resetStress);
   const doResetShipStats = Boolean(result.resetShipStats);
   const doResetScars = Boolean(result.resetScars);
+  const doResetMomentum = Boolean(result.resetMomentum);
+  const doSetThreat = Boolean(result.setThreat);
   const createMissionLogs = Boolean(result.createMissionLogs);
 
   // Update mission directives (persist until GM edits again)
@@ -791,6 +795,10 @@ export async function promptNewMissionAndReset() {
   const selectedUserIds = players
     .filter((u) => Boolean(result[`p_${u.id}`]))
     .map((u) => u.id);
+
+  // Reset Momentum and/or set Threat based on selected options
+  if (doResetMomentum) await _setMomentum(0);
+  if (doSetThreat) await _setThreat(selectedUserIds.length * 2);
 
   await game.settings.set(MODULE_ID, "missionTitle", newTitle);
   await game.settings.set(MODULE_ID, "missionParticipants", selectedUserIds);
@@ -830,6 +838,8 @@ export async function promptNewMissionAndReset() {
     if (doResetStress) parts.push("Stress");
     if (doResetDetermination) parts.push("Determination");
     if (doResetShipStats) parts.push("Shields & Reserve Power");
+    if (doResetMomentum) parts.push("Momentum → 0");
+    if (doSetThreat) parts.push(`Threat → ${selectedUserIds.length * 2}`);
 
     if (parts.length) {
       ui.notifications.info(`${parts.join(", ")} reset.`);
@@ -837,4 +847,7 @@ export async function promptNewMissionAndReset() {
   } catch (_) {
     // ignore
   }
+
+  // Re-render STA Tracker so the directives section updates
+  await rerenderStaTracker();
 }

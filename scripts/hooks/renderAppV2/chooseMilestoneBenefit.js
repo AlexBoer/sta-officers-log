@@ -17,6 +17,7 @@ import {
   createMilestoneItem,
   formatChosenBenefitLabel,
 } from "../../callbackFlow.js";
+import { getPrimaryValueIdForLog } from "../../data/logMetadata.js";
 import { openNewMilestoneArcDialog } from "./newMilestoneArcDialog.js";
 import { openCreatedItemSheetAfterMilestone } from "./sheetUtils.js";
 import { syncMilestoneImgFromLog } from "../../data/milestoneIcons.js";
@@ -209,27 +210,41 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
           const createdItemId = applied?.createdItemId ?? "";
           const benefitLabel = formatChosenBenefitLabel(applied);
 
-          const chosenLogId = pending?.chosenLogId ?? null;
-          const valueId = pending?.valueId ?? null;
+          // Try to get chosenLogId and valueId from pending data first
+          let chosenLogId = pending?.chosenLogId ?? null;
+          let valueId = pending?.valueId ?? null;
+
+          // If pending data is missing, try to reconstruct from callbackLink
+          const callbackLink =
+            logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+          if (!chosenLogId && callbackLink?.fromLogId) {
+            chosenLogId = String(callbackLink.fromLogId);
+          }
+          if (!valueId && callbackLink?.valueId) {
+            valueId = String(callbackLink.valueId);
+          }
+
+          // If valueId is still missing, try to get it from the log's primary value
+          if (!valueId) {
+            valueId = getPrimaryValueIdForLog(actor, logItem) || null;
+          }
+
           const valueImg =
             pending?.valueImg ??
             (valueId ? getValueIconPathForValueId(actor, valueId) : null);
 
-          if (!chosenLogId || !valueId) {
-            ui.notifications?.warn(
-              t("sta-officers-log.dialog.chooseMilestoneBenefit.missingData"),
-            );
-            return;
-          }
+          // Determine if this is a standalone milestone (no callback link data)
+          const isStandalone = !chosenLogId;
 
-          // The pending data may refer to a log that was deleted/edited.
-          // If possible, fall back to the callbackLink on the CURRENT log.
+          // Resolve the chosen log if we have an ID
           let resolvedChosenLogId = chosenLogId ? String(chosenLogId) : "";
           let chosenLog = resolvedChosenLogId
             ? (actor.items.get(resolvedChosenLogId) ?? null)
             : null;
 
-          if (!chosenLog) {
+          if (!chosenLog && resolvedChosenLogId) {
+            // The pending data may refer to a log that was deleted/edited.
+            // If possible, fall back to the callbackLink on the CURRENT log.
             const link = logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
             const fallbackId = link?.fromLogId ? String(link.fromLogId) : "";
             const fallbackLog = fallbackId
@@ -252,10 +267,15 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
             }
           }
 
-          if (!chosenLog) {
+          // For linked milestones, we need the chosen log to exist
+          if (!isStandalone && !chosenLog) {
             ui.notifications?.warn(
               "This callback references a Log that no longer exists. Please choose a different Log and try again.",
             );
+            // Still clear the button flag so the button goes away
+            try {
+              await logItem.setFlag(MODULE_ID, "showMilestoneArcButton", false);
+            } catch (_) {}
             return;
           }
 
@@ -267,12 +287,13 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
 
           if (!milestone) {
             milestone = await createMilestoneItem(actor, {
-              chosenLogId: resolvedChosenLogId,
+              // For standalone milestones, use the current log as both chosenLog and currentLog
+              chosenLogId: resolvedChosenLogId || logItem.id,
               currentLogId: logItem.id,
               // Milestone icons should match the log that created them.
               // Use the current log's icon when available, otherwise fall back to the value icon.
               valueImg: logItem?.img ? String(logItem.img) : valueImg,
-              valueId,
+              valueId: valueId || null,
               arc: isArcBenefit ? arc : null,
               benefitLabel,
               benefit: createdItemId
