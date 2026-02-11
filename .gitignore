@@ -1,0 +1,27 @@
+# AI Agent Documentation (not for repo/distribution)
+AI-AGENT-DOCS.md
+
+# Node modules
+node_modules/
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.zip
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local

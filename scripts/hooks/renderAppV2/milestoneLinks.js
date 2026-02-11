@@ -87,19 +87,42 @@ export function hideAssociatedLogDropdowns(root, actor, milestone) {
       const combinedRow = document.createElement("div");
       combinedRow.className = "row sta-milestone-arc-row";
 
-      // Move the contents into the combined row
+      // Move the actual content nodes into the combined row (not clones)
+      // This preserves form data binding and event listeners
       const arcContent = arcCheckboxRow.querySelector(".grid-numbers");
       const stepsContent = stepsRow.querySelector(".grid-numbers");
 
       if (arcContent && stepsContent) {
-        combinedRow.appendChild(arcContent.cloneNode(true));
-        combinedRow.appendChild(stepsContent.cloneNode(true));
+        combinedRow.appendChild(arcContent);
+        combinedRow.appendChild(stepsContent);
 
-        // Insert combined row and hide originals
+        // Insert combined row and hide the now-empty original rows
         arcCheckboxRow.before(combinedRow);
         arcCheckboxRow.style.display = "none";
         stepsRow.style.display = "none";
       }
+    }
+
+    // Ensure steps is always a valid integer when isArc changes.
+    // This prevents validation errors when unchecking the "is arc" checkbox.
+    const stepsInput = itemSheet.querySelector(
+      'input[name="system.arc.steps"]',
+    );
+    const isArcCheckbox = itemSheet.querySelector(
+      'input[name="system.arc.isArc"]',
+    );
+    if (stepsInput && isArcCheckbox) {
+      const ensureValidSteps = () => {
+        const val = parseInt(stepsInput.value, 10);
+        if (!Number.isInteger(val) || val < 0) {
+          stepsInput.value = "0";
+        }
+      };
+      // Check on isArc change
+      isArcCheckbox.addEventListener("change", ensureValidSteps);
+      // Also validate on steps input change/blur
+      stepsInput.addEventListener("change", ensureValidSteps);
+      stepsInput.addEventListener("blur", ensureValidSteps);
     }
   }
 

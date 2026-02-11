@@ -680,7 +680,7 @@ export async function promptAddParticipant() {
       available: available.map((u, idx) => ({
         id: u.id,
         name: u.name ?? "",
-        selected: idx === 0,
+        isSelected: idx === 0,
       })),
       already: already.map((u) => ({
         id: u.id,

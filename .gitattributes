@@ -4,3 +4,4 @@
 packages/ export-ignore
 .github/ export-ignore
 .gitignore export-ignore
+AI-AGENT-DOCS.md export-ignore
