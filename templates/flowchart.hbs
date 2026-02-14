@@ -1,0 +1,97 @@
+<div class="sta-flowchart-container">
+  <!-- Toolbar -->
+  <div class="sta-flowchart-toolbar">
+    <div class="sta-flowchart-toolbar-left">
+      <button type="button" class="sta-flowchart-btn" data-action="reset-layout" title="{{localize 'sta-officers-log.flowchart.resetLayout'}}">
+        <i class="fa-solid fa-arrows-rotate"></i>
+      </button>
+    </div>
+    <div class="sta-flowchart-toolbar-center">
+      <span class="sta-flowchart-title">{{actorName}}</span>
+    </div>
+    <div class="sta-flowchart-toolbar-right">
+      <button type="button" class="sta-flowchart-btn sta-flowchart-btn-save" data-action="save-positions" title="{{localize 'sta-officers-log.flowchart.savePositions'}}">
+        <i class="fa-solid fa-floppy-disk"></i>
+        <span>{{localize "sta-officers-log.flowchart.savePositions"}}</span>
+      </button>
+      <button type="button" class="sta-flowchart-btn" data-action="zoom-in" title="{{localize 'sta-officers-log.flowchart.zoomIn'}}">
+        <i class="fa-solid fa-magnifying-glass-plus"></i>
+      </button>
+      <button type="button" class="sta-flowchart-btn" data-action="zoom-out" title="{{localize 'sta-officers-log.flowchart.zoomOut'}}">
+        <i class="fa-solid fa-magnifying-glass-minus"></i>
+      </button>
+      <button type="button" class="sta-flowchart-btn" data-action="fit-view" title="{{localize 'sta-officers-log.flowchart.fitView'}}">
+        <i class="fa-solid fa-expand"></i>
+      </button>
+      <button type="button" class="sta-flowchart-btn sta-flowchart-btn-advanced" data-action="toggle-advanced" title="{{localize 'sta-officers-log.flowchart.advanced'}}">
+        <i class="fa-solid fa-gears"></i>
+        <span>{{localize "sta-officers-log.flowchart.advanced"}}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main content area -->
+  <div class="sta-flowchart-main">
+    <!-- Description sidebar (left side) -->
+    <div class="sta-flowchart-description-sidebar" data-hook="description-sidebar">
+      <div class="sta-flowchart-sidebar-header">
+        <h4>{{localize "sta-officers-log.flowchart.description"}}</h4>
+      </div>
+      <div class="sta-flowchart-description-content" data-hook="description-content">
+        <p class="sta-flowchart-sidebar-hint">{{localize "sta-officers-log.flowchart.selectNodeHint"}}</p>
+      </div>
+    </div>
+
+    <!-- Canvas area -->
+    <div class="sta-flowchart-canvas-container">
+      {{#unless hasLogs}}
+        <div class="sta-flowchart-empty">
+          <i class="fa-solid fa-diagram-project"></i>
+          <p>{{localize "sta-officers-log.flowchart.noLogs"}}</p>
+          <button type="button" class="sta-flowchart-btn sta-flowchart-add-first" data-action="add-log">
+            <i class="fa-solid fa-plus"></i>
+            {{localize "sta-officers-log.flowchart.addFirstLog"}}
+          </button>
+        </div>
+      {{/unless}}
+    </div>
+
+    <!-- Sidebar for selected node details (hidden by default) -->
+    <div class="sta-flowchart-sidebar" data-hook="sidebar" hidden>
+      <div class="sta-flowchart-sidebar-header">
+        <h4>{{localize "sta-officers-log.flowchart.details"}}</h4>
+      </div>
+      <div class="sta-flowchart-sidebar-actions">
+        <button type="button" class="sta-flowchart-btn" data-action="add-log" title="{{localize 'sta-officers-log.flowchart.addLog'}}">
+          <i class="fa-solid fa-plus"></i>
+          <span>{{localize "sta-officers-log.flowchart.addLog"}}</span>
+        </button>
+      </div>
+      <div class="sta-flowchart-sidebar-content" data-hook="sidebar-content">
+        <p class="sta-flowchart-sidebar-hint">{{localize "sta-officers-log.flowchart.selectNodeHint"}}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="sta-flowchart-legend">
+    <span class="sta-flowchart-legend-label">{{localize "sta-officers-log.flowchart.values"}}:</span>
+    {{#each values}}
+      <span class="sta-flowchart-legend-item" data-value-id="{{this.id}}" data-color-index="{{this.colorIndex}}">
+        <span class="color-swatch"></span>
+        <span class="sta-flowchart-legend-name">{{this.name}}</span>
+      </span>
+    {{/each}}
+    {{#unless values.length}}
+      <span class="sta-flowchart-legend-empty">{{localize "sta-officers-log.flowchart.noValues"}}</span>
+    {{/unless}}
+  </div>
+
+  <!-- Status bar -->
+  <div class="sta-flowchart-status">
+    <span>{{localize "sta-officers-log.flowchart.logs"}}: {{nodeCount}}</span>
+    <span>{{localize "sta-officers-log.flowchart.callbacks"}}: {{edgeCount}}</span>
+    <span>{{localize "sta-officers-log.flowchart.arcs"}}: {{arcCount}}</span>
+    <span class="sta-flowchart-status-hint">{{localize "sta-officers-log.flowchart.dragHint"}}</span>
+  </div>
+</div>

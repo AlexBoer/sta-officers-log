@@ -1,12 +1,13 @@
 <details class="sta-callbacks-log-meta" {{#if isOpen}}open{{/if}}>
   <summary class="sta-callbacks-log-meta-summary">Edit Log Data</summary>
 
-  {{#if showTraumaCheckbox}}
-  <div class="row sta-log-created-with-trauma-row">
+  <div class="row sta-log-meta-fields-row">
+    {{#if showTraumaCheckbox}}
     <div class="sta-log-meta-field" title="{{traumaTooltip}}">
       <span class="sta-log-meta-label">{{traumaLabel}}</span>
       <input type="checkbox" data-sta-callbacks-field="createdWithTrauma" {{#if createdWithTrauma}}checked{{/if}}>
     </div>
+    {{/if}}
     <div class="sta-log-meta-field" title="Show or hide the 'Choose Milestone/Arc' button on this log.">
       <span class="sta-log-meta-label">Show milestone/arc button</span>
       <input type="checkbox" data-sta-callbacks-field="showMilestoneArcButton" {{#if showMilestoneArcButton}}checked{{/if}}>
@@ -19,5 +20,4 @@
       </div>
     </div>
   </div>
-  {{/if}}
 </details>

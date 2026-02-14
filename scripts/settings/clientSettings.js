@@ -8,6 +8,7 @@ export const CLIENT_SHOW_INFO_BUTTONS_SETTING = "showInfoButtons";
 export const CLIENT_CHARACTER_LOG_MAX_HEIGHT_SETTING = "characterLogMaxHeight";
 export const CLIENT_CHARACTER_MILESTONE_MAX_HEIGHT_SETTING =
   "characterMilestoneMaxHeight";
+export const CLIENT_ENABLE_FLOWCHART_VIEW_SETTING = "enableFlowchartView";
 export const WORLD_ENABLE_TRAUMA_RULES_SETTING = "enableTraumaRules";
 export const WORLD_ENABLE_SCAR_RULES_SETTING = "enableScarRules";
 
@@ -166,6 +167,31 @@ export function registerClientSettings() {
     },
   );
 
+  // Client setting: Enable interactive flowchart view for mission logs
+  game.settings.register(MODULE_ID, CLIENT_ENABLE_FLOWCHART_VIEW_SETTING, {
+    name: t("sta-officers-log.settings.enableFlowchartView.name"),
+    hint: t("sta-officers-log.settings.enableFlowchartView.hint"),
+    scope: "client",
+    config: true,
+    type: Boolean,
+    default: false,
+    onChange: () => {
+      try {
+        // Force existing STA character sheets to redraw so flowchart button appears/disappears.
+        for (const app of Object.values(ui?.windows ?? {})) {
+          try {
+            if (app?.id?.startsWith?.("STACharacterSheet2e"))
+              app.render?.(true);
+          } catch (_) {
+            // sheet may have closed
+          }
+        }
+      } catch (_) {
+        // safe to fail silently
+      }
+    },
+  });
+
   // World setting: Enable Trauma rules (23rd Century Campaign Guide)
   game.settings.register(MODULE_ID, WORLD_ENABLE_TRAUMA_RULES_SETTING, {
     name: t("sta-officers-log.settings.enableTraumaRules.name"),
@@ -303,5 +329,15 @@ export function shouldHideChallengedToggle() {
     );
   } catch (_) {
     return true;
+  }
+}
+
+export function isFlowchartViewEnabled() {
+  try {
+    return Boolean(
+      game.settings.get(MODULE_ID, CLIENT_ENABLE_FLOWCHART_VIEW_SETTING),
+    );
+  } catch (_) {
+    return false;
   }
 }

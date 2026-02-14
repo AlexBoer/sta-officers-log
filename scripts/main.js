@@ -5,8 +5,10 @@ import { noteStyler, registerNoteStylerHooks } from "./noteStyler.js";
 import {
   addParticipantToCurrentMission,
   ensureNewSceneMacro,
+  ensureOpenGroupShipMacro,
   hasUsedCallbackThisMission,
   newScene,
+  openGroupShip,
   promptAddParticipant,
   promptNewMissionAndReset,
   registerMissionSettings,
@@ -65,6 +67,9 @@ function registerApi() {
 
     // Note Styler (for Pin Cushion and similar modules)
     noteStyler,
+
+    // Open Group Ship sheet
+    openGroupShip,
   };
 
   // Back-compat for macros that reference a global symbol.

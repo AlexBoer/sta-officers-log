@@ -1327,7 +1327,7 @@ div.section.milestones li.row.entry[data-item-type="log"] .item-name a {
 }
 
 /* Log sheet: log meta row with stacked labels */
-.sta-log-created-with-trauma-row {
+.sta-log-meta-fields-row {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
@@ -2248,4 +2248,647 @@ input.selector.attribute.sta-fatigued-attribute {
   flex: 0 0 auto;
   width: auto;
   margin-right: 0.5rem;
+}
+
+/* =============================================================================
+ * MISSION LOG FLOWCHART
+ * ============================================================================= */
+
+.sta-flowchart-window {
+  min-width: 600px;
+  min-height: 400px;
+}
+
+.sta-flowchart-window .window-content {
+  padding: 0;
+  overflow: hidden;
+}
+
+.sta-flowchart-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-bg-option);
+}
+
+/* Toolbar */
+.sta-flowchart-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: var(--color-bg-lightest);
+  border-bottom: 1px solid var(--color-border-light-tertiary);
+  flex-shrink: 0;
+}
+
+.sta-flowchart-toolbar-left,
+.sta-flowchart-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sta-flowchart-toolbar-center {
+  flex: 1;
+  text-align: center;
+}
+
+.sta-flowchart-toolbar .sta-flowchart-title {
+  font-weight: 600;
+  font-size: var(--font-size-14);
+}
+
+.sta-flowchart-toolbar button {
+  padding: 0.35rem 0.75rem;
+  font-size: var(--font-size-12);
+}
+
+.sta-flowchart-toolbar button i {
+  margin-right: 0.25rem;
+}
+
+.sta-flowchart-toolbar .spacer {
+  flex: 1;
+}
+
+/* Main area with canvas and sidebar */
+.sta-flowchart-main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Canvas container */
+.sta-flowchart-canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+
+.sta-flowchart-canvas-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Empty state */
+.sta-flowchart-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: var(--color-text-light-2);
+}
+
+.sta-flowchart-empty p {
+  margin: 0.5rem 0;
+  font-size: var(--font-size-14);
+}
+
+.sta-flowchart-empty button {
+  margin-top: 1rem;
+}
+
+/* Sidebar */
+.sta-flowchart-sidebar {
+  width: 220px;
+  background: var(--color-bg-lightest);
+  border-left: 1px solid var(--color-border-light-tertiary);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.sta-flowchart-sidebar[hidden] {
+  display: none;
+}
+
+.sta-flowchart-sidebar-actions {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-border-light-tertiary);
+}
+
+.sta-flowchart-sidebar-actions .sta-flowchart-btn {
+  width: 100%;
+}
+
+.sta-flowchart-btn-advanced.active {
+  background: var(--color-shadow-primary);
+  color: var(--color-text-light-highlight);
+}
+
+/* Description Sidebar (left side) */
+.sta-flowchart-description-sidebar {
+  width: 280px;
+  background: var(--color-bg-lightest);
+  border-right: 1px solid var(--color-border-light-tertiary);
+  overflow-y: auto;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sta-flowchart-description-content {
+  flex: 1;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: visible;
+}
+
+.sta-flowchart-description-content .sta-flowchart-sidebar-hint {
+  text-align: center;
+  font-style: italic;
+  padding: 1rem 0;
+  color: var(--color-text-light-2);
+}
+
+.sta-flowchart-description-editor {
+  flex: 1;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sta-flowchart-description-editor .editor-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Description sidebar info section */
+.sta-flowchart-desc-info {
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sta-flowchart-info-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sta-flowchart-info-label {
+  font-size: var(--font-size-11);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+}
+
+.sta-flowchart-info-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.sta-flowchart-info-value-badge {
+  font-size: var(--font-size-11);
+  padding: 0.1rem 0.4rem;
+  border: 1px solid;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sta-flowchart-info-link {
+  font-size: var(--font-size-11);
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.sta-flowchart-info-link i {
+  width: 1em;
+  text-align: center;
+  margin-right: 0.2em;
+  opacity: 0.6;
+}
+
+.sta-flowchart-info-milestone {
+  font-size: var(--font-size-11);
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.sta-flowchart-info-milestone i {
+  color: #f0c040;
+  margin-right: 0.2em;
+}
+
+.sta-flowchart-info-no-milestone {
+  font-size: var(--font-size-11);
+  margin: 0;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+
+.sta-flowchart-btn-sm {
+  font-size: var(--font-size-11);
+  padding: 0.2rem 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.sta-flowchart-sidebar-header {
+  padding: 0.5rem 0.75rem;
+  background: var(--color-bg-option);
+  border-bottom: 1px solid var(--color-border-light-tertiary);
+  font-weight: 600;
+  font-size: var(--font-size-12);
+}
+
+.sta-flowchart-sidebar-content {
+  padding: 0.75rem;
+}
+
+.sta-flowchart-sidebar-content p {
+  margin: 0 0 0.5rem;
+  font-size: var(--font-size-12);
+  color: var(--color-text-light-2);
+}
+
+.sta-flowchart-sidebar-hint {
+  text-align: center;
+  font-style: italic;
+  padding: 1rem 0;
+}
+
+.sta-flowchart-sidebar-multi {
+  text-align: center;
+  font-weight: 600;
+  padding: 1rem 0;
+  color: var(--color-text-light-1);
+}
+
+.sta-flowchart-sidebar-content .node-name {
+  font-weight: 600;
+  font-size: var(--font-size-14);
+  margin-bottom: 0.75rem;
+  word-wrap: break-word;
+}
+
+.sta-flowchart-sidebar-content .node-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.sta-flowchart-sidebar-content .value-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  font-size: var(--font-size-10);
+  color: white;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+}
+
+.sta-flowchart-sidebar-content .callback-section {
+  margin-bottom: 0.75rem;
+}
+
+.sta-flowchart-sidebar-content .callback-section h4 {
+  font-size: var(--font-size-11);
+  margin: 0 0 0.25rem;
+  color: var(--color-text-light-3);
+}
+
+.sta-flowchart-sidebar-content .callback-section ul {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: var(--font-size-12);
+}
+
+/* Node details (dynamically generated) */
+.sta-flowchart-node-details h5 {
+  margin: 0 0 0.5rem;
+  font-size: var(--font-size-14);
+  font-weight: 600;
+  word-wrap: break-word;
+}
+
+.sta-flowchart-node-details p {
+  margin: 0 0 0.5rem;
+  font-size: var(--font-size-12);
+}
+
+.sta-flowchart-node-details em {
+  color: var(--color-text-light-2);
+}
+
+.sta-flowchart-node-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border-light-tertiary);
+}
+
+.sta-flowchart-node-actions button {
+  width: 100%;
+  font-size: var(--font-size-11);
+  padding: 0.35rem 0.5rem;
+}
+
+.sta-flowchart-node-actions button i {
+  margin-right: 0.25rem;
+}
+
+.sta-flowchart-btn-danger {
+  --button-hover-background-color: var(--color-level-error);
+}
+
+.sta-flowchart-btn-warning {
+  --button-hover-background-color: var(--color-level-warning);
+}
+
+.sta-flowchart-sidebar-content .sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border-light-tertiary);
+}
+
+.sta-flowchart-sidebar-content .sidebar-actions button {
+  width: 100%;
+  font-size: var(--font-size-11);
+  padding: 0.35rem 0.5rem;
+}
+
+.sta-flowchart-sidebar-content .sidebar-actions button i {
+  margin-right: 0.25rem;
+}
+
+/* Legend */
+.sta-flowchart-legend {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-bg-lightest);
+  border-top: 1px solid var(--color-border-light-tertiary);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.sta-flowchart-legend-label {
+  font-weight: 600;
+  font-size: var(--font-size-11);
+}
+
+.sta-flowchart-legend-empty {
+  font-style: italic;
+  color: var(--color-text-light-3);
+}
+
+.sta-flowchart-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--font-size-11);
+  white-space: nowrap;
+}
+
+.sta-flowchart-legend-item .color-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+/* Value color swatches - matches COLOR_PALETTE in MissionFlowchartApp.js */
+.sta-flowchart-legend-item[data-color-index="0"] .color-swatch { background-color: #ca99cc; }
+.sta-flowchart-legend-item[data-color-index="1"] .color-swatch { background-color: #ffcc9c; }
+.sta-flowchart-legend-item[data-color-index="2"] .color-swatch { background-color: #cd6666; }
+.sta-flowchart-legend-item[data-color-index="3"] .color-swatch { background-color: #999ace; }
+.sta-flowchart-legend-item[data-color-index="4"] .color-swatch { background-color: #ff9a65; }
+.sta-flowchart-legend-item[data-color-index="5"] .color-swatch { background-color: #cc6699; }
+.sta-flowchart-legend-item[data-color-index="6"] .color-swatch { background-color: #4e81b6; }
+.sta-flowchart-legend-item[data-color-index="7"] .color-swatch { background-color: #6da38c; }
+
+/* Status bar */
+.sta-flowchart-status {
+  display: flex;
+  gap: 1.5rem;
+  padding: 0.35rem 0.75rem;
+  background: var(--color-bg-option);
+  border-top: 1px solid var(--color-border-light-tertiary);
+  font-size: var(--font-size-11);
+  color: var(--color-text-light-3);
+  flex-shrink: 0;
+}
+
+/* Character sheet flowchart button */
+.sta-flowchart-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  font-size: var(--font-size-11);
+  cursor: pointer;
+}
+
+.sta-flowchart-btn i {
+  font-size: var(--font-size-12);
+}
+
+/* Save button states */
+.sta-flowchart-btn-save {
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.sta-flowchart-btn-dirty {
+  background-color: var(--color-warm-2) !important;
+  box-shadow: 0 0 4px var(--color-warm-2);
+  animation: sta-pulse-save 1.5s ease-in-out infinite;
+}
+
+@keyframes sta-pulse-save {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* =============================================================================
+ * FLOWCHART SIDEBAR EDITING UI
+ * ============================================================================= */
+
+.sta-flowchart-edit-section {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border-light-tertiary);
+}
+
+.sta-flowchart-edit-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: var(--font-size-12);
+  font-weight: 600;
+  color: var(--color-text-light-heading);
+}
+
+.sta-flowchart-select {
+  width: 100%;
+  padding: 0.25rem 0.35rem;
+  font-size: var(--font-size-11);
+  border: 1px solid var(--color-border-light-tertiary);
+  border-radius: 3px;
+  background: var(--color-bg-input);
+  color: var(--color-text-dark-primary);
+}
+
+.sta-flowchart-select option {
+  background: #1a1c2e;
+  color: #ddd;
+}
+
+.sta-flowchart-number-input {
+  width: 4rem;
+  padding: 0.25rem 0.35rem;
+  font-size: var(--font-size-11);
+  border: 1px solid var(--color-border-light-tertiary);
+  border-radius: 3px;
+  background: var(--color-bg-input);
+  color: var(--color-text-light-primary);
+  text-align: center;
+}
+
+.sta-flowchart-arc-steps {
+  margin-top: 0.5rem;
+  padding-left: 1.5rem;
+}
+
+.sta-flowchart-edit-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--font-size-12);
+  cursor: pointer;
+}
+
+.sta-flowchart-edit-checkbox input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+.sta-flowchart-section-title {
+  margin: 0 0 0.5rem 0;
+  font-size: var(--font-size-12);
+  font-weight: 600;
+  color: var(--color-text-light-heading);
+}
+
+.sta-flowchart-value-states {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid rgba(239, 230, 216);
+  border-radius: 4px;
+  padding: 0.4rem;
+}
+
+.sta-flowchart-value-state-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.35rem;
+  background: var(--color-bg-option);
+  border-radius: 3px;
+}
+
+.sta-flowchart-value-name {
+  font-size: var(--font-size-11);
+  font-weight: 600;
+  color: var(--color-text-light-heading);
+}
+
+.sta-flowchart-state-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sta-flowchart-state-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: var(--font-size-10);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sta-flowchart-state-checkbox input[type="checkbox"] {
+  width: 0.85rem;
+  height: 0.85rem;
+  cursor: pointer;
+}
+
+.sta-flowchart-no-values {
+  font-style: italic;
+  color: var(--color-text-light-3);
+  font-size: var(--font-size-11);
+}
+
+.sta-flowchart-status-hint {
+  margin-left: auto;
+  font-style: italic;
+  color: var(--color-text-light-5);
+}
+
+/* Value picker dialog for callback link creation */
+.sta-flowchart-value-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.sta-flowchart-value-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.sta-flowchart-value-choice input[type="radio"] {
+  appearance: auto;
+  -webkit-appearance: auto;
+  opacity: 1;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  pointer-events: auto;
+  position: static;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.sta-flowchart-value-choice input[type="radio"]::before,
+.sta-flowchart-value-choice input[type="radio"]::after {
+  content: none;
+  display: none;
+}
+
+.sta-flowchart-value-choice:hover {
+  background: var(--color-bg-option);
 }

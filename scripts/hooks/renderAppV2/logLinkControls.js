@@ -105,6 +105,111 @@ async function unsetFlagWithoutRender(log, key) {
   );
 }
 
+/**
+ * After manually linking a source log to a target, ensure the source has an
+ * invoked value state that matches the target's chain value.  If it doesn't,
+ * prompt the user to confirm which value they used and set it to "positive".
+ */
+async function _ensureSourceHasMatchingValueState(
+  actor,
+  sourceLog,
+  targetLogId,
+) {
+  const targetLog = actor.items.get(String(targetLogId));
+  if (!targetLog || targetLog.type !== "log") return;
+
+  const values = actor.items.filter((i) => i?.type === "value");
+  const targetPrimary = getPrimaryValueIdForLog(actor, targetLog, values);
+
+  if (targetPrimary) {
+    // Target has a known chain value — check if source already has an invoked state.
+    const srcStates = getValueStateArray(sourceLog, targetPrimary);
+    if (srcStates.some(isValueInvokedState)) return; // Already good.
+
+    const targetValue = values.find((v) => String(v.id) === targetPrimary);
+    const valueName = targetValue?.name ?? "this value";
+
+    const confirmed = await foundry.applications.api.DialogV2.confirm({
+      window: {
+        title:
+          t("sta-officers-log.flowchart.pickValueTitle") ?? "Confirm Value",
+      },
+      content: `<p>The target log's chain value is <strong>${escapeHTML(valueName)}</strong>. Did you use this value?</p>`,
+      yes: { label: t("Yes") ?? "Yes" },
+      no: { label: t("No") ?? "No" },
+      rejectClose: false,
+    });
+
+    if (confirmed) {
+      const existing = getValueStateArray(sourceLog, targetPrimary).filter(
+        (s) => s !== "unused",
+      );
+      if (!existing.some(isValueInvokedState)) {
+        const newStates =
+          existing.length > 0 ? [...existing, "positive"] : ["positive"];
+        await sourceLog.update({
+          [`system.valueStates.${targetPrimary}`]: newStates,
+        });
+      }
+    }
+  } else {
+    // Target has no primary — collect its invoked values and let the user pick.
+    const targetInvoked = [];
+    for (const v of values) {
+      const pStates = getValueStateArray(targetLog, v.id);
+      if (pStates.some(isValueInvokedState)) targetInvoked.push(v);
+    }
+    if (targetInvoked.length === 0) return; // Nothing to match against.
+
+    // Check if source already overlaps.
+    const alreadyOverlaps = targetInvoked.some((v) => {
+      const srcStates = getValueStateArray(sourceLog, v.id);
+      return srcStates.some(isValueInvokedState);
+    });
+    if (alreadyOverlaps) return;
+
+    const choiceHTML = targetInvoked
+      .map(
+        (v) =>
+          `<label style="display:block;margin:4px 0;">
+            <input type="radio" name="valueId" value="${escapeHTML(v.id)}" />
+            <span>${escapeHTML(v.name)}</span>
+          </label>`,
+      )
+      .join("");
+
+    const pickedValueId = await foundry.applications.api.DialogV2.prompt({
+      window: {
+        title: t("sta-officers-log.flowchart.pickValueTitle") ?? "Choose Value",
+      },
+      content: `
+        <p>${t("sta-officers-log.flowchart.pickValueMessage") ?? "Which of the target log's values did you use?"}</p>
+        <div>${choiceHTML}</div>
+      `,
+      ok: {
+        label: t("sta-officers-log.flowchart.useValue") ?? "Use Value",
+        callback: (_event, button) => {
+          return button.form?.elements?.valueId?.value || null;
+        },
+      },
+      rejectClose: false,
+    });
+
+    if (pickedValueId) {
+      const existing = getValueStateArray(sourceLog, pickedValueId).filter(
+        (s) => s !== "unused",
+      );
+      if (!existing.some(isValueInvokedState)) {
+        const newStates =
+          existing.length > 0 ? [...existing, "positive"] : ["positive"];
+        await sourceLog.update({
+          [`system.valueStates.${pickedValueId}`]: newStates,
+        });
+      }
+    }
+  }
+}
+
 export async function promptLinkLogToChain({ actor, log }) {
   if (!actor || actor.type !== "character") return;
   if (!log || log.type !== "log") return;
@@ -225,6 +330,10 @@ export async function promptLinkLogToChain({ actor, log }) {
 
     // Align the log's icon to the selected value (or restore STA default).
     await _syncLogImgToValue(actor, log, valueId);
+
+    // Ensure the source log has an invoked value state that matches the
+    // target's chain value so that chain-indent validation passes.
+    await _ensureSourceHasMatchingValueState(actor, log, fromLogId);
   }
 
   // Update any open character sheets so chain sorting/indentation refreshes.
@@ -825,9 +934,12 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
     if (!fromLogId) {
       // When clearing the callback link, preserve milestoneId if it exists
+      // but explicitly clear fromLogId and valueId to avoid stale references
       if (existingMilestoneId) {
         update[`flags.${MODULE_ID}.callbackLink`] = {
           milestoneId: existingMilestoneId,
+          fromLogId: null,
+          valueId: null,
         };
       } else {
         update[`flags.${MODULE_ID}.callbackLink`] = null;
@@ -906,12 +1018,21 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     try {
       await log.update(update, { render: false, renderSheet: false });
 
+      // If the callback target changed, ensure the source log has an invoked
+      // value state that matches the target's chain value.
+      const fromLogChanged =
+        fromLogId && String(fromLogId) !== String(_baselineFromLogId);
+
       // Update baseline to the newly-saved state.
       _baselineFromLogId = String(fromLogId);
       _baselineValueId = String(valueId);
       _baselineIsArcEnd = Boolean(wantsArcEnd);
       _baselineArcSteps = steps;
       _baselineArcValueId = String(arcValueId || valueId || "");
+
+      if (fromLogChanged) {
+        await _ensureSourceHasMatchingValueState(actor, log, fromLogId);
+      }
 
       // Ensure character sheets refresh their log sorting/indentation.
       try {

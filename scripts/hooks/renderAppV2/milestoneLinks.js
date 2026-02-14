@@ -331,6 +331,11 @@ export async function syncCallbackLinksFromMilestone(actor, milestone) {
       const log = logId ? actor.items.get(String(logId)) : null;
       if (!log || log.type !== "log" || !log.setFlag) return;
 
+      // Respect user's explicit "no link" override - don't re-assert callback links
+      const isDisabled =
+        log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true;
+      if (isDisabled) return;
+
       const existing = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
       const exFrom = String(existing?.fromLogId ?? "");
       const exVal = String(existing?.valueId ?? "");

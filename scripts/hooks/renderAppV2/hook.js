@@ -52,6 +52,7 @@ import {
   installMilestonesInfoButton,
   installDirectiveInfoButton,
 } from "./stressInfoButton.js";
+import { installFlowchartButton } from "./flowchartButton.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Handler: STA Tracker
@@ -196,6 +197,13 @@ function handleCharacterSheetRender(app, root) {
   // Add character logs info button next to Character Logs section title
   try {
     installLogsInfoButton(root);
+  } catch (_) {
+    // ignore
+  }
+
+  // Add flowchart button to Character Logs section (if enabled)
+  try {
+    installFlowchartButton(root, actor);
   } catch (_) {
     // ignore
   }

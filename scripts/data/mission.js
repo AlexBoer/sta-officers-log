@@ -560,6 +560,65 @@ export async function ensureNewSceneMacro() {
   }
 }
 
+/**
+ * Opens the Group Ship actor sheet (as configured in world settings).
+ * Displays a warning if no Group Ship is set.
+ */
+export function openGroupShip() {
+  const id = getGroupShipActorId();
+  if (!id) {
+    ui.notifications.warn(t("sta-officers-log.notifications.noGroupShipSet"));
+    return;
+  }
+
+  const actor = game.actors?.get?.(id);
+  if (!actor) {
+    ui.notifications.warn(
+      t("sta-officers-log.notifications.groupShipNotFound"),
+    );
+    return;
+  }
+
+  actor.sheet?.render?.(true);
+}
+
+/**
+ * Creates or updates the "Open Group Ship" macro.
+ * Only runs for GM users.
+ */
+export async function ensureOpenGroupShipMacro() {
+  if (!game.user.isGM) return null;
+
+  const name = t("sta-officers-log.tools.openGroupShip");
+  const command =
+    "try { game.staCallbacksHelper?.openGroupShip?.(); } catch (err) { console.error('sta-officers-log | Open Group Ship macro failed', err); ui.notifications?.error?.('Open Group Ship failed; see console.'); }";
+
+  const existing = (game.macros ?? []).find(
+    (m) =>
+      m?.name === name &&
+      ((m?.type ?? m?.command) ? "script" : m?.type) !== "chat",
+  );
+
+  try {
+    if (!existing) {
+      return await Macro.create({
+        name,
+        type: "script",
+        command,
+      });
+    }
+
+    if (String(existing.command ?? "") !== command) {
+      await existing.update({ command, type: "script" });
+    }
+
+    return existing;
+  } catch (err) {
+    console.error(`${MODULE_ID} | ensureOpenGroupShipMacro failed`, err);
+    return null;
+  }
+}
+
 function _uniqueItemName(actor, baseName) {
   const existing = new Set(actor.items.map((i) => i.name));
   if (!existing.has(baseName)) return baseName;

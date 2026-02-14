@@ -4,6 +4,7 @@ import {
   getPrimaryValueIdForLog,
 } from "../../data/logMetadata.js";
 import { NO_VALUE_USED_ID, isNoValueUsedId } from "../../data/directives.js";
+import { getValueStateArray, isValueInvokedState } from "../../data/values.js";
 import { t } from "../../core/i18n.js";
 import { openNewMilestoneArcDialog } from "./newMilestoneArcDialog.js";
 
@@ -141,24 +142,42 @@ function _isValidCallbackLink(log, parentLog, link, context) {
   // Break chains across completed Arc boundaries.
   if (completedArcEndLogIds.has(parentId)) return false;
 
-  // Break chains when the callback link's value doesn't match the chain primary.
-  const valueId = link?.valueId ? String(link.valueId) : "";
-  if (valueId) {
-    // Note: We pass actor as the first param, but log/parentLog have it via their structure
-    const logPrimary = getPrimaryValueIdForLog(
-      log.actor || log.parent,
-      log,
-      valueItems,
-    );
-    const parentPrimary = parentLog
-      ? getPrimaryValueIdForLog(
-          parentLog.actor || parentLog.parent,
-          parentLog,
-          valueItems,
-        )
-      : "";
-    if (logPrimary && logPrimary !== valueId) return false;
-    if (parentPrimary && parentPrimary !== valueId) return false;
+  // Break chains when the source log doesn't share an invoked value with the
+  // parent's chain value.  We no longer compare against the source log's own
+  // primaryValueId — that may have been set for display purposes and shouldn't
+  // break chain indentation.  Instead we check the parent (target) log's
+  // primary; the source must have an invoked state for the same value.
+  const parentPrimary = parentLog
+    ? getPrimaryValueIdForLog(
+        parentLog.actor || parentLog.parent,
+        parentLog,
+        valueItems,
+      )
+    : "";
+
+  if (parentPrimary) {
+    // Parent has a known chain value — source must have an invoked state for it.
+    const srcStates = getValueStateArray(log, parentPrimary);
+    if (!srcStates.some(isValueInvokedState)) return false;
+  } else {
+    // Parent has no primary — check that source shares at least one invoked
+    // value with the parent's own invoked values.
+    const parentInvokedIds = new Set();
+    for (const v of valueItems) {
+      const pStates = getValueStateArray(parentLog, v.id);
+      if (pStates.some(isValueInvokedState)) parentInvokedIds.add(String(v.id));
+    }
+    if (parentInvokedIds.size > 0) {
+      let hasOverlap = false;
+      for (const vid of parentInvokedIds) {
+        const srcStates = getValueStateArray(log, vid);
+        if (srcStates.some(isValueInvokedState)) {
+          hasOverlap = true;
+          break;
+        }
+      }
+      if (!hasOverlap) return false;
+    }
   }
 
   return true;
