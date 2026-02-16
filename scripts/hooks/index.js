@@ -3,10 +3,9 @@
 
 export { installRenderApplicationV2Hook } from "./renderAppV2/hook.js";
 export { installCreateChatMessageHook } from "./chatMessage.js";
-export { installStressMonitoringHook } from "./stressHook.js";
 export {
-  AMBIENT_AUDIO_SELECTION_ONLY_SETTING,
-  installAmbientAudioSelectionListenerPatch,
-  setPlayerAmbientAudioSelectionOnlyEnabled,
-} from "./ambientAudioPatch.js";
-export { installMacroActorImageHook } from "./macroActorImage.js";
+  installReputationSpendHook,
+  promptGMSpendDialog,
+  triggerAllPlayersAcclaimSurvey,
+} from "./reputationSpend.js";
+export { openGMSurveyMonitor } from "./renderAppV2/gmSurveyMonitor.js";

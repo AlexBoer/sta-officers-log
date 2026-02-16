@@ -532,7 +532,7 @@ export async function ensureNewSceneMacro() {
 
   const name = "New Scene";
   const command =
-    "try { game.staCallbacksHelper?.newScene?.(); } catch (err) { console.error('sta-officers-log | New Scene macro failed', err); ui.notifications?.error?.('New Scene failed; see console.'); }";
+    "try { game.staofficerslog?.newScene?.(); } catch (err) { console.error('sta-officers-log | New Scene macro failed', err); ui.notifications?.error?.('New Scene failed; see console.'); }";
 
   const existing = (game.macros ?? []).find(
     (m) =>
@@ -591,7 +591,7 @@ export async function ensureOpenGroupShipMacro() {
 
   const name = t("sta-officers-log.tools.openGroupShip");
   const command =
-    "try { game.staCallbacksHelper?.openGroupShip?.(); } catch (err) { console.error('sta-officers-log | Open Group Ship macro failed', err); ui.notifications?.error?.('Open Group Ship failed; see console.'); }";
+    "try { game.staofficerslog?.openGroupShip?.(); } catch (err) { console.error('sta-officers-log | Open Group Ship macro failed', err); ui.notifications?.error?.('Open Group Ship failed; see console.'); }";
 
   const existing = (game.macros ?? []).find(
     (m) =>

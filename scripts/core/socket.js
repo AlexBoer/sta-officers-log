@@ -81,7 +81,7 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
   moduleSocket = socketlib.registerModule(MODULE_ID);
 
   // Make it accessible to the player-side app
-  game.staCallbacksHelperSocket = moduleSocket;
+  game.staofficerslogSocket = moduleSocket;
 
   // --- RPC: GM -> Player (show callback dialog) ---
   moduleSocket.register("showCallbackRequest", async (msg) => {
@@ -111,7 +111,7 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     const targetUserId = msg?.targetUserId ? String(msg.targetUserId) : "";
     if (!targetUserId) return false;
 
-    const api = game.staCallbacksHelper;
+    const api = game.staofficerslog;
     const fn = api?.promptCallbackForUserId;
     if (typeof fn !== "function") {
       console.warn(
@@ -526,6 +526,26 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     }
 
     return { approved: true };
+  });
+
+  // --- RPC: GM -> Player (open acclaim survey dialog) ---
+  moduleSocket.register("showAcclaimSurvey", async (msg) => {
+    const actorId = msg?.actorId;
+    if (!actorId) return;
+    const actor = game.actors?.get?.(actorId);
+    if (!actor) return;
+    // Dynamically import to avoid circular deps
+    const { showAcclaimDialog } =
+      await import("../hooks/renderAppV2/acclaimButton.js");
+    await showAcclaimDialog(actor, { gmTriggered: true });
+  });
+
+  // --- RPC: Player -> GM (live survey state updates) ---
+  moduleSocket.register("acclaimSurveyUpdate", async (msg) => {
+    if (!game.user.isGM) return;
+    const { updateGMMonitor } =
+      await import("../hooks/renderAppV2/gmSurveyMonitor.js");
+    updateGMMonitor(msg);
   });
 
   return moduleSocket;

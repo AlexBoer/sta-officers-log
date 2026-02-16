@@ -36,8 +36,8 @@ import {
 import { installInlineLogChainLinkControls } from "./logLinkControls.js";
 import { installLogMetaCollapsible } from "./logMetaCollapsible.js";
 
-let _staCallbacksHelperMilestoneUpdateHookInstalled = false;
-let _staCallbacksHelperItemSheetRenderHookInstalled = false;
+let _staOfficersLogMilestoneUpdateHookInstalled = false;
+let _staOfficersLogItemSheetRenderHookInstalled = false;
 
 /**
  * Install hooks for keeping character sheets responsive when items are edited.
@@ -45,8 +45,8 @@ let _staCallbacksHelperItemSheetRenderHookInstalled = false;
  */
 export function installItemUpdateHooks() {
   // Keep character sheets responsive when milestones are edited manually.
-  if (!_staCallbacksHelperMilestoneUpdateHookInstalled) {
-    _staCallbacksHelperMilestoneUpdateHookInstalled = true;
+  if (!_staOfficersLogMilestoneUpdateHookInstalled) {
+    _staOfficersLogMilestoneUpdateHookInstalled = true;
 
     Hooks.on("createItem", (item) => {
       try {
@@ -695,8 +695,8 @@ export function installItemUpdateHooks() {
   // Compatibility: some environments still emit classic document-sheet hooks for item sheets.
   // Installing this fallback keeps our Log item sheet UI (including the "Edit Log Data" section)
   // working even if renderApplicationV2 isn't fired for that sheet.
-  if (!_staCallbacksHelperItemSheetRenderHookInstalled) {
-    _staCallbacksHelperItemSheetRenderHookInstalled = true;
+  if (!_staOfficersLogItemSheetRenderHookInstalled) {
+    _staOfficersLogItemSheetRenderHookInstalled = true;
 
     Hooks.on("renderItemSheet", async (app, html) => {
       try {

@@ -449,6 +449,27 @@ async function _getTalentIndexEntries({ packKey = "" } = {}) {
     // ignore - we can still try pack.index
   }
 
+  // Ensure pack.folders is populated for folder classification.
+  // getIndex() doesn't automatically load the folders collection in Foundry v12+.
+  // Loading a single document from the pack triggers folder hierarchy population.
+  try {
+    const folders = pack.folders;
+    const foldersEmpty =
+      !folders || (typeof folders.size === "number" && folders.size === 0);
+    if (foldersEmpty) {
+      // Find one entry that has a folder ID and load it to trigger
+      // the folder collection to be populated.
+      for (const entry of pack.index?.values?.() ?? []) {
+        if (entry?.folder && entry?.uuid) {
+          await fromUuid(entry.uuid);
+          break;
+        }
+      }
+    }
+  } catch (_) {
+    // ignore - folder classification will gracefully handle missing folders
+  }
+
   const entries = _normalizeIndexEntries(pack.index);
   return { entries, error: null };
 }
@@ -458,10 +479,17 @@ function _matchTalentFolderKindFromName(name) {
     .trim()
     .toLowerCase();
   if (!lower) return null;
+
+  // Crew/Character talents - match "Crew", "Crew Talents", "Character", etc.
   if (/(^|\b)crew(\b|$)/i.test(lower)) return "crew";
+  if (/(^|\b)character(\b|$)/i.test(lower)) return "crew";
+
+  // Ship/Starship talents - match "Ship", "Ship Talents", "Starship", etc.
+  // Check starship first to avoid partial match on "ship" within "starship"
   if (/(^|\b)star\s*ship(\b|$)/i.test(lower)) return "starship";
   if (/(^|\b)starship(\b|$)/i.test(lower)) return "starship";
-  if (lower === "ship" || /(^|\b)ship(\b|$)/i.test(lower)) return "starship";
+  if (/(^|\b)ship(\b|$)/i.test(lower)) return "starship";
+
   return null;
 }
 
@@ -503,7 +531,17 @@ function _packKeyFromUuid(uuid) {
   const rest = raw.slice(prefix.length);
   const parts = rest.split(".");
   if (parts.length < 2) return "";
+  // Remove item ID
   parts.pop();
+  // Foundry v12+ UUIDs have format: module.packname.Item.itemId
+  // After popping itemId, we may have "Item" (or other type) as last element - remove it too
+  const lastPart = parts[parts.length - 1];
+  if (
+    lastPart &&
+    /^(Item|Actor|JournalEntry|Scene|RollTable|Macro|Playlist)$/i.test(lastPart)
+  ) {
+    parts.pop();
+  }
   return parts.join(".");
 }
 
@@ -514,12 +552,25 @@ function _isConsolidatedTalentPackKey(packKey) {
   return key.endsWith("items-1e") || key.endsWith("items-2e");
 }
 
-function _classifyTalentFolderFromDocument(doc) {
+function _classifyTalentFolderFromDocument(doc, pack = null) {
   let cur = doc?.folder ?? null;
+
+  // Handle case where folder is an ID string instead of a Folder object.
+  // This can happen with compendium documents before full folder population.
+  if (typeof cur === "string" && pack?.folders?.get) {
+    cur = pack.folders.get(cur) ?? null;
+  }
+
   for (let i = 0; i < 12 && cur; i++) {
     const kind = _matchTalentFolderKindFromName(cur?.name);
     if (kind) return kind;
-    cur = cur?.folder ?? null;
+
+    let parent = cur?.folder ?? null;
+    // Parent folder reference may also be an ID string
+    if (typeof parent === "string" && pack?.folders?.get) {
+      parent = pack.folders.get(parent) ?? null;
+    }
+    cur = parent;
   }
   return null;
 }
@@ -783,13 +834,15 @@ async function _collectTalentPickerEntries({
       }
 
       if (wantedKind && shouldFilterByFolder) {
-        const kindFromDoc = _classifyTalentFolderFromDocument(doc);
+        const pack = packKey ? (game.packs?.get?.(packKey) ?? null) : null;
+        const kindFromDoc = _classifyTalentFolderFromDocument(doc, pack);
         let kind = kindFromDoc;
         if (!kind) {
-          const pack = packKey ? (game.packs?.get?.(packKey) ?? null) : null;
           kind = _classifyTalentFolder(pack, talent.folder);
         }
-        if (kind !== wantedKind) return null;
+        // Only filter out if we positively identified the wrong kind.
+        // If classification failed (kind is null), keep the talent.
+        if (kind && kind !== wantedKind) return null;
       }
 
       return {

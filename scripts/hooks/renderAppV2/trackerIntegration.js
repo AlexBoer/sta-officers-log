@@ -35,7 +35,7 @@ export async function installOfficersLogButtonsInStaTracker(app, root) {
   try {
     if (!(root instanceof HTMLElement)) return;
     if (!game.user?.isGM) return;
-    if (!game.staCallbacksHelper) return;
+    if (!game.staofficerslog) return;
 
     // Detect the STA system tracker.
     const ctorName = String(app?.constructor?.name ?? "");
@@ -112,11 +112,11 @@ export async function installOfficersLogButtonsInStaTracker(app, root) {
         const action = btn.dataset.action;
         try {
           if (action === "openCallback") {
-            game.staCallbacksHelper.open();
+            game.staofficerslog.open();
           } else if (action === "resetMission") {
-            game.staCallbacksHelper.promptNewMissionAndReset();
+            game.staofficerslog.promptNewMissionAndReset();
           } else if (action === "newScene") {
-            game.staCallbacksHelper.newScene();
+            game.staofficerslog.newScene();
           }
         } catch (err) {
           console.error(`${MODULE_ID} | tracker button failed`, err);

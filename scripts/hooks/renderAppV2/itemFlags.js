@@ -18,7 +18,6 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TRAIT_SCAR_FLAG = "isScar";
-const TRAIT_FATIGUE_FLAG = "isFatigue";
 
 export function isTraitScar(item) {
   if (!item || item.type !== "trait") return false;
@@ -32,20 +31,6 @@ export function isTraitScar(item) {
 export async function setTraitScarFlag(item, value) {
   if (!item || item.type !== "trait") return;
   await item.setFlag(MODULE_ID, TRAIT_SCAR_FLAG, Boolean(value));
-}
-
-export function isTraitFatigue(item) {
-  if (!item || item.type !== "trait") return false;
-  try {
-    return Boolean(item.getFlag?.(MODULE_ID, TRAIT_FATIGUE_FLAG));
-  } catch (_) {
-    return false;
-  }
-}
-
-export async function setTraitFatigueFlag(item, value) {
-  if (!item || item.type !== "trait") return;
-  await item.setFlag(MODULE_ID, TRAIT_FATIGUE_FLAG, Boolean(value));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -62,6 +47,8 @@ export function installTraitScarCheckbox(root, item) {
   try {
     if (!(root instanceof HTMLElement)) return;
     if (!item || item.type !== "trait") return;
+    // Only show scar/used checkboxes for traits owned by a character
+    if (!item.parent || item.parent.type !== "character") return;
 
     const quantityInput = root.querySelector('input[name="system.quantity"]');
     if (!(quantityInput instanceof HTMLInputElement)) return;
@@ -89,12 +76,6 @@ export function installTraitScarCheckbox(root, item) {
       );
       if (usedSwitch instanceof HTMLInputElement) {
         usedSwitch.checked = item.getFlag?.(MODULE_ID, "isScarUsed") ?? false;
-      }
-      const fatiguedSwitch = existingControl.querySelector(
-        ".sta-trait-fatigued-switch",
-      );
-      if (fatiguedSwitch instanceof HTMLInputElement) {
-        fatiguedSwitch.checked = isTraitFatigue(item);
       }
       return;
     }
@@ -137,36 +118,6 @@ export function installTraitScarCheckbox(root, item) {
     usedLabelWrapper.appendChild(usedLabelSpan);
     control.appendChild(usedLabelWrapper);
 
-    // Add divider before Fatigued checkbox
-    const divider = document.createElement("span");
-    divider.className = "sta-trait-checkbox-divider";
-    divider.textContent = "|";
-    control.appendChild(divider);
-
-    // Add the "Fatigued" toggle switch
-    const fatiguedTooltipText =
-      t("sta-officers-log.traits.fatiguedTooltip") ??
-      "Mark this trait as a Fatigued trait (auto-created when stress is maxed).";
-    const fatiguedLabelText =
-      t("sta-officers-log.traits.fatiguedLabel") ?? "Fatigued";
-
-    const fatiguedLabelWrapper = document.createElement("label");
-    fatiguedLabelWrapper.className = "checkbox sta-trait-fatigued-field";
-    fatiguedLabelWrapper.title = fatiguedTooltipText;
-
-    const fatiguedSwitch = document.createElement("input");
-    fatiguedSwitch.type = "checkbox";
-    fatiguedSwitch.className = "sta-trait-fatigued-switch";
-    fatiguedSwitch.checked = isTraitFatigue(item);
-    fatiguedSwitch.title = fatiguedTooltipText;
-
-    const fatiguedLabelSpan = document.createElement("span");
-    fatiguedLabelSpan.textContent = fatiguedLabelText;
-
-    fatiguedLabelWrapper.appendChild(fatiguedSwitch);
-    fatiguedLabelWrapper.appendChild(fatiguedLabelSpan);
-    control.appendChild(fatiguedLabelWrapper);
-
     quantityRow.appendChild(control);
 
     const onChange = async () => {
@@ -193,21 +144,8 @@ export function installTraitScarCheckbox(root, item) {
       }
     };
 
-    const onFatiguedChange = async () => {
-      fatiguedSwitch.disabled = true;
-      try {
-        await setTraitFatigueFlag(item, fatiguedSwitch.checked);
-      } catch (err) {
-        console.error(`${MODULE_ID} | trait fatigued toggle failed`, err);
-        fatiguedSwitch.checked = isTraitFatigue(item);
-      } finally {
-        fatiguedSwitch.disabled = false;
-      }
-    };
-
     checkbox.addEventListener("change", onChange);
     usedSwitch.addEventListener("change", onUsedChange);
-    fatiguedSwitch.addEventListener("change", onFatiguedChange);
   } catch (_) {
     // ignore
   }

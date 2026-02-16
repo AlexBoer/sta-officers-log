@@ -4,36 +4,12 @@ import {
 } from "../callbackFlow.js";
 import { MODULE_ID } from "../core/constants.js";
 import { AUTO_CALLBACK_ON_DETERMINATION_ROLL_SETTING } from "../data/mission.js";
-import { isTraitFatigue } from "./renderAppV2/itemFlags.js";
 
 // Hook to detect when a Determination roll is made in chat and prompt the user to use a callback.
-// Also checks if the character is fatigued and adds a note to the chat message.
 export function installCreateChatMessageHook() {
   Hooks.on("createChatMessage", async (message) => {
     const html = message.content ?? "";
     if (!html.includes('class="sta roll chat card"')) return;
-
-    // Check if character is fatigued and add notice to chat message
-    try {
-      const speakerActorId = message.speaker?.actor;
-      const actor = speakerActorId ? game.actors?.get?.(speakerActorId) : null;
-
-      if (actor) {
-        // Check for trait with isFatigue flag set to true
-        const isFatigued = actor.items.some((item) => {
-          return item.type === "trait" && isTraitFatigue(item);
-        });
-
-        if (isFatigued) {
-          const characterName = actor.name ?? "Character";
-          const fatigueNotice = `<div class="sta-fatigue-notice"><strong>${characterName} is Fatigued: +1 Difficulty.</strong></div>`;
-          message.content = html + fatigueNotice;
-          await message.update({ content: message.content });
-        }
-      }
-    } catch (err) {
-      console.warn("sta-officers-log | Failed to check fatigue status", err);
-    }
 
     // Feature toggle: disable automatic Determination scanning/prompting unless enabled.
     try {
@@ -77,7 +53,7 @@ export function installCreateChatMessageHook() {
     // Avoid double prompt for same mission.
     // (The core callback flow also checks this, but this prevents the whole prompt code from running at every message.)
     // eslint-disable-next-line no-undef
-    if (game.staCallbacksHelper?.hasUsedCallbackThisMission?.(targetUser.id)) {
+    if (game.staofficerslog?.hasUsedCallbackThisMission?.(targetUser.id)) {
       return;
     }
 

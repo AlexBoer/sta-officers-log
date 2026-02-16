@@ -29,30 +29,16 @@ import {
 import { installSupportingCharImprovementButtons } from "./supportingCharImprovements.js";
 import { handleBenefitDialogRender } from "./benefitDialogHandler.js";
 import { handleItemSheetRender } from "./itemSheetHandlers.js";
-import { installDicePoolFatigueNotice } from "./dicePoolFatigueNotice.js";
 import { installMissionLogSortButton } from "./missionLogSortButton.js";
 import { installUseDirectiveButton } from "./useDirectiveButton.js";
 import {
   installUseScarButtons,
-  installChooseAttributeButtons,
 } from "./traitButtons.js";
 import { installUseValueButtons } from "./useValue.js";
 import { installChooseMilestoneBenefitButtons } from "./chooseMilestoneBenefit.js";
 import { installItemUpdateHooks } from "./itemUpdateHooks.js";
-import { installFatiguedAttributeDisplay } from "./fatiguedAttributeDisplay.js";
-import {
-  installStressInfoButton,
-  installDeterminationInfoButton,
-  installValuesInfoButton,
-  installTalentsInfoButton,
-  installFocusesInfoButton,
-  installTraitsInfoButton,
-  installInjuriesInfoButton,
-  installLogsInfoButton,
-  installMilestonesInfoButton,
-  installDirectiveInfoButton,
-} from "./stressInfoButton.js";
 import { installFlowchartButton } from "./flowchartButton.js";
+import { installAcclaimButtonOverride } from "./acclaimButton.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Handler: STA Tracker
@@ -84,16 +70,6 @@ function handleTrackerRender(app, root) {
  * @returns {boolean} Whether a dialog was handled (and further processing should stop).
  */
 function handleDialogRender(app, root, context) {
-  // Check if this is a Dice Pool dialog and add fatigue notice if needed
-  try {
-    installDicePoolFatigueNotice(app, root, context);
-  } catch (err) {
-    console.warn(
-      "sta-officers-log | Failed to check fatigue in Dice Pool dialog",
-      err,
-    );
-  }
-
   // force vertical benefit button layout by wrapping footer buttons.
   if (handleBenefitDialogRender(root)) {
     return true; // Not a sheet render; stop here.
@@ -138,65 +114,9 @@ function handleCharacterSheetRender(app, root) {
   const actor = app.actor;
   if (!actor || actor.type !== "character") return;
 
-  // Mark fatigued attribute checkbox as disabled on the character sheet
+  // Add sort button to Character Logs section and apply sorting
   try {
-    installFatiguedAttributeDisplay(root, actor);
-  } catch (_) {
-    // ignore
-  }
-
-  // Add stress recovery info button next to Stress Track title
-  try {
-    installStressInfoButton(root);
-  } catch (_) {
-    // ignore
-  }
-
-  // Add determination info button next to Determination title
-  try {
-    installDeterminationInfoButton(root);
-  } catch (_) {
-    // ignore
-  }
-
-  // Add values info button next to Values section title
-  try {
-    installValuesInfoButton(root);
-  } catch (_) {
-    // ignore
-  }
-
-  // Add talents info button next to Talents section title
-  try {
-    installTalentsInfoButton(root);
-  } catch (_) {
-    // ignore
-  }
-
-  // Add focuses info button next to Focuses section title
-  try {
-    installFocusesInfoButton(root);
-  } catch (_) {
-    // ignore
-  }
-
-  // Add traits info button next to Traits section title
-  try {
-    installTraitsInfoButton(root);
-  } catch (_) {
-    // ignore
-  }
-
-  // Add injuries info button next to Injuries section title
-  try {
-    installInjuriesInfoButton(root);
-  } catch (_) {
-    // ignore
-  }
-
-  // Add character logs info button next to Character Logs section title
-  try {
-    installLogsInfoButton(root);
+    installFlowchartButton(root, actor);
   } catch (_) {
     // ignore
   }
@@ -204,13 +124,6 @@ function handleCharacterSheetRender(app, root) {
   // Add flowchart button to Character Logs section (if enabled)
   try {
     installFlowchartButton(root, actor);
-  } catch (_) {
-    // ignore
-  }
-
-  // Add milestones info button next to Milestones section title
-  try {
-    installMilestonesInfoButton(root);
   } catch (_) {
     // ignore
   }
@@ -261,22 +174,23 @@ function handleCharacterSheetRender(app, root) {
   // Add a section-level "Use Directive" button once.
   installUseDirectiveButton(root, actor, app);
 
-  // Add directive info button next to Use Directive button
-  try {
-    installDirectiveInfoButton(root);
-  } catch (_) {
-    // ignore
-  }
-
-  // Add per-Trait "Use Scar" and "Choose Attribute" buttons.
+  // Add per-Trait "Use Scar" buttons.
   installUseScarButtons(root, actor, app);
-  installChooseAttributeButtons(root, actor, app);
 
   // Add per-Value "Use Value" buttons.
   installUseValueButtons(root, actor, app);
 
   // Add a per-Log "Choose Benefit" button for logs which have a pending milestone.
   installChooseMilestoneBenefitButtons(root, actor, app);
+
+  // Replace Roll Acclaim button with custom dialog (main characters only).
+  if (!isSupportingCharacterSheet(actor)) {
+    try {
+      installAcclaimButtonOverride(root, actor, app);
+    } catch (_) {
+      // ignore
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

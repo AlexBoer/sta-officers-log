@@ -1,7 +1,5 @@
 ﻿import { CallbackRequestApp } from "./callbackFlow/CallbackRequestApp.js";
 import { MODULE_ID, t, initSocket } from "./core/index.js";
-import { warpCalculator } from "./warpCalculator.js";
-import { noteStyler, registerNoteStylerHooks } from "./noteStyler.js";
 import {
   addParticipantToCurrentMission,
   ensureNewSceneMacro,
@@ -26,20 +24,21 @@ import {
   openPendingShipBenefitsDialog,
 } from "./callbackFlow.js";
 import {
-  AMBIENT_AUDIO_SELECTION_ONLY_SETTING,
-  installAmbientAudioSelectionListenerPatch,
   installCreateChatMessageHook,
-  installMacroActorImageHook,
   installRenderApplicationV2Hook,
-  installStressMonitoringHook,
-  setPlayerAmbientAudioSelectionOnlyEnabled,
+  installReputationSpendHook,
+  promptGMSpendDialog,
+  triggerAllPlayersAcclaimSurvey,
+  openGMSurveyMonitor,
 } from "./hooks/index.js";
 import { registerClientSettings } from "./settings/clientSettings.js";
 import { registerDirectiveSettings } from "./data/directives.js";
+import { registerAcclaimSurveySettings } from "./data/acclaimSurvey.js";
+import { registerCustomSpendOptionsSettings } from "./data/customSpendOptions.js";
 
 function registerApi() {
   // Public API (available on all clients; methods may GM-guard internally)
-  game.staCallbacksHelper = {
+  game.staofficerslog = {
     open: openGMFlow,
     resetMissionCallbacks,
     promptNewMissionAndReset,
@@ -62,18 +61,21 @@ function registerApi() {
     // Ship benefits review
     reviewPendingShipBenefits: openPendingShipBenefitsDialog,
 
-    // Warp Speed Calculator
-    warpCalculator,
-
-    // Note Styler (for Pin Cushion and similar modules)
-    noteStyler,
-
     // Open Group Ship sheet
     openGroupShip,
+
+    // GM: Send spend dialog to a player
+    promptGMSpendDialog,
+
+    // GM: Trigger acclaim survey for all online players
+    triggerAllPlayersAcclaimSurvey,
+
+    // GM: Open the survey monitor (works independently of triggering surveys)
+    openGMSurveyMonitor,
   };
 
   // Back-compat for macros that reference a global symbol.
-  globalThis.staCallbacksHelper = game.staCallbacksHelper;
+  globalThis.staofficerslog = game.staofficerslog;
 }
 
 function safeInstallUiHooks() {
@@ -82,24 +84,6 @@ function safeInstallUiHooks() {
   } catch (err) {
     console.error(`${MODULE_ID} | failed to install render hook`, err);
   }
-
-  try {
-    installStressMonitoringHook();
-  } catch (err) {
-    console.error(
-      `${MODULE_ID} | failed to install stress monitoring hook`,
-      err,
-    );
-  }
-
-  try {
-    installMacroActorImageHook();
-  } catch (err) {
-    console.error(
-      `${MODULE_ID} | failed to install macro actor image hook`,
-      err,
-    );
-  }
 }
 
 function safeInstallChatHooks() {
@@ -107,6 +91,15 @@ function safeInstallChatHooks() {
     installCreateChatMessageHook();
   } catch (err) {
     console.error(`${MODULE_ID} | failed to install chat hook`, err);
+  }
+
+  try {
+    installReputationSpendHook();
+  } catch (err) {
+    console.error(
+      `${MODULE_ID} | failed to install reputation spend hook`,
+      err,
+    );
   }
 }
 
@@ -121,6 +114,24 @@ function safeRegisterSettings() {
     registerDirectiveSettings();
   } catch (err) {
     console.error(`${MODULE_ID} | failed to register directive settings`, err);
+  }
+
+  try {
+    registerAcclaimSurveySettings();
+  } catch (err) {
+    console.error(
+      `${MODULE_ID} | failed to register acclaim survey settings`,
+      err,
+    );
+  }
+
+  try {
+    registerCustomSpendOptionsSettings();
+  } catch (err) {
+    console.error(
+      `${MODULE_ID} | failed to register custom spend options settings`,
+      err,
+    );
   }
 
   try {
@@ -147,34 +158,6 @@ function safeRegisterClientSettings() {
     registerClientSettings();
   } catch (err) {
     console.error(`${MODULE_ID} | failed to register client settings`, err);
-  }
-}
-
-function safeRegisterAmbientAudioSettings() {
-  try {
-    game.settings.register(MODULE_ID, AMBIENT_AUDIO_SELECTION_ONLY_SETTING, {
-      name: t("sta-officers-log.settings.playerAmbientAudioSelectionOnly.name"),
-      hint: t("sta-officers-log.settings.playerAmbientAudioSelectionOnly.hint"),
-      scope: "world",
-      config: true,
-      type: Boolean,
-      default: false,
-      onChange: (value) => {
-        try {
-          setPlayerAmbientAudioSelectionOnlyEnabled(Boolean(value));
-        } catch (err) {
-          console.error(
-            `${MODULE_ID} | ambient audio setting onChange failed`,
-            err,
-          );
-        }
-      },
-    });
-  } catch (err) {
-    console.error(
-      `${MODULE_ID} | failed to register ambient audio settings`,
-      err,
-    );
   }
 }
 
@@ -243,21 +226,12 @@ try {
 Hooks.once("init", () => {
   safeRegisterClientSettings();
   safeRegisterSettings();
-  safeRegisterAmbientAudioSettings();
-  installAmbientAudioSelectionListenerPatch();
-
-  // Register Note Styler hooks for persistence
-  try {
-    registerNoteStylerHooks();
-  } catch (err) {
-    console.error(`${MODULE_ID} | failed to register note styler hooks`, err);
-  }
 
   // Public API (refresh in case something overwrote it)
   registerApi();
 
   console.log(
-    "sta-officers-log | API registered: game.staCallbacksHelper.open()",
+    "sta-officers-log | API registered: game.staofficerslog.open()",
   );
 
   // Hooks moved out of main.js
@@ -293,8 +267,6 @@ Hooks.once("ready", () => {
 if (game?.ready) {
   safeRegisterClientSettings();
   safeRegisterSettings();
-  safeRegisterAmbientAudioSettings();
-  installAmbientAudioSelectionListenerPatch();
   safeInstallUiHooks();
   safeInstallChatHooks();
   safeInitSocket();

@@ -16,10 +16,6 @@
         "name": "Hide Challenged Value Toggle",
         "hint": "Hides the 'Chal?' toggle on values until the user challenges the value via the \"Use Value\" button."
       },
-      "showInfoButtons": {
-        "name": "Show Info Buttons",
-        "hint": "Show info buttons next to Stress Track, Determination, and Values headers that display quick reference popups."
-      },
       "enableFlowchartView": {
         "name": "[EXPERIMENTAL] Enable Mission Log Flowchart",
         "hint": "Adds a button to open an interactive flowchart visualization of mission logs and callback chains."
@@ -28,10 +24,6 @@
         "name": "Group Ship",
         "hint": "Choose a Starship actor to be treated as the party's Group Ship (stored for later automation).",
         "none": "— None —"
-      },
-      "playerAmbientAudioSelectionOnly": {
-        "name": "Player Ambient Audio Uses Selected Tokens",
-        "hint": "If enabled, non-GM users only hear ambient audio near tokens they currently have selected/controlled (matching GM behavior). If disabled, Foundry's default behavior applies (players hear audio near all owned tokens)."
       },
       "autoCallbackOnDeterminationRoll": {
         "name": "Auto-prompt Callback on Determination Rolls",
@@ -60,6 +52,39 @@
         "editorRules": "Directives are sanitized and limited to {max} characters each.",
         "save": "Save",
         "saved": "Mission directives saved."
+      },
+      "acclaimSurvey": {
+        "enabledName": "Enable Reputation Survey",
+        "enabledHint": "When enabled, the Roll Reputation button on character sheets opens a survey dialog instead of the default Reputation roll.",
+        "name": "Reputation Survey Questions",
+        "label": "Edit Questions",
+        "hint": "Define the survey questions shown when rolling reputation.",
+        "menuTitle": "Reputation Survey Questions",
+        "editorHint": "Enter questions for each influence type (one per line). Players answer these when rolling reputation.",
+        "positiveLabel": "Positive Influence Questions",
+        "positivePlaceholder": "e.g. Did you demonstrate leadership?\nDid you support a crewmate?\nDid you complete the mission objective?",
+        "negativeLabel": "Negative Influence Questions",
+        "negativePlaceholder": "e.g. Did you disobey orders?\nDid you put the crew at risk?\nDid you act selfishly?",
+        "save": "Save",
+        "saved": "Reputation survey questions saved."
+      },
+      "customSpendOptions": {
+        "name": "Custom Awards & Spend Options",
+        "label": "Edit Custom Options",
+        "hint": "Define custom awards, acclaim spend options, and reprimand spend options.",
+        "menuTitle": "Custom Awards & Spend Options",
+        "editorHint": "Enter one option per line using the format: Name | Cost | Description. Cost defaults to 1 if omitted.",
+        "awardsLabel": "Custom Awards",
+        "awardsHint": "These appear under a 'Custom Awards' subheader in the Spend Acclaim dialog.",
+        "awardsPlaceholder": "e.g. Medal of Exploration | 3 | Awarded for charting new territories.",
+        "acclaimLabel": "Custom Acclaim Spend Options",
+        "acclaimHint": "These appear under a 'Custom' subheader in the Spend Acclaim dialog.",
+        "acclaimPlaceholder": "e.g. Call in a Specialist | 2 | Request a specialist NPC for the next mission.",
+        "reprimandLabel": "Custom Reprimand Spend Options",
+        "reprimandHint": "These appear under a 'Custom' subheader in the Spend Reprimands dialog.",
+        "reprimandPlaceholder": "e.g. Transfer | 3 | Reassigned to a different posting.",
+        "save": "Save",
+        "saved": "Custom spend options saved."
       },
       "enableTraumaRules": {
         "name": "Enable Trauma Rules",
@@ -93,11 +118,7 @@
       "usedLabel": "Used",
       "usedTooltip": "Mark this Scar as used.",
       "useScar": "Use Scar",
-      "useScarTooltip": "Use this Scar (requires GM approval).",
-      "fatiguedLabel": "Fatigued",
-      "fatiguedTooltip": "Mark this Trait as a Fatigue trait (auto-created when stress is maxed).",
-      "chooseAttribute": "Choose Attribute",
-      "chooseAttributeTooltip": "Choose which attribute your character is fatigued in."
+      "useScarTooltip": "Use this Scar (requires GM approval)."
     },
     "sceneControls": {
       "title": "STA"
@@ -128,87 +149,115 @@
       "noGroupShipSet": "No Group Ship has been set. Configure one in module settings.",
       "groupShipNotFound": "The configured Group Ship actor could not be found."
     },
-    "stress": {
-      "infoTooltip": "Stress Recovery Info",
-      "recoveryTitle": "Stress Recovery",
-      "breatherTitle": "Breather:",
-      "breatherDesc": "Rest for a few minutes. Recover 4 stress.",
-      "breakTitle": "Break:",
-      "breakDesc": "Rest for 30 minutes to a couple hours. Recover 8 Stress.",
-      "sleepTitle": "Sleep:",
-      "sleepDesc": "A full night's rest or similar amount of time. Recover all stress.",
-      "momentumTitle": "Momentum:",
-      "momentumDesc": "Recover 1 stress per 2 Momentum spent after a successful task, max 3.",
-      "ok": "OK"
+    "acclaimSurvey": {
+      "dialogTitle": "Roll Reputation",
+      "noQuestions": "No survey questions have been configured. Ask your GM to set them up in module settings.",
+      "yes": "Yes",
+      "no": "No",
+      "unsure": "Unsure",
+      "positiveInfluences": "Positive Influences",
+      "negativeInfluences": "Negative Influences",
+      "positiveInfluence": "Positive Influence",
+      "negativeInfluence": "Negative Influence",
+      "rollReputation": "Roll Reputation",
+      "modifier": "Modifier",
+      "noPositiveInfluences": "You need at least 1 positive influence to roll reputation.",
+      "surveyingFor": "Surveying for:"
     },
-    "determination": {
-      "infoTooltip": "Determination Info",
-      "infoTitle": "Determination",
-      "gainSpend": "Gain or Spend Determination by using values.",
-      "spendCrit": "Spend determination before rolling for a guaranteed crit.",
-      "spendReroll": "Spend determination after rolling to reroll any failed dice.",
-      "ok": "OK"
+    "gmMonitor": {
+      "title": "Acclaim Survey Monitor",
+      "close": "Close",
+      "waiting": "Waiting…",
+      "answering": "Answering…",
+      "rolled": "Rolled!",
+      "gmOnly": "Only the GM can use the survey monitor."
     },
-    "valuesInfo": {
-      "infoTooltip": "Values Info",
-      "infoTitle": "Values",
-      "intro": "Use Values to gain or spend determination:",
-      "positiveTitle": "Positive use:",
-      "positiveDesc": "Spend determination when your value is motivating you.",
-      "negativeTitle": "Negative use:",
-      "negativeDesc": "Gain determination when your value causes a complication.",
-      "challengedTitle": "Challenged use:",
-      "challengedDesc": "Gain determination when you act against your values and change them.",
-      "ok": "OK"
-    },
-    "talentsInfo": {
-      "infoTooltip": "Talents Info",
-      "infoTitle": "Talents",
-      "desc": "Talents give you special abilities that let you do things outside the normal rules.",
-      "ok": "OK"
-    },
-    "focusesInfo": {
-      "infoTooltip": "Focuses Info",
-      "infoTitle": "Focuses",
-      "desc": "If a focus applies, dice will crit when they are equal to or less than your discipline used in the task.",
-      "ok": "OK"
-    },
-    "traitsInfo": {
-      "infoTooltip": "Traits Info",
-      "infoTitle": "Traits",
-      "intro": "If a trait is both TRUE and IMPORTANT, it can:",
-      "possible": "Make something possible",
-      "easier": "Make something easier",
-      "harder": "Make something harder",
-      "impossible": "Make something impossible",
-      "ok": "OK"
-    },
-    "injuriesInfo": {
-      "infoTooltip": "Injuries Info",
-      "infoTitle": "Injuries",
-      "desc": "Injuries are negative traits. Removing them requires a task roll with a difficulty equal to the severity of the attack that caused them.",
-      "ok": "OK"
-    },
-    "logsInfo": {
-      "infoTooltip": "Character Logs Info",
-      "infoTitle": "Character Logs",
-      "desc1": "Character logs track your journey.",
-      "desc2": "Logs track which values you used in a mission.",
-      "desc3": "String together multiple missions using the same value by making a callback during play to earn milestone advancements.",
-      "ok": "OK"
-    },
-    "milestonesInfo": {
-      "infoTooltip": "Milestones Info",
-      "infoTitle": "Milestones",
-      "desc1": "Milestones are improvements to your character.",
-      "desc2": "Earn them by making a callback to another mission using the same value as the current task roll.",
-      "ok": "OK"
-    },
-    "directiveInfo": {
-      "infoTooltip": "Directives Info",
-      "infoTitle": "Directives",
-      "desc": "Directives are group values, and can be used in all the same ways as a value. Ask the GM what your Mission Directives are.",
-      "ok": "OK"
+    "reputationSpend": {
+      "spendAcclaimBtn": "Spend Acclaim",
+      "spendReprimandBtn": "Spend Reprimands",
+      "acclaimTitle": "Spend Acclaim",
+      "reprimandTitle": "Spend Reprimands",
+      "acclaimHeader": "Choose how to spend your acclaim:",
+      "reprimandHeader": "Choose how to apply your reprimands:",
+      "acclaimLabel": "Acclaim",
+      "reprimandLabel": "Reprimands",
+      "customHeader": "Custom",
+      "adhocCustomHeader": "Custom Entry",
+      "adhocNamePlaceholder": "Name",
+      "available": "Available",
+      "fromRoll": "From Roll",
+      "saved": "Saved",
+      "cost": "Cost",
+      "currentReputation": "Current Reputation",
+      "currentReprimands": "Current Reprimands",
+      "confirm": "Confirm",
+      "totalCost": "Total Cost",
+      "spent": "spent",
+      "remaining": "Remaining",
+      "acclaimWasted": "{amount} acclaim wasted.",
+      "reprimandSaved": "{amount} reprimands saved to character.",
+      "manualNote": "(Changes must be applied manually)",
+      "noOnlinePlayers": "No online players with assigned characters.",
+      "gmDialogTitle": "Send Spend Dialog",
+      "gmPlayerLabel": "Player",
+      "gmTypeLabel": "Type",
+      "gmAmountLabel": "Amount",
+      "gmSendLabel": "Send",
+      "gmSentMessage": "The GM has assigned you {amount} {type} to spend.",
+      "gmOnly": "Only the GM can use this.",
+      "noCharacter": "Player has no assigned character.",
+      "spendSent": "{type} spend sent to {player}.",
+      "surveySent": "Acclaim survey sent to {count} player(s).",
+      "spentMessage": "spent {cost} {type} on {choice}",
+      "acclaimCommendAnother": "Commend Another",
+      "acclaimCommendAnotherDesc": "Commanding officer spends 1 Acclaim to commend another main character, granting them one extra positive influence on their reputation roll (before they roll).",
+      "acclaimElevation": "Elevation",
+      "acclaimElevationDesc": "A non-commissioned officer receives a battlefield commission and becomes an officer. If the commanding officer refuses, no Acclaim is spent.",
+      "acclaimGainFavor": "Gain Favor",
+      "acclaimGainFavorDesc": "Obtain a favor from a non-enemy NPC encountered during the adventure. Base cost 1; +1 if not Starfleet, +1 if they command a starship or similar, +2 if admiral/ambassador/high-ranking.",
+      "acclaimIncreaseReputation": "Increase Reputation",
+      "acclaimIncreaseReputationDesc": "Increase Reputation by 1. Costs Acclaim equal to the new Reputation value (e.g. 3→4 costs 4). Once per adventure.",
+      "acclaimPromotion": "Promotion",
+      "acclaimPromotionDesc": "Promoted to a higher rank. If the commanding officer refuses, no Acclaim is spent. A commander cannot promote above commander; a captain cannot promote above captain.",
+      "acclaimStatus": "Status",
+      "acclaimStatusDesc": "Create an additional trait reflecting achievements, recognition, or special status — or remove a negative/detrimental trait. Commanding officers may add a trait to their ship instead.",      "awardsHeader": "Awards",
+      "awardPikeMedal": "Christopher Pike Medal of Valor",
+      "awardPikeMedalDesc": "<strong>Cost 4.</strong> Requires command/leadership officer who led crew through several difficult missions with personal danger on at least two. <em>Benefit:</em> Once per mission, when using the Direct task, treat your d20 as if it rolled a 1.",
+      "awardCochraneMedal": "Cochrane Medal of Excellence",
+      "awardCochraneMedalDesc": "<strong>Cost 3.</strong> Must have significantly contributed to science or engineering (discovery, solution to a long-standing problem). <em>Benefit:</em> (See rulebook for details.)",
+      "awardGrankiteOrder": "Grankite Order of Tactics",
+      "awardGrankiteOrderDesc": "<strong>Cost 3.</strong> Awarded for exceptional tactical acumen. <em>Benefit:</em> Once per mission, when creating a strategy/tactic trait, automatically add a level of Potency to it.",
+      "awardKaragiteOrder": "Karagite Order of Heroism",
+      "awardKaragiteOrderDesc": "<strong>Cost 3.</strong> Must have faced extreme danger and defended a Federation world/outpost. <em>Benefit:</em> Once per mission, Avoid an Injury for free \u2014 or spend 2 Momentum (Immediate) + complication to ignore one ship breach.",
+      "awardLegionOfHonor": "Legion of Honor",
+      "awardLegionOfHonorDesc": "<strong>Cost 4.</strong> No conditions. <em>Benefit:</em> Once per mission, gain 2 bonus Momentum on a successful task (not saveable), or ignore a single complication before its effect is announced.",
+      "awardPalmLeaf": "Palm Leaf of Peace Mission",
+      "awardPalmLeafDesc": "<strong>Cost 3.</strong> Mission must have involved securing peace or signing a peace treaty; all characters in that mission are eligible. <em>Benefit:</em> Once per mission, auto-succeed a Persuade task to prevent violence by spending Momentum equal to Difficulty.",
+      "awardStarCross": "Star Cross",
+      "awardStarCrossDesc": "<strong>Cost 3.</strong> No conditions. <em>Benefit:</em> Once per mission, before a task where a focus applies, double your focus range \u2014 score 2 successes for dice equal to or less than twice your department rating.",
+      "awardConspicuousGallantry": "Citation for Conspicuous Gallantry",
+      "awardConspicuousGallantryDesc": "<strong>Cost 2.</strong> Must have succeeded at a heroic, risky, or daring action. <em>Benefit:</em> Once per mission, when paying for Immediate Momentum by adding Threat, roll 1d20; if \u2264 Daring, remove 1 Threat.",
+      "awardDecorationGallantry": "Decoration of Gallantry",
+      "awardDecorationGallantryDesc": "<strong>Cost 2.</strong> Must have faced an extremely difficult/dangerous situation and triumphed. <em>Benefit:</em> Once per mission, when suffering an Injury, halve its Severity before avoiding it.",
+      "awardMedalOfHonor": "Starfleet Medal of Honor",
+      "awardMedalOfHonorDesc": "<strong>Cost 5.</strong> No conditions. May be earned multiple times. <em>Benefit:</em> Once per mission (per medal), gain 2 bonus Momentum on a successful task (not saveable, max once per task).",
+      "awardSurgeonsDecoration": "Surgeons' Decoration",
+      "awardSurgeonsDecorationDesc": "<strong>Cost 3.</strong> Must be a Medical officer who acted above and beyond to save patients or alleviate a medical crisis. <em>Benefit:</em> Once per mission, reduce the Difficulty of a single Medical task by 2 (min 1).",      "reprimandCourtMartial": "Court-Martial",
+      "reprimandCourtMartialDesc": "Arrested and placed on trial. You have the right to legal counsel, and proceedings should be resolved in-game. The court determines guilt or innocence and passes sentence, which can include dishonorable discharge and incarceration.",
+      "reprimandDemotion": "Demotion",
+      "reprimandDemotionDesc": "Accept demotion from your current rank by one step (e.g. commander to lieutenant commander, or lieutenant to lieutenant junior grade).",
+      "reprimandDetention": "Detention",
+      "reprimandDetentionDesc": "Stripped of duties and locked away for a short duration. A character in detention cannot be used; you must use a supporting character during the next mission.",
+      "reprimandGainAntipathy": "Gain Antipathy",
+      "reprimandGainAntipathyDesc": "Declare an allied NPC from the adventure regards you poorly. Costs 1 normally; +1 if the NPC commands a starship, or +2 if the NPC is an admiral, general, or high-ranking figure.",
+      "reprimandReduceReputation": "Reduce Reputation",
+      "reprimandReduceReputationDesc": "Reduce your Reputation by 1. Costs Reprimands equal to the Reputation you previously held (e.g. 3\u21922 costs 3). Once per adventure.",
+      "reprimandShameByAssociation": "Shame by Association",
+      "reprimandShameByAssociationDesc": "Commanding officer only. Stain the reputation of others aboard your ship — counts as one extra negative influence on each other main character's reputation roll. Must be done before they roll.",
+      "reprimandStatus": "Status",
+      "reprimandStatusDesc": "Create a trait reflecting dishonor, cowardice, or disgrace — or remove a positive trait. Commanding officers may add a trait to their ship instead.",
+      "reprimandStrippedOfAward": "Stripped of Award",
+      "reprimandStrippedOfAwardDesc": "Remove one or more of your awards to remove Reprimands. Each award removed uses Reprimands equal to that award's cost."
     },
     "values": {
       "useValue": "Use Value",
@@ -550,25 +599,6 @@
       "pendingShipBenefitsMissingDepartmentKeysSwap": "Missing department keys for ship department swap.",
       "pendingShipBenefitsApplyFailed": "Failed to apply ship benefit: {message}",
       "pendingShipBenefitsUnknownError": "Unknown error"
-    },
-    "warpCalculator": {
-      "title": "Warp Speed Calculator",
-      "instructions": "Enter any two values and leave the third blank to calculate it.",
-      "formulaTng": "TNG Formula",
-      "formulaTos": "TOS Formula",
-      "warpFactor": "Warp Factor",
-      "distance": "Distance",
-      "time": "Time",
-      "lightYears": "light-years",
-      "days": "days",
-      "ly": "ly",
-      "lyDay": "ly/day",
-      "velocity": "Velocity",
-      "lyPerDay": "Travel Rate",
-      "enterTwoValues": "Enter any two values above to calculate the third.",
-      "cannotCalculate": "Cannot calculate with the given values.",
-      "sendToChat": "Send to Chat",
-      "close": "Close"
     }
   }
 }
