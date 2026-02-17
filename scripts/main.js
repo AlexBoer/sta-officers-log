@@ -1,4 +1,4 @@
-﻿import { CallbackRequestApp } from "./callbackFlow/CallbackRequestApp.js";
+﻿import { CallbackRequestApp } from "./callback/CallbackRequestApp.js";
 import { MODULE_ID, t, initSocket } from "./core/index.js";
 import {
   addParticipantToCurrentMission,
@@ -11,30 +11,30 @@ import {
   promptNewMissionAndReset,
   registerMissionSettings,
   resetMissionCallbacks,
-} from "./data/mission.js";
+} from "./missions/mission.js";
 import {
   registerFocusPickerSettings,
   registerTalentPickerSettings,
 } from "./settings/pickerSettings.js";
-import { getCharacterArcEligibility } from "./data/arcChains.js";
+import { getCharacterArcEligibility } from "./arcs/arcChains.js";
 import {
   openGMFlow,
   promptCallbackForUserId,
   sendCallbackPromptToUser,
-  openPendingShipBenefitsDialog,
-} from "./callbackFlow.js";
+} from "./callback/gmFlow.js";
+import { openPendingShipBenefitsDialog } from "./ship/pendingShipBenefitsDialog.js";
+import { installRenderApplicationV2Hook } from "./sheet/hook.js";
+import { installCreateChatMessageHook } from "./callback/chatMessage.js";
 import {
-  installCreateChatMessageHook,
-  installRenderApplicationV2Hook,
   installReputationSpendHook,
   promptGMSpendDialog,
   triggerAllPlayersAcclaimSurvey,
-  openGMSurveyMonitor,
-} from "./hooks/index.js";
+} from "./acclaim/reputationSpend.js";
+import { openGMSurveyMonitor } from "./acclaim/gmSurveyMonitor.js";
 import { registerClientSettings } from "./settings/clientSettings.js";
-import { registerDirectiveSettings } from "./data/directives.js";
-import { registerAcclaimSurveySettings } from "./data/acclaimSurvey.js";
-import { registerCustomSpendOptionsSettings } from "./data/customSpendOptions.js";
+import { registerDirectiveSettings } from "./directives/directives.js";
+import { registerAcclaimSurveySettings } from "./acclaim/acclaimSurvey.js";
+import { registerCustomSpendOptionsSettings } from "./acclaim/customSpendOptions.js";
 
 function registerApi() {
   // Public API (available on all clients; methods may GM-guard internally)
@@ -230,9 +230,7 @@ Hooks.once("init", () => {
   // Public API (refresh in case something overwrote it)
   registerApi();
 
-  console.log(
-    "sta-officers-log | API registered: game.staofficerslog.open()",
-  );
+  console.log("sta-officers-log | API registered: game.staofficerslog.open()");
 
   // Hooks moved out of main.js
   safeInstallUiHooks();

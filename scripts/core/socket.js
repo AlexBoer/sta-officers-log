@@ -1,25 +1,25 @@
 import { MODULE_ID } from "./constants.js";
 import { t } from "./i18n.js";
-import { setValueChallenged } from "../data/values.js";
+import { setValueChallenged } from "../values/values.js";
 import {
   isLogUsed,
   setMissionLogForUser,
   setCurrentMissionLogForActor,
-} from "../data/mission.js";
-import { gainDetermination } from "../callbackFlow/milestones.js";
-import { hasEligibleCallbackTargetForValueId } from "../data/logMetadata.js";
+} from "../missions/mission.js";
+import { gainDetermination } from "./determination.js";
+import { hasEligibleCallbackTargetForValueId } from "../callback/callbackEligibility.js";
 import {
   mergeValueStateArray,
   normalizeValueStateArray,
   isValueInvokedState,
-} from "../data/values.js";
+} from "../values/values.js";
 import {
   DIRECTIVE_VALUE_ID_PREFIX,
   directiveIconPath,
   sanitizeDirectiveText,
   setDirectiveChallenged,
-} from "../data/directives.js";
-import { getUserIdForCharacterActor } from "../hooks/renderAppV2/sheetUtils.js";
+} from "../directives/directives.js";
+import { getUserIdForCharacterActor } from "./utils.js";
 
 function _hasEligibleCallbackTargetWithAnyInvokedDirective(
   actor,
@@ -137,8 +137,7 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     }
 
     // Import directly and call the function
-    const { sendCallbackPromptToUser } =
-      await import("../callbackFlow/gmFlow.js");
+    const { sendCallbackPromptToUser } = await import("../callback/gmFlow.js");
 
     if (typeof sendCallbackPromptToUser !== "function") {
       console.error(
@@ -535,16 +534,14 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     const actor = game.actors?.get?.(actorId);
     if (!actor) return;
     // Dynamically import to avoid circular deps
-    const { showAcclaimDialog } =
-      await import("../hooks/renderAppV2/acclaimButton.js");
+    const { showAcclaimDialog } = await import("../acclaim/acclaimButton.js");
     await showAcclaimDialog(actor, { gmTriggered: true });
   });
 
   // --- RPC: Player -> GM (live survey state updates) ---
   moduleSocket.register("acclaimSurveyUpdate", async (msg) => {
     if (!game.user.isGM) return;
-    const { updateGMMonitor } =
-      await import("../hooks/renderAppV2/gmSurveyMonitor.js");
+    const { updateGMMonitor } = await import("../acclaim/gmSurveyMonitor.js");
     updateGMMonitor(msg);
   });
 
