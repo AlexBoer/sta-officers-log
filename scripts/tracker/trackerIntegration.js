@@ -236,6 +236,16 @@ export async function installMissionDirectivesInStaTracker(root) {
       await setMissionDirectives(newDirectives);
       // Rebuild the section with fresh data.
       await installMissionDirectivesInStaTracker(root);
+
+      // Notify other connected clients to refresh their tracker so
+      // the updated directives appear for everyone.
+      try {
+        const { getModuleSocket } = await import("../core/socket.js");
+        const sock = getModuleSocket();
+        if (sock) await sock.executeForOthers("refreshTracker");
+      } catch (_) {
+        // socket broadcast is best-effort
+      }
     });
 
     // After adding the section, use negative margin-top to shift the tracker up.

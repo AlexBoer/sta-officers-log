@@ -5,8 +5,18 @@ import { AUTO_CALLBACK_ON_DETERMINATION_ROLL_SETTING } from "../missions/mission
 // Hook to detect when a Determination roll is made in chat and prompt the user to use a callback.
 export function installCreateChatMessageHook() {
   Hooks.on("createChatMessage", async (message) => {
-    const html = message.content ?? "";
-    if (!html.includes('class="sta roll chat card"')) return;
+    // Detect determination usage: prefer structured flags (STA v2.5.0+),
+    // fall back to HTML content parsing for older versions.
+    const staFlags = message.flags?.sta;
+    const determinationViaFlags = staFlags?.usingDetermination === true;
+
+    if (!determinationViaFlags) {
+      const html = message.content ?? "";
+      const hasCard =
+        html.includes('class="chatcard"') ||
+        html.includes('class="sta roll chat card"');
+      if (!hasCard || !/\bDetermination\b/i.test(html)) return;
+    }
 
     // Feature toggle: disable automatic Determination scanning/prompting unless enabled.
     try {
@@ -23,8 +33,6 @@ export function installCreateChatMessageHook() {
     }
 
     if (!game.user.isGM) return;
-
-    if (!/\bDetermination\b/i.test(html)) return;
 
     const authorId = message.author?.id ?? message.user?.id;
     if (!authorId) return;

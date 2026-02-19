@@ -208,7 +208,9 @@ const REPRIMAND_OPTIONS = [
  * @returns {{ type: "acclaim"|"reprimand"|"nochange", amount: number }}
  */
 function _parseOutcome(card) {
-  const totalEl = card.querySelector("h4.dice-total");
+  // v2.5.0+ uses .greytext for outcome; older versions used h4.dice-total
+  const totalEl =
+    card.querySelector(".greytext") ?? card.querySelector("h4.dice-total");
   if (!totalEl) return { type: "nochange", amount: 0 };
 
   const text = (totalEl.textContent ?? "").trim();
@@ -255,15 +257,35 @@ function _parseOutcome(card) {
 /**
  * Resolve the Actor from a reputation-roll chat message.
  *
+ * STA v2.5.0's STARoll.sendToChat() creates messages without an explicit
+ * speaker, so message.speaker.actor may be unset.  We fall back to
+ * matching the speakerName stored in the message flags, then to the
+ * message author's assigned character.
+ *
  * @param {ChatMessage} message - The chat message document.
  * @returns {Actor|null}
  */
 function _resolveActor(message) {
+  // 1. Explicit speaker.actor (set if the roll was created with ChatMessage.getSpeaker)
   const speakerActorId = message?.speaker?.actor;
   if (speakerActorId) {
     const actor = game.actors?.get?.(speakerActorId);
     if (actor) return actor;
   }
+
+  // 2. Match by speakerName stored in flags (handles GM-on-behalf-of-player rolls)
+  const speakerName = message?.flags?.sta?.speakerName;
+  if (speakerName) {
+    const actor = game.actors?.find?.(
+      (a) => a.name === speakerName && a.type === "character",
+    );
+    if (actor) return actor;
+  }
+
+  // 3. The message author's assigned character
+  const authorChar = message?.author?.character;
+  if (authorChar) return authorChar;
+
   return null;
 }
 
@@ -881,15 +903,17 @@ export function installReputationSpendHook() {
     const root = html;
     if (!root) return;
 
-    // Find the STA reputation roll card
-    const card = root.querySelector(".sta.roll.chat.card");
+    // Find the STA reputation roll card (v2.5.0+ uses .chatcard, older uses .sta.roll.chat.card)
+    const card =
+      root.querySelector(".chatcard") ||
+      root.querySelector(".sta.roll.chat.card");
     if (!card) return;
 
-    // Check if this is a reputation roll (has the dice-pool format with d20 Difficulty)
-    const formula = card.querySelector(".dice-formula .dice-pool");
-    if (!formula) return;
-    const formulaText = (formula.textContent ?? "").trim();
-    if (!formulaText.includes("d20")) return;
+    // Identify reputation rolls: prefer flags (v2.5.0+), fall back to DOM
+    const isReputationRoll =
+      message.flags?.sta?.rollType === "acclaim" ||
+      !!card.querySelector(".flavor.acclaim");
+    if (!isReputationRoll) return;
 
     // Parse outcome
     const outcome = _parseOutcome(card);

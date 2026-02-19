@@ -2973,7 +2973,7 @@ div.section.milestones li.row.entry[data-item-type="log"] .item-name a {
 
 /* Chat result */
 .sta-spend-chat-result {
-  padding: 4px 0;
+  padding: 1rem;
 }
 
 .sta-spend-chat-result p {
@@ -3021,7 +3021,7 @@ div.section.milestones li.row.entry[data-item-type="log"] .item-name a {
 
 /* GM-sent spend message */
 .sta-gm-spend-message {
-  padding: 4px 0;
+  padding: 1rem;
 }
 
 .sta-gm-spend-message p {

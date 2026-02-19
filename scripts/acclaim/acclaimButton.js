@@ -187,8 +187,8 @@ function _buildQuestionRows(questions, prefix) {
               ${t("sta-officers-log.acclaimSurvey.no")}
             </label>
             <label>
-              <input type="radio" name="${prefix}${i}" value="unsure" />
-              ${t("sta-officers-log.acclaimSurvey.unsure")}
+              <input type="radio" name="${prefix}${i}" value="N/A" />
+              ${t("sta-officers-log.acclaimSurvey.notApplicable")}
             </label>
           </div>
         </div>
@@ -385,8 +385,6 @@ async function _performAcclaimRoll(
     return;
   }
 
-  const speaker = ChatMessage.getSpeaker({ actor });
-
   // Roll logic — identical to STA system's _onReputationTest()
   const targetNumber = currentReputation + 7;
   const complicationThreshold = 20 - Math.min(currentReprimand, 5);
@@ -430,27 +428,23 @@ async function _performAcclaimRoll(
     }
   }
 
-  // Build chat data and render using the STA system's template
+  // Build chat data and delegate to the STA system's STARoll.sendToChat(),
+  // which handles template rendering, flags, and Dice So Nice integration.
   const chatData = {
-    speakerId: speaker.actor?.id ?? speaker.id,
-    tokenId: speaker.token?.uuid ?? null,
+    speakerName: actor.name,
+    flavor: game.i18n.format("sta.actor.character.acclaim"),
     dicePool: positiveInfluences,
     diceHtml,
     outcomeText,
     targetNumber,
     complicationThreshold,
     negativeInfluences,
+    rollType: "acclaim",
+    dice3dRoll: roll,
   };
 
-  const chatHtml = await foundry.applications.handlebars.renderTemplate(
-    "systems/sta/templates/chat/reputation-roll.hbs",
-    chatData,
-  );
-
-  ChatMessage.create({
-    speaker,
-    content: chatHtml,
-  });
+  const staRoll = new STARoll();
+  await staRoll.sendToChat(chatData);
 }
 
 /**

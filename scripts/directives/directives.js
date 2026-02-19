@@ -185,17 +185,18 @@ export async function setDirectiveChallenged(actor, directiveKey, challenged) {
 
 export async function rerenderStaTracker() {
   try {
-    const Tracker = globalThis?.STATracker;
-
-    const inst = globalThis?.foundry?.applications?.instances;
-    const apps = [];
-    if (inst) {
-      for (const app of inst.values()) apps.push(app);
+    // v2.5.0+: use the global STATracker reference set by the STA system.
+    if (game.STATracker) {
+      await game.STATracker.render({ force: true });
+      return;
     }
 
-    const uniq = Array.from(new Set(apps)).filter(Boolean);
+    // Fallback for older STA versions: search application instances.
+    const Tracker = globalThis?.STATracker;
+    const inst = globalThis?.foundry?.applications?.instances;
+    if (!inst) return;
 
-    for (const app of uniq) {
+    for (const app of inst.values()) {
       const ctorName = String(app?.constructor?.name ?? "");
       const isTracker =
         ctorName === "STATracker" || (Tracker && app instanceof Tracker);

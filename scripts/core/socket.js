@@ -545,5 +545,13 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     updateGMMonitor(msg);
   });
 
+  // --- Broadcast: re-render the STA Tracker on this client ---
+  // Used to propagate directive changes and other tracker-visual updates
+  // to all connected clients.
+  moduleSocket.register("refreshTracker", async () => {
+    const { rerenderStaTracker } = await import("../directives/directives.js");
+    await rerenderStaTracker();
+  });
+
   return moduleSocket;
 }

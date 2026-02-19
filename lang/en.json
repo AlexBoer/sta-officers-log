@@ -154,7 +154,7 @@
       "noQuestions": "No survey questions have been configured. Ask your GM to set them up in module settings.",
       "yes": "Yes",
       "no": "No",
-      "unsure": "Unsure",
+      "notApplicable": "N/A",
       "positiveInfluences": "Positive Influences",
       "negativeInfluences": "Negative Influences",
       "positiveInfluence": "Positive Influence",

@@ -1,5 +1,6 @@
 import { MODULE_ID } from "../core/constants.js";
 import { t, tf } from "../core/i18n.js";
+import { getModuleSocket } from "../core/socket.js";
 import {
   getMissionDirectives,
   rerenderStaTracker,
@@ -424,13 +425,26 @@ export async function resetScarUsed({ notify = true } = {}) {
 
 /**
  * Set a STA tracker value (momentum or threat) using the system's settings API.
- * Falls back to direct Setting document update if needed.
+ * Prefers STATracker.DoUpdateResource() (v2.5.0+) which handles settings,
+ * socket messaging to all clients, and chat messages automatically.
+ * Falls back to direct setting/document update for older versions.
  * @param {"momentum"|"threat"} key - The tracker key to set
  * @param {number} value - The value to set
  * @returns {Promise<boolean>} - Whether the operation succeeded
  */
 async function _setStaTrackerValue(key, value) {
   try {
+    const numValue = Math.max(0, Math.floor(value));
+
+    // v2.5.0+: Use the system's DoUpdateResource which handles settings,
+    // socket broadcast to all clients, and accumulated chat messages.
+    const TrackerClass = game.STATracker?.constructor;
+    if (typeof TrackerClass?.DoUpdateResource === "function") {
+      await TrackerClass.DoUpdateResource(key, numValue);
+      return true;
+    }
+
+    // Fallback for older STA versions: set directly and rerender locally.
     const settingKey = `sta.${key}`;
     const world = game.settings.storage?.get?.("world");
     const doc =
@@ -438,22 +452,14 @@ async function _setStaTrackerValue(key, value) {
       world?.contents?.find?.((s) => s?.key === settingKey) ??
       null;
 
-    const numValue = Math.max(0, Math.floor(value));
-
-    // Prefer the system's normal settings API so any onChange handlers rerender the tracker.
     try {
       await game.settings.set("sta", key, numValue);
-      rerenderStaTracker();
-      setTimeout(() => rerenderStaTracker(), 50);
-      setTimeout(() => rerenderStaTracker(), 250);
+      await rerenderStaTracker();
       return true;
     } catch (_) {
-      // Some system versions store this as a string; try again.
       try {
         await game.settings.set("sta", key, String(numValue));
-        rerenderStaTracker();
-        setTimeout(() => rerenderStaTracker(), 50);
-        setTimeout(() => rerenderStaTracker(), 250);
+        await rerenderStaTracker();
         return true;
       } catch (_) {
         // Fall back to updating the Setting document directly.
@@ -463,7 +469,6 @@ async function _setStaTrackerValue(key, value) {
     if (!doc) return false;
     await doc.update({ value: String(numValue) });
 
-    // If the system registered the setting, best-effort invoke its onChange handler.
     try {
       const cfg = game.settings.settings?.get?.(settingKey);
       cfg?.onChange?.(String(numValue));
@@ -471,9 +476,7 @@ async function _setStaTrackerValue(key, value) {
       // ignore
     }
 
-    rerenderStaTracker();
-    setTimeout(() => rerenderStaTracker(), 50);
-    setTimeout(() => rerenderStaTracker(), 250);
+    await rerenderStaTracker();
 
     return true;
   } catch (_) {
@@ -941,4 +944,12 @@ export async function promptNewMissionAndReset() {
 
   // Re-render STA Tracker so the directives section updates
   await rerenderStaTracker();
+
+  // Broadcast tracker refresh to other clients so directives sync
+  try {
+    const sock = getModuleSocket();
+    if (sock) await sock.executeForOthers("refreshTracker");
+  } catch (_) {
+    // ignore – socket may not be registered yet
+  }
 }
