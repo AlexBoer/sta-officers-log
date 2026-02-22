@@ -1,5 +1,5 @@
-# AI Agent Documentation (not for repo/distribution)
-AI-AGENT-DOCS.md
+# Ignore all markdown files
+*.md
 
 # Node modules
 node_modules/
@@ -15,7 +15,7 @@ node_modules/
 Thumbs.db
 
 # Build artifacts
-*.zip
+module.zip
 dist/
 
 # Logs
