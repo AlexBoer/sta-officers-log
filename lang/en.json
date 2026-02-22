@@ -147,7 +147,8 @@
       "pendingShipBenefitsAppliedSystemSwap": "Applied ship system swap: {from} → {to} for {character}.",
       "pendingShipBenefitsAppliedDepartmentSwap": "Applied ship department swap: {from} → {to} for {character}.",
       "noGroupShipSet": "No Group Ship has been set. Configure one in module settings.",
-      "groupShipNotFound": "The configured Group Ship actor could not be found."
+      "groupShipNotFound": "The configured Group Ship actor could not be found.",
+      "missionEnded": "Mission ended."
     },
     "acclaimSurvey": {
       "dialogTitle": "Roll Reputation",
@@ -275,7 +276,9 @@
       "chooseMilestone": "Choose Milestone",
       "chooseMilestoneTooltip": "Choose a milestone benefit.",
       "chooseArc": "Choose Arc",
-      "chooseArcTooltip": "Choose an Arc benefit."
+      "chooseArcTooltip": "Choose an Arc benefit.",
+      "disabledTooltip": "Mission still in progress.",
+      "disabledNotification": "You can choose a milestone/arc at the end of a mission."
     },
     "logSheet": {
       "arcComplete": "Arc Complete",
@@ -466,6 +469,19 @@
         "ok": "Submit",
         "cancel": "Abort"
       },
+      "endMission": {
+        "title": "End Current Mission",
+        "body": "End the current mission?",
+        "callbackYes": "Callback",
+        "callbackNo": "No Callback",
+        "milestoneEarned": "Milestone earned",
+        "arcEarned": "Arc earned",
+        "noMilestone": "No milestone",
+        "confirm": "End Mission",
+        "cancel": "Cancel",
+        "copyMarkdown": "Copy as Markdown",
+        "copied": "Copied to clipboard."
+      },
       "pickPlayer": {
         "title": "Send callback popup to…",
         "playerLabel": "Player",
@@ -574,7 +590,8 @@
       "noEligibleLogs": "{user} has no eligible logs to callback to.",
 
       "pendingShipBenefitsTalentSwapManual": "Ship talent swap for {character} requires manual application. The talent selection dialog should be shown.",
-      "pendingShipBenefitsUnknownAction": "Unknown ship benefit action: {action}. Please apply manually."
+      "pendingShipBenefitsUnknownAction": "Unknown ship benefit action: {action}. Please apply manually.",
+      "noActiveMission": "No active mission."
     },
     "confirmDelete": {
       "delete": "Delete",

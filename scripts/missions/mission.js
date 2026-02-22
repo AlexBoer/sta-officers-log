@@ -1,6 +1,7 @@
 import { MODULE_ID } from "../core/constants.js";
 import { t, tf } from "../core/i18n.js";
 import { getModuleSocket } from "../core/socket.js";
+import { escapeHTML, isPlainObject } from "../core/utils.js";
 import {
   getMissionDirectives,
   rerenderStaTracker,
@@ -258,6 +259,20 @@ export function isLogUsed(item) {
   if (typeof moduleFlag !== "undefined") return Boolean(moduleFlag);
 
   return false;
+}
+
+/**
+ * Check if there is currently an active mission.
+ * A mission is considered active when the world missionTitle setting is non-empty.
+ *
+ * @returns {boolean}
+ */
+export function hasActiveMission() {
+  try {
+    return Boolean((game.settings.get(MODULE_ID, "missionTitle") ?? "").trim());
+  } catch (_) {
+    return false;
+  }
 }
 
 /**
@@ -799,12 +814,198 @@ export async function promptAddParticipant() {
   });
 }
 
+/**
+ * End the currently active mission.
+ * Shows a summary dialog listing each participant's callback and milestone/arc status,
+ * then clears all current-mission-log indicators and mission state.
+ *
+ * GM-only.
+ */
+export async function endCurrentMission() {
+  if (!game.user.isGM)
+    return ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
+
+  if (!hasActiveMission()) {
+    return ui.notifications.warn(
+      t("sta-officers-log.warnings.noActiveMission"),
+    );
+  }
+
+  const missionTitle =
+    (game.settings.get(MODULE_ID, "missionTitle") ?? "").trim() || "(untitled)";
+  const participantIds =
+    game.settings.get(MODULE_ID, "missionParticipants") ?? [];
+
+  // Gather per-character summary
+  const summaryRows = [];
+  for (const userId of participantIds) {
+    const user = game.users?.get?.(userId);
+    if (!user) continue;
+
+    const actor = user.character ?? null;
+    if (!actor || actor.type !== "character") continue;
+
+    // Callback status
+    const usedCallback = hasUsedCallbackThisMission(userId);
+
+    // Milestone/Arc earned: check the current mission log for pendingMilestoneBenefit
+    const currentLogId = getCurrentMissionLogForActor(actor);
+    const currentLog = currentLogId
+      ? actor.items.get(String(currentLogId))
+      : null;
+    let milestoneLabel = "";
+    if (currentLog) {
+      const pending = currentLog.getFlag?.(
+        MODULE_ID,
+        "pendingMilestoneBenefit",
+      );
+      if (isPlainObject(pending)) {
+        const arc = pending.arc ?? null;
+        if (arc?.isArc === true) {
+          milestoneLabel = t("sta-officers-log.dialog.endMission.arcEarned");
+        } else {
+          milestoneLabel = t(
+            "sta-officers-log.dialog.endMission.milestoneEarned",
+          );
+        }
+      }
+    }
+    if (!milestoneLabel) {
+      milestoneLabel = t("sta-officers-log.dialog.endMission.noMilestone");
+    }
+
+    summaryRows.push({
+      name: actor.name ?? user.name ?? userId,
+      usedCallback,
+      milestoneLabel,
+    });
+  }
+
+  // Build summary HTML
+  const callbackYes = t("sta-officers-log.dialog.endMission.callbackYes");
+  const callbackNo = t("sta-officers-log.dialog.endMission.callbackNo");
+
+  // Build markdown for clipboard
+  let markdown = `## ${missionTitle}\n`;
+  if (summaryRows.length) {
+    for (const row of summaryRows) {
+      const cb = row.usedCallback
+        ? `\u2713 ${callbackYes}`
+        : `\u2014 ${callbackNo}`;
+      markdown += `- **${row.name}** — ${cb} | ${row.milestoneLabel}\n`;
+    }
+  } else {
+    markdown += "_No participants._\n";
+  }
+
+  // Build summary HTML
+  let summaryHtml = `<p><strong>${escapeHTML(missionTitle)}</strong></p>`;
+  if (summaryRows.length) {
+    summaryHtml +=
+      '<table style="width:100%; border-collapse:collapse; margin-top:0.5rem;">';
+    for (const row of summaryRows) {
+      const cbBadge = row.usedCallback
+        ? `<span style="color:#4caf50;">&#10003; ${escapeHTML(callbackYes)}</span>`
+        : `<span style="opacity:0.5;">&mdash; ${escapeHTML(callbackNo)}</span>`;
+      summaryHtml += `<tr>
+        <td style="padding:0.25rem 0.5rem; white-space:nowrap;"><strong>${escapeHTML(row.name)}</strong></td>
+        <td style="padding:0.25rem 0.5rem;">${cbBadge}</td>
+        <td style="padding:0.25rem 0.5rem;">${escapeHTML(row.milestoneLabel)}</td>
+      </tr>`;
+    }
+    summaryHtml += "</table>";
+  } else {
+    summaryHtml += "<p><em>No participants.</em></p>";
+  }
+
+  // Add a "Copy as Markdown" button
+  const copyLabel = t("sta-officers-log.dialog.endMission.copyMarkdown");
+  summaryHtml += `<div style="margin-top:0.5rem; text-align:right;">
+    <button type="button" class="sta-copy-markdown-btn" style="cursor:pointer;">
+      <i class="fa-solid fa-clipboard"></i> ${escapeHTML(copyLabel)}
+    </button>
+  </div>`;
+
+  const confirmed = await foundry.applications.api.DialogV2.confirm({
+    window: { title: t("sta-officers-log.dialog.endMission.title") },
+    content: summaryHtml,
+    yes: { label: t("sta-officers-log.dialog.endMission.confirm") },
+    no: { label: t("sta-officers-log.dialog.endMission.cancel") },
+    rejectClose: false,
+    modal: false,
+    render: (_event, dialog) => {
+      try {
+        const html = dialog?.element;
+        if (!(html instanceof HTMLElement)) return;
+        const copyBtn = html.querySelector(".sta-copy-markdown-btn");
+        if (copyBtn) {
+          copyBtn.addEventListener("click", async (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            try {
+              await navigator.clipboard.writeText(markdown);
+              ui.notifications.info(
+                t("sta-officers-log.dialog.endMission.copied"),
+              );
+            } catch (err) {
+              console.error(`${MODULE_ID} | Failed to copy markdown`, err);
+            }
+          });
+        }
+      } catch (_) {
+        // ignore
+      }
+    },
+  });
+
+  if (!confirmed) return;
+
+  // Clear currentMissionLogId on all participating character actors
+  const clearOps = [];
+  for (const userId of participantIds) {
+    const user = game.users?.get?.(userId);
+    const actor = user?.character ?? null;
+    if (actor && actor.type === "character") {
+      clearOps.push(
+        actor.unsetFlag(MODULE_ID, "currentMissionLogId").catch((err) => {
+          console.warn(
+            `${MODULE_ID} | Failed to clear currentMissionLogId on ${actor.name}:`,
+            err,
+          );
+        }),
+      );
+    }
+  }
+  await Promise.allSettled(clearOps);
+
+  // Clear mission state
+  await game.settings.set(MODULE_ID, "missionTitle", "");
+  await game.settings.set(MODULE_ID, "missionParticipants", []);
+
+  ui.notifications.info(t("sta-officers-log.notifications.missionEnded"));
+
+  // Re-render STA Tracker and broadcast refresh
+  await rerenderStaTracker();
+  try {
+    const sock = getModuleSocket();
+    if (sock) await sock.executeForOthers("refreshTracker");
+  } catch (_) {
+    // ignore
+  }
+}
+
 // Used by a new button in the STATracker to start a new mission.
 // Resets callback state (PCs can make 1 per mission) and adds mission logs.
 // Resets stress, determination, and ship stats as selected.
 export async function promptNewMissionAndReset() {
   if (!game.user.isGM)
     return ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
+
+  // If a mission is currently active, end it first instead of starting a new one.
+  if (hasActiveMission()) {
+    return endCurrentMission();
+  }
+
   const existingDirectives = getMissionDirectives();
 
   const currentTitle = game.settings.get(MODULE_ID, "missionTitle") ?? "";

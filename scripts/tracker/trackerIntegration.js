@@ -5,6 +5,7 @@ import {
   getMissionDirectives,
   setMissionDirectives,
 } from "../directives/directives.js";
+import { hasActiveMission } from "../missions/mission.js";
 import { setupMissionLogContextMenu } from "../sheet/contextMenu.js";
 
 const TRACKER_BUTTONS_TEMPLATE = `modules/${MODULE_ID}/templates/tracker-buttons.hbs`;
@@ -94,6 +95,18 @@ export async function installOfficersLogButtonsInStaTracker(app, root) {
       },
     );
     columns.insertAdjacentHTML("beforeend", buttonsHtml);
+
+    // Highlight the New Mission button yellow when a mission is active
+    const resetBtn = columns.querySelector("#sta-officers-log-reset-button");
+    if (resetBtn) {
+      if (hasActiveMission()) {
+        resetBtn.classList.add("sta-mission-active");
+        resetBtn.title = t("sta-officers-log.dialog.endMission.title");
+      } else {
+        resetBtn.classList.remove("sta-mission-active");
+        resetBtn.title = t("sta-officers-log.tools.resetMission");
+      }
+    }
 
     // Attach event listeners to the rendered buttons
     const officersGroup = columns.querySelector(".sta-officers-log-group");
@@ -334,6 +347,9 @@ export function installTrackerInfoButtonsInStaTracker(root) {
                 try {
                   const html = dialog?.element;
                   if (!(html instanceof HTMLElement)) return;
+
+                  // DialogV2 window.classes is unreliable — add manually.
+                  html.classList.add("officers-log-dialog");
 
                   setupMissionLogContextMenu({
                     container: html,

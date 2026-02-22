@@ -2,6 +2,7 @@
 import { MODULE_ID, t, initSocket } from "./core/index.js";
 import {
   addParticipantToCurrentMission,
+  endCurrentMission,
   ensureNewSceneMacro,
   ensureOpenGroupShipMacro,
   hasUsedCallbackThisMission,
@@ -42,6 +43,7 @@ function registerApi() {
     open: openGMFlow,
     resetMissionCallbacks,
     promptNewMissionAndReset,
+    endCurrentMission,
     addParticipantToCurrentMission,
     promptAddParticipant,
 

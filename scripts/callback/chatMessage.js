@@ -1,6 +1,9 @@
 import { sendCallbackPromptToUser, spendDetermination } from "./gmFlow.js";
 import { MODULE_ID } from "../core/constants.js";
-import { AUTO_CALLBACK_ON_DETERMINATION_ROLL_SETTING } from "../missions/mission.js";
+import {
+  AUTO_CALLBACK_ON_DETERMINATION_ROLL_SETTING,
+  hasActiveMission,
+} from "../missions/mission.js";
 
 // Hook to detect when a Determination roll is made in chat and prompt the user to use a callback.
 export function installCreateChatMessageHook() {
@@ -33,6 +36,9 @@ export function installCreateChatMessageHook() {
     }
 
     if (!game.user.isGM) return;
+
+    // Skip callback auto-prompt when no mission is active.
+    if (!hasActiveMission()) return;
 
     const authorId = message.author?.id ?? message.user?.id;
     if (!authorId) return;

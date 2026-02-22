@@ -25,6 +25,12 @@ export class CallbackRequestApp extends Base {
    * Override close to handle cleanup when dialog is closed without clicking Yes/No
    */
   async close(options) {
+    // Clear countdown interval
+    if (this._countdownIntervalId) {
+      clearInterval(this._countdownIntervalId);
+      this._countdownIntervalId = null;
+    }
+
     // Clear timeout
     if (this._timeoutId) {
       clearTimeout(this._timeoutId);
@@ -239,9 +245,53 @@ export class CallbackRequestApp extends Base {
         action: "no",
       });
     });
+
+    // Start countdown timer display
+    this._startCountdownTimer(root);
+  }
+
+  /**
+   * Start a visible countdown timer in the dialog.
+   * Updates every second showing mm:ss remaining.
+   */
+  _startCountdownTimer(root) {
+    const timerEl = root.querySelector('[data-hook="countdownTimer"]');
+    if (!timerEl) return;
+
+    const totalMs = this.data.timeoutMs ?? 300_000;
+    this._countdownStart = Date.now();
+    this._countdownDuration = totalMs;
+
+    const update = () => {
+      const elapsed = Date.now() - this._countdownStart;
+      const remaining = Math.max(0, this._countdownDuration - elapsed);
+      const totalSec = Math.ceil(remaining / 1000);
+      const min = Math.floor(totalSec / 60);
+      const sec = totalSec % 60;
+      timerEl.textContent = `${min}:${String(sec).padStart(2, "0")}`;
+
+      // Add warning class when under 60 seconds
+      if (totalSec <= 60) {
+        timerEl.classList.add("sta-callback-timer--warning");
+      }
+
+      if (remaining <= 0 && this._countdownIntervalId) {
+        clearInterval(this._countdownIntervalId);
+        this._countdownIntervalId = null;
+      }
+    };
+
+    update();
+    this._countdownIntervalId = setInterval(update, 1000);
   }
 
   _sendResponse({ action, logId = null }) {
+    // Clear countdown interval
+    if (this._countdownIntervalId) {
+      clearInterval(this._countdownIntervalId);
+      this._countdownIntervalId = null;
+    }
+
     // Clear timeout
     if (this._timeoutId) {
       clearTimeout(this._timeoutId);

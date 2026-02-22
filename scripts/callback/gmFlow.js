@@ -3,6 +3,7 @@ import { t, tf } from "../core/i18n.js";
 import { getModuleSocket } from "../core/socket.js";
 import {
   getCurrentMissionLogIdForUser,
+  hasActiveMission,
   hasUsedCallbackThisMission,
   isLogUsed,
   setUsedCallbackThisMission,
@@ -502,6 +503,9 @@ async function orchestrateCallbackPrompt({
   warnOnNoLogs = false,
   suppressRewardErrors = false,
 }) {
+  // Silently skip callback prompt when no mission is active.
+  if (!hasActiveMission()) return;
+
   if (hasUsedCallbackThisMission(targetUser.id)) {
     if (warnOnUsed) {
       ui.notifications.warn(
@@ -656,6 +660,7 @@ async function orchestrateCallbackPrompt({
   const { CallbackRequestApp } = await import("./CallbackRequestApp.js");
 
   // Show callback dialog locally on the current client
+  const CALLBACK_TIMEOUT_MS = 300_000;
   const app = new CallbackRequestApp({
     requestId,
     targetUserId: showRequestUserId,
@@ -670,6 +675,7 @@ async function orchestrateCallbackPrompt({
     defaultValueState: dvs,
     reason,
     messageId,
+    timeoutMs: CALLBACK_TIMEOUT_MS,
   });
 
   // Wait for user response via promise
@@ -689,7 +695,7 @@ async function orchestrateCallbackPrompt({
         app._resolveCallback = null;
         app.close();
       }
-    }, 300_000);
+    }, CALLBACK_TIMEOUT_MS);
 
     // Store timeout ID so we can clear it on manual close
     app._timeoutId = timeoutId;
@@ -855,6 +861,12 @@ function getActiveNonGMUsers() {
 export async function openGMFlow() {
   if (!isGM())
     return ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
+
+  if (!hasActiveMission()) {
+    return ui.notifications.warn(
+      t("sta-officers-log.warnings.noActiveMission"),
+    );
+  }
 
   const players = getActiveNonGMUsers();
   if (!players.length) {

@@ -108,6 +108,26 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
     chooseBtn.setAttribute("role", "button");
     chooseBtn.tabIndex = 0;
 
+    // Disable the button if this log is the current mission log
+    const isOnCurrentMissionLog = entry.classList.contains(
+      "sta-current-mission-log",
+    );
+    if (isOnCurrentMissionLog) {
+      chooseBtn.classList.add("sta-choose-btn-disabled");
+      chooseBtn.setAttribute("aria-disabled", "true");
+      chooseBtn.tabIndex = -1;
+      chooseBtn.title = t("sta-officers-log.milestones.disabledTooltip");
+      chooseBtn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        ui.notifications.warn(
+          t("sta-officers-log.milestones.disabledNotification"),
+        );
+      });
+      inlineActions.appendChild(chooseBtn);
+      continue;
+    }
+
     const onChoose = async (ev) => {
       ev.preventDefault();
       ev.stopPropagation();

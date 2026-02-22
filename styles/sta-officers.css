@@ -54,6 +54,28 @@
   margin-top: 0.25rem;
 }
 
+/* ===== Countdown Timer ===== */
+
+.sta-callbacks-form {
+  position: relative;
+}
+
+.sta-callback-timer {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.5rem;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+
+.sta-callback-timer--warning {
+  color: rgba(255, 120, 80, 0.9);
+}
+
 /* ===== New Callback Prompt: Big Button Layout ===== */
 
 /* Centered body text */
@@ -231,7 +253,7 @@
 
 /* Collapse hides all log rows and shows only the arc title row */
 .sta-callbacks-arc-group.is-collapsed > li.row.entry {
-  display: none;
+  display: none !important;
 }
 
 .sta-callbacks-arc-group.is-collapsed > .sta-callbacks-arc-title {
@@ -339,6 +361,15 @@
 
 .tracker-container .icon-container .sta-officers-log-group .button i:hover {
   color:#89CFF0;
+}
+
+/* Yellow highlight on 'New Mission' button when a mission is active */
+.tracker-container .icon-container .sta-officers-log-group .button.sta-mission-active i {
+  color: #fadf47;
+}
+
+.tracker-container .icon-container .sta-officers-log-group .button.sta-mission-active i:hover {
+  color: #ffe066;
 }
 
 .tracker-container .combadge {
@@ -507,6 +538,15 @@
 /* =============================================================================
  * DIALOGS (DialogV2 / ApplicationV2)
  * ============================================================================= */
+
+/* STA-style blue header for Officers Log dialogs.
+ * The STA system uses `.dialogue .window-header`, but DialogV2 puts the
+ * `.dialogue` class inside the content area — below the header — so the
+ * system rule never matches.  This class goes on the DialogV2 window itself. */
+.officers-log-dialog .window-header {
+  background-color: #003399;
+  border: none;
+}
 
 /* Confirm-delete replacement should behave like the native delete control */
 .sta-confirm-delete {
@@ -1167,6 +1207,12 @@ div.section.milestones li.row.entry .sta-current-mission-indicator {
 .sta-inline-sheet-btn.is-disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.sta-choose-milestone-btn.sta-choose-btn-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-style: dotted;
 }
 
 .sta-inline-sheet-btn:hover {

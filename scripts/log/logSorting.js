@@ -10,9 +10,34 @@ import { openNewMilestoneArcDialog } from "../milestones/newMilestoneArcDialog.j
 
 export { getCompletedArcEndLogIds, getPrimaryValueIdForLog };
 
-// UI-only: per-session collapsed state for completed Arc groups.
-// Keyed by actorId so multiple character sheets don't interfere.
+// Collapsed-arc state persisted as a flag on each actor.
+// Flag key: `sta-officers-log.collapsedArcIds` — stored as an array of arcId strings.
+// An in-memory cache avoids repeated flag reads within a single render cycle.
 const _collapsedArcsByActorId = new Map(); // actorId -> Set<arcId>
+
+const _FLAG_KEY = "collapsedArcIds";
+
+/** Hydrate the in-memory cache from the actor's flags (synchronous read). */
+function _hydrateFromActor(actor) {
+  if (!actor?.id) return;
+  const aId = String(actor.id);
+  const arr = actor.getFlag?.(MODULE_ID, _FLAG_KEY) ?? [];
+  _collapsedArcsByActorId.set(aId, new Set(Array.isArray(arr) ? arr : []));
+}
+
+/**
+ * Persist the in-memory collapsed set back to the actor's flags.
+ * Async, but we fire-and-forget so the UI stays responsive.
+ */
+function _persistToActor(actor) {
+  if (!actor?.id) return;
+  const aId = String(actor.id);
+  const set = _collapsedArcsByActorId.get(aId);
+  const arr = set?.size ? [...set] : [];
+  // setFlag triggers a re-render which would loop; use update with render:false.
+  const flagPath = `flags.${MODULE_ID}.${_FLAG_KEY}`;
+  actor.update({ [flagPath]: arr }, { render: false }).catch(() => {});
+}
 
 function _isArcCollapsed(actorId, arcId) {
   const aId = actorId ? String(actorId) : "";
@@ -22,7 +47,7 @@ function _isArcCollapsed(actorId, arcId) {
   return set ? set.has(gId) : false;
 }
 
-function _setArcCollapsed(actorId, arcId, collapsed) {
+function _setArcCollapsed(actorId, arcId, collapsed, actor) {
   const aId = actorId ? String(actorId) : "";
   const gId = arcId ? String(arcId) : "";
   if (!aId || !gId) return;
@@ -33,6 +58,7 @@ function _setArcCollapsed(actorId, arcId, collapsed) {
   }
   if (collapsed) set.add(gId);
   else set.delete(gId);
+  if (actor) _persistToActor(actor);
 }
 
 function _unwrapArcGroups(containerEl) {
@@ -871,6 +897,7 @@ export function applyMissionLogSorting(root, actor, mode) {
   if (sortMode === "chain") {
     try {
       const actorId = String(actor?.id ?? "");
+      _hydrateFromActor(actor);
       const usedIds = new Set();
 
       /** @type {Array<{arcId:string, startId:string, ids:string[]}>} */
@@ -925,7 +952,7 @@ export function applyMissionLogSorting(root, actor, mode) {
           ev?.preventDefault?.();
           ev?.stopPropagation?.();
           const next = !_isArcCollapsed(actorId, arcId);
-          _setArcCollapsed(actorId, arcId, next);
+          _setArcCollapsed(actorId, arcId, next, actor);
           applyCollapsedState(wrapper, arcId);
         };
 
@@ -1086,7 +1113,7 @@ export function applyMissionLogSorting(root, actor, mode) {
             ev?.preventDefault?.();
             ev?.stopPropagation?.();
             const next = !_isArcCollapsed(actorId, noValueGroupId);
-            _setArcCollapsed(actorId, noValueGroupId, next);
+            _setArcCollapsed(actorId, noValueGroupId, next, actor);
             applyCollapsedState(noValueWrapper, noValueGroupId);
           };
 
