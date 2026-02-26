@@ -103,6 +103,10 @@
       "labelValues": "Label Values",
       "labelValuesTooltip": "Changes the icons of your Value items to indicate their order."
     },
+    "logFilter": {
+      "showAll": "Show all logs (currently hiding unused)",
+      "hideUnused": "Hide logs with no used values"
+    },
     "tracker": {
       "missionDirectives": "Mission Directives",
       "noDirectives": "No directives set.",
@@ -306,6 +310,8 @@
         "negativeDesc": "<strong>Comply with a value in a way that makes things more complicated.</strong><ul><li>+1 Determination</li><li>Cause a Complication</li></ul>",
         "challengeTitle": "Challenged",
         "challengeDesc": "<strong>Change who you are.</strong><ul><li>+1 Determination</li><li>Value becomes Challenged.</li> <li>Rewrite the value at the end of the mission to remove the Challenged status.</li></ul>",
+        "negativeButton": "Cause a Complication<br>Gain Determination",
+        "challengeButton": "Challenge this Value<br>Gain Determination",
         "cancel": "Cancel",
         "approved": "Approved.",
         "denied": "Denied.",
@@ -480,7 +486,8 @@
         "confirm": "End Mission",
         "cancel": "Cancel",
         "copyMarkdown": "Copy as Markdown",
-        "copied": "Copied to clipboard."
+        "copied": "Copied to clipboard.",
+        "directivesWarning": "Current directives will be cleared."
       },
       "pickPlayer": {
         "title": "Send callback popup to…",

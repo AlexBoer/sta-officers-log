@@ -16,7 +16,15 @@
 
   <footer class="form-footer sta-use-value-footer">
     {{#each options as |opt|}}
-      <button type="button" class="dialog-button" data-action="{{opt.action}}" {{disabled opt.disabled}}>{{#if opt.buttonLabel}}{{opt.buttonLabel}}{{else}}{{../chooseLabel}}{{/if}}</button>
+      {{#if opt.buttons}}
+        <span class="sta-use-value-btn-group">
+        {{#each opt.buttons as |btn|}}
+          <button type="button" class="dialog-button" data-action="{{btn.action}}" {{disabled btn.disabled}}>{{btn.label}}</button>
+        {{/each}}
+        </span>
+      {{else}}
+        <button type="button" class="dialog-button" data-action="{{opt.action}}" {{disabled opt.disabled}}>{{#if opt.buttonLabel}}{{{opt.buttonLabel}}}{{else}}{{../chooseLabel}}{{/if}}</button>
+      {{/if}}
     {{/each}}
   </footer>
 </div>

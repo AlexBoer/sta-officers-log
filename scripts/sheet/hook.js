@@ -30,6 +30,7 @@ import { installSupportingCharImprovementButtons } from "../supporting/supportin
 import { handleBenefitDialogRender } from "./benefitDialogHandler.js";
 import { handleItemSheetRender } from "./itemSheetHandlers.js";
 import { installMissionLogSortButton } from "../log/missionLogSortButton.js";
+import { installUnusedLogFilterButton } from "../log/unusedLogFilterButton.js";
 import { installUseDirectiveButton } from "../directives/useDirectiveButton.js";
 import { installUseScarButtons } from "../scars/traitButtons.js";
 import { installUseValueButtons } from "../values/useValue.js";
@@ -136,7 +137,10 @@ function handleCharacterSheetRender(app, root) {
   }
 
   // Add sort button to Character Logs section and apply sorting
-  installMissionLogSortButton(root, actor);
+  const sortActions = installMissionLogSortButton(root, actor);
+
+  // Add toggle to hide logs with no invoked ValueStates.
+  installUnusedLogFilterButton(root, actor, sortActions);
 
   // Character sheet UX: allow resizing the Character Log list height.
   try {

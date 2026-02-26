@@ -36,6 +36,7 @@ import { registerClientSettings } from "./settings/clientSettings.js";
 import { registerDirectiveSettings } from "./directives/directives.js";
 import { registerAcclaimSurveySettings } from "./acclaim/acclaimSurvey.js";
 import { registerCustomSpendOptionsSettings } from "./acclaim/customSpendOptions.js";
+import { useValue } from "./values/useValue.js";
 
 function registerApi() {
   // Public API (available on all clients; methods may GM-guard internally)
@@ -74,6 +75,9 @@ function registerApi() {
 
     // GM: Open the survey monitor (works independently of triggering surveys)
     openGMSurveyMonitor,
+
+    // Public API: programmatic value use (for external module integration)
+    useValue,
   };
 
   // Back-compat for macros that reference a global symbol.

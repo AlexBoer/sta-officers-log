@@ -25,3 +25,9 @@ export {
   getPrimaryValueIdForLog,
 } from "./logSorting.js";
 export { installMissionLogSortButton } from "./missionLogSortButton.js";
+export {
+  installUnusedLogFilterButton,
+  getHideUnusedLogsForActor,
+  setHideUnusedLogsForActor,
+  applyUnusedLogFilter,
+} from "./unusedLogFilterButton.js";

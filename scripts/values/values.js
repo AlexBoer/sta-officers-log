@@ -62,6 +62,21 @@ export function isValueInvokedState(state) {
   return state === "positive" || state === "negative" || state === "challenged";
 }
 
+/**
+ * Check whether a log item has at least one invoked (non-"unused") ValueState.
+ *
+ * @param {Item} log - A log item with system.valueStates.
+ * @returns {boolean} True if the log has any value in a positive/negative/challenged state.
+ */
+export function logHasAnyInvokedValue(log) {
+  const states = log?.system?.valueStates ?? {};
+  for (const raw of Object.values(states)) {
+    const arr = normalizeValueStateArray(raw);
+    if (arr.some(isValueInvokedState)) return true;
+  }
+  return false;
+}
+
 export function mergeValueStateArray(existingRaw, stateToAdd) {
   const next = String(stateToAdd ?? "").trim();
   if (!next || next === "unused") return ["unused"];

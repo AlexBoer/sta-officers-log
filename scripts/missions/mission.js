@@ -918,6 +918,12 @@ export async function endCurrentMission() {
     summaryHtml += "<p><em>No participants.</em></p>";
   }
 
+  // Warn about directives being cleared if any are active
+  const currentDirectives = getMissionDirectives();
+  if (currentDirectives.length) {
+    summaryHtml += `<p style="margin-top:0.5rem; color:#e65100;"><i class="fa-solid fa-triangle-exclamation"></i> ${escapeHTML(t("sta-officers-log.dialog.endMission.directivesWarning"))}</p>`;
+  }
+
   // Add a "Copy as Markdown" button
   const copyLabel = t("sta-officers-log.dialog.endMission.copyMarkdown");
   summaryHtml += `<div style="margin-top:0.5rem; text-align:right;">
@@ -981,6 +987,7 @@ export async function endCurrentMission() {
   // Clear mission state
   await game.settings.set(MODULE_ID, "missionTitle", "");
   await game.settings.set(MODULE_ID, "missionParticipants", []);
+  await setMissionDirectives([]);
 
   ui.notifications.info(t("sta-officers-log.notifications.missionEnded"));
 
@@ -1052,6 +1059,25 @@ export async function promptNewMissionAndReset() {
     content,
     ok: { label: t("sta-officers-log.dialog.newMission.ok") },
     cancel: { label: t("sta-officers-log.dialog.newMission.cancel") },
+    render: (_event, dialog) => {
+      try {
+        const html = dialog?.element;
+        if (!(html instanceof HTMLElement)) return;
+        const titleInput = html.querySelector('input[name="missionTitle"]');
+        const okBtn = html.querySelector('button[data-action="ok"]');
+        if (!titleInput || !okBtn) return;
+
+        const updateOkState = () => {
+          const hasTitle = titleInput.value.trim().length > 0;
+          okBtn.disabled = !hasTitle;
+        };
+
+        titleInput.addEventListener("input", updateOkState);
+        updateOkState();
+      } catch (_) {
+        // ignore
+      }
+    },
   });
 
   // Abort (or closed)
