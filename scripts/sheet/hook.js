@@ -103,6 +103,7 @@ function isSupportingCharacterSheet(actor) {
  * @param {HTMLElement} root - The root element.
  */
 function handleCharacterSheetRender(app, root) {
+  console.debug(`[sta-officers-log] handleCharacterSheetRender called at ${performance.now().toFixed(1)}ms`);
   // Only target STA character sheet apps
   if (
     !app?.id?.startsWith("STACharacterSheet2e") &&

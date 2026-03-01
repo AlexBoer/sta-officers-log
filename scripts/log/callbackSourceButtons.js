@@ -171,9 +171,26 @@ export function installCallbackSourceButtons(root, actor) {
       }
     };
 
-    // Set up right-click context menu for mission log rows using Foundry's ContextMenu API
+    // Set up right-click context menu for mission log rows using Foundry's ContextMenu API.
+    // Skip when sta-utils compact/tidy mode is active — sta-utils provides a unified
+    // context menu that already includes the "Set Current Mission" action.
+    const sheet = root.querySelector?.(".character-sheet");
+    const staUtilsHandlesMenu =
+      sheet?.classList?.contains?.("sta-compact") ||
+      sheet?.classList?.contains?.("sta-tidy");
+
+    console.debug(
+      `[sta-officers-log] callbackSourceButtons context menu check:`,
+      `sheet found=${!!sheet}`,
+      `classList=[${sheet?.classList ? Array.from(sheet.classList).join(", ") : "N/A"}]`,
+      `staUtilsHandlesMenu=${staUtilsHandlesMenu}`,
+    );
+
     const milestonesSection = root.querySelector("div.section.milestones");
-    if (milestonesSection instanceof HTMLElement) {
+    if (milestonesSection instanceof HTMLElement && !staUtilsHandlesMenu) {
+      console.debug(
+        `[sta-officers-log] INSTALLING milestones context menu (Officers Log owns it)`,
+      );
       setupMissionLogContextMenu({
         container: milestonesSection,
         selector: 'li.row.entry[data-item-type="log"][data-item-id]',
