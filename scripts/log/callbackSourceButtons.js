@@ -174,15 +174,23 @@ export function installCallbackSourceButtons(root, actor) {
     // Set up right-click context menu for mission log rows using Foundry's ContextMenu API.
     // Skip when sta-utils compact/tidy mode is active — sta-utils provides a unified
     // context menu that already includes the "Set Current Mission" action.
-    const sheet = root.querySelector?.(".character-sheet");
-    const staUtilsHandlesMenu =
-      sheet?.classList?.contains?.("sta-compact") ||
-      sheet?.classList?.contains?.("sta-tidy");
+    // We check sta-utils *settings* (available synchronously) rather than CSS classes
+    // because Officers Log's hook fires before sta-utils adds its classes to the DOM.
+    let staUtilsHandlesMenu = false;
+    try {
+      const staUtilsActive =
+        game.modules?.get?.("sta-utils")?.active ?? false;
+      if (staUtilsActive) {
+        staUtilsHandlesMenu =
+          game.settings.get("sta-utils", "compactCharacterSheet") === true ||
+          game.settings.get("sta-utils", "tidyCharacterSheet") === true;
+      }
+    } catch (_) {
+      // Settings not registered yet or module not present — fall through
+    }
 
     console.debug(
       `[sta-officers-log] callbackSourceButtons context menu check:`,
-      `sheet found=${!!sheet}`,
-      `classList=[${sheet?.classList ? Array.from(sheet.classList).join(", ") : "N/A"}]`,
       `staUtilsHandlesMenu=${staUtilsHandlesMenu}`,
     );
 
