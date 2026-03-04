@@ -5,6 +5,7 @@ import {
   getMissionDirectives,
   setMissionDirectives,
 } from "../directives/directives.js";
+import { promptUseDirective } from "../directives/useDirectiveButton.js";
 import { hasActiveMission } from "../missions/mission.js";
 import { setupMissionLogContextMenu } from "../sheet/contextMenu.js";
 
@@ -193,10 +194,31 @@ export async function installMissionDirectivesInStaTracker(root) {
     // Attach event listeners
     const editButton = section.querySelector('[data-action="toggleEdit"]');
     const saveButton = section.querySelector('[data-action="saveDirectives"]');
+    const useDirectiveButton = section.querySelector(
+      '[data-action="useDirective"]',
+    );
     const textarea = section.querySelector(".sta-tracker-directives-textarea");
 
     editButton?.addEventListener("click", () => {
       toggleDirectivesEditMode(section, trackerContainer, root);
+    });
+
+    // "Use Directive" button – resolve the user's character and invoke the flow.
+    useDirectiveButton?.addEventListener("click", async (ev) => {
+      try {
+        ev.preventDefault();
+        ev.stopPropagation();
+      } catch (_) {
+        // event may be synthetic
+      }
+
+      const actor = game.user?.character ?? null;
+      if (!actor) {
+        ui.notifications?.warn?.(t("sta-officers-log.errors.noCharacter"));
+        return;
+      }
+
+      await promptUseDirective(actor);
     });
 
     // Prevent input that would exceed the max character limit per line.
@@ -273,7 +295,7 @@ export async function installMissionDirectivesInStaTracker(root) {
           if (sectionHeight > 0) {
             // Apply negative margin to the outermost app element to shift it up.
             // This works even when the STA system resets the `top` style.
-            const appElement = root.closest?.("[id^='app-']") ?? root;
+            const appElement = root.closest?.(`[id^='app-']`) ?? root;
             if (appElement instanceof HTMLElement) {
               appElement.style.marginTop = `-${sectionHeight}px`;
             }
@@ -341,6 +363,7 @@ export function installTrackerInfoButtonsInStaTracker(root) {
               : config.body;
 
             await foundry.applications.api.DialogV2.wait({
+              classes: ["sta-officers-log"],
               window: { title: config.title },
               content: content ?? "",
               render: (_event, dialog) => {

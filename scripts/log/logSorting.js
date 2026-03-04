@@ -286,23 +286,62 @@ function _getChainIndentChildLogIds(actor, logItems) {
 export function applyMissionLogSorting(root, actor, mode) {
   const sortMode = normalizeMissionLogSortMode(mode);
 
-  const section = root?.querySelector?.("div.section.milestones");
+  const section =
+    root?.querySelector?.("div.section.character-log") ??
+    root?.querySelector?.("div.section.milestones");
   if (!section) return;
 
   // ----- Milestones UI tweak: replace default "+"" with custom button -----
   try {
+    // Detect whether a sta-utils alternate sheet theme (LCARS, compact, or
+    // tidy) is active — if so, the header row is hidden and the create button
+    // should live inside the .title element instead.
+    // We check game.settings for compact / tidy because Officers Log's hook
+    // fires before sta-utils adds its CSS classes to the DOM, so the DOM
+    // class check alone would miss them.  LCARS is already on the DOM by
+    // the time we run, so a CSS check is fine for it.
+    let isAltSheet =
+      root?.closest?.(".sta-lcars, .sta-compact, .sta-tidy") != null;
+    if (!isAltSheet) {
+      try {
+        const staUtilsActive =
+          game.modules?.get?.("sta-utils")?.active ?? false;
+        if (staUtilsActive) {
+          isAltSheet =
+            game.settings.get("sta-utils", "compactCharacterSheet") === true ||
+            game.settings.get("sta-utils", "tidyCharacterSheet") === true;
+        }
+      } catch (_) {
+        // Settings not registered yet or module not present — fall through
+      }
+    }
+
     // Try multiple selectors to find the milestone create button
     // (handles different Foundry versions and structures)
     let milestoneCreate = section.querySelector(
       'a.control.create[data-type="milestone"]',
     );
 
-    const milestoneHeader =
+    // Determine the container where the custom button should be placed.
+    // In sta-utils alternate sheet modes (LCARS / compact / tidy) the
+    // button should live in the Milestones / Arcs .title element.
+    // In LCARS mode sta-utils already moves it there; in compact / tidy
+    // the button is still in the header row, so we walk to the preceding
+    // .title sibling instead.
+    // In default / other modes it stays in the header row.
+    const milestoneHeaderRow =
       milestoneCreate?.closest?.("div.header.row.item") ?? null;
+    const milestoneTitle =
+      milestoneCreate?.closest?.(".title") ??
+      (milestoneHeaderRow?.previousElementSibling?.classList?.contains("title")
+        ? milestoneHeaderRow.previousElementSibling
+        : null);
 
-    if (milestoneCreate && milestoneHeader) {
+    const targetContainer = isAltSheet ? milestoneTitle : milestoneHeaderRow;
+
+    if (milestoneCreate && targetContainer) {
       // Avoid duplicates across rerenders.
-      const existingCustom = milestoneHeader.querySelector(
+      const existingCustom = targetContainer.querySelector(
         ".sta-milestone-create-placeholder",
       );
       if (!existingCustom) {
@@ -337,7 +376,7 @@ export function applyMissionLogSorting(root, actor, mode) {
           if (ev.key === "Enter" || ev.key === " ") onClick(ev);
         });
 
-        milestoneHeader.appendChild(btn);
+        targetContainer.appendChild(btn);
       }
     }
   } catch (_) {
@@ -1041,6 +1080,7 @@ export function applyMissionLogSorting(root, actor, mode) {
             `;
 
             const result = await DialogV2.input({
+              classes: ["sta-officers-log"],
               window: { title: "Edit Arc Title" },
               modal: false,
               rejectClose: false,

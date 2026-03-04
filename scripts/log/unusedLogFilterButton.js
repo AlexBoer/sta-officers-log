@@ -64,7 +64,9 @@ export async function setHideUnusedLogsForActor(actor, hidden) {
  * @param {boolean} hidden - Whether to hide logs with no invoked values.
  */
 export function applyUnusedLogFilter(root, actor, hidden) {
-  const section = root?.querySelector?.("div.section.milestones");
+  const section =
+    root?.querySelector?.("div.section.character-log") ??
+    root?.querySelector?.("div.section.milestones");
   if (!section) return;
 
   const logEntryEls = Array.from(

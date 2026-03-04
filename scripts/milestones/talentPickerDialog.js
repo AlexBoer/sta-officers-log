@@ -347,6 +347,7 @@ export function bindTalentPickerInteractions(
       "Talent Preview";
     const desc = await _getTalentDescription(String(entry?.uuid ?? ""));
     await foundry.applications.api.DialogV2.wait({
+      classes: ["sta-officers-log"],
       window: { title },
       content: `<div class="sta-talent-preview-dialog">${
         desc || "<p>No description available.</p>"

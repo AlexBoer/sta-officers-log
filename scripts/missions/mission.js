@@ -799,6 +799,7 @@ export async function promptAddParticipant() {
   );
 
   const result = await foundry.applications.api.DialogV2.input({
+    classes: ["sta-officers-log"],
     window: { title: t("sta-officers-log.dialog.addPlayer.title") },
     modal: false,
     rejectClose: false,
@@ -933,6 +934,7 @@ export async function endCurrentMission() {
   </div>`;
 
   const confirmed = await foundry.applications.api.DialogV2.confirm({
+    classes: ["sta-officers-log"],
     window: { title: t("sta-officers-log.dialog.endMission.title") },
     content: summaryHtml,
     yes: { label: t("sta-officers-log.dialog.endMission.confirm") },
@@ -1049,6 +1051,7 @@ export async function promptNewMissionAndReset() {
   );
 
   const result = await foundry.applications.api.DialogV2.input({
+    classes: ["sta-officers-log"],
     window: {
       title: t("sta-officers-log.dialog.newMission.title"),
       contentClasses: ["sta-new-mission-dialog"],

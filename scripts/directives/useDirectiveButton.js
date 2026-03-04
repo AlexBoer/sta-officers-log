@@ -1,8 +1,9 @@
 /**
- * Use Directive Button
+ * Use Directive
  *
- * Adds a "Use Directive" button to the Values section of character sheets,
- * allowing players to invoke mission directives with GM approval workflow.
+ * Core logic for invoking mission directives with GM approval workflow.
+ * The UI entry point is installed in the Mission Directives section of
+ * the STA Tracker (see trackerIntegration.js).
  */
 
 import { MODULE_ID } from "../core/constants.js";
@@ -34,23 +35,19 @@ import {
 import { promptUseValueChoice } from "../values/useValue.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Debounced Render Helper
+// Re-render Helper
 // ─────────────────────────────────────────────────────────────────────────────
 
-const _pendingRenders = new WeakMap();
-const RENDER_DEBOUNCE_MS = 50;
-
-function scheduleRender(app) {
-  if (!app?.render) return;
-  const existing = _pendingRenders.get(app);
-  if (existing) clearTimeout(existing);
-  const timer = setTimeout(() => {
-    _pendingRenders.delete(app);
-    try {
-      app.render({ force: false, focus: false });
-    } catch (_) {}
-  }, RENDER_DEBOUNCE_MS);
-  _pendingRenders.set(app, timer);
+/**
+ * Re-render the actor's open character sheet (if any).
+ * @param {Actor} actor
+ */
+function rerenderActorSheet(actor) {
+  try {
+    actor?.sheet?.render?.({ force: false, focus: false });
+  } catch (_) {
+    // ignore
+  }
 }
 
 /**
@@ -117,7 +114,8 @@ export function installUseDirectiveButton(root, actor, app) {
 
   titleEl.classList.add("sta-values-title-with-button");
 
-  const dirBtn = document.createElement("a");
+  const dirBtn = document.createElement("button");
+  dirBtn.type = "button";
   dirBtn.className = "sta-use-directive-btn";
   dirBtn.title = t("sta-officers-log.values.useDirectiveTooltip");
   dirBtn.innerHTML = `${t(
@@ -127,55 +125,75 @@ export function installUseDirectiveButton(root, actor, app) {
   dirBtn.addEventListener("click", async (ev) => {
     ev.preventDefault();
     ev.stopPropagation();
+    await promptUseDirective(actor);
+  });
 
-    // Check if this is a supporting character (no logs, no callbacks)
-    const isSupportingCharacter = (() => {
-      const sheetClass =
-        actor?.getFlag?.("core", "sheetClass") ??
-        foundry.utils.getProperty(actor, "flags.core.sheetClass") ??
-        "";
-      return String(sheetClass) === "sta.STASupportingSheet2e";
-    })();
+  titleEl.appendChild(dirBtn);
+}
 
-    const det = Number(actor.system?.determination?.value ?? 0);
+/**
+ * Prompt the user to use a mission directive on the given actor.
+ * Handles the full workflow: directive selection, determination spend/gain,
+ * log updates, GM approval, and callback prompts.
+ *
+ * @param {Actor} actor - The actor to apply the directive to.
+ * @returns {Promise<void>}
+ */
+export async function promptUseDirective(actor) {
+  if (!actor || actor.type !== "character") {
+    ui.notifications?.warn?.(t("sta-officers-log.errors.noCharacter"));
+    return;
+  }
 
-    const missionUserId = !isSupportingCharacter
-      ? game.user.isGM
-        ? getUserIdForCharacterActor(actor)
-        : game.user.id
+  // Check if this is a supporting character (no logs, no callbacks)
+  const isSupportingCharacter = (() => {
+    const sheetClass =
+      actor?.getFlag?.("core", "sheetClass") ??
+      foundry.utils.getProperty(actor, "flags.core.sheetClass") ??
+      "";
+    return String(sheetClass) === "sta.STASupportingSheet2e";
+  })();
+
+  const det = Number(actor.system?.determination?.value ?? 0);
+
+  const missionUserId = !isSupportingCharacter
+    ? game.user.isGM
+      ? getUserIdForCharacterActor(actor)
+      : game.user.id
+    : null;
+  const currentMissionLogId =
+    !isSupportingCharacter && missionUserId
+      ? getCurrentMissionLogIdForUser(missionUserId)
       : null;
-    const currentMissionLogId =
-      !isSupportingCharacter && missionUserId
-        ? getCurrentMissionLogIdForUser(missionUserId)
-        : null;
 
-    const currentLog = currentMissionLogId
-      ? actor.items.get(String(currentMissionLogId))
-      : null;
+  const currentLog = currentMissionLogId
+    ? actor.items.get(String(currentMissionLogId))
+    : null;
 
-    // Prefer per-log snapshot (permanently copied at mission start)
-    const snapshot = currentLog ? getDirectiveSnapshotForLog(currentLog) : [];
-    const directives = snapshot.length ? snapshot : getMissionDirectives();
+  // Prefer per-log snapshot (permanently copied at mission start)
+  const snapshot = currentLog ? getDirectiveSnapshotForLog(currentLog) : [];
+  const directives = snapshot.length ? snapshot : getMissionDirectives();
 
-    const byKey = new Map();
-    for (const d of directives) {
-      const text = sanitizeDirectiveText(d);
-      if (!text) continue;
-      const key = makeDirectiveKeyFromText(text);
-      if (!key) continue;
-      byKey.set(key, text);
-    }
+  const byKey = new Map();
+  for (const d of directives) {
+    const text = sanitizeDirectiveText(d);
+    if (!text) continue;
+    const key = makeDirectiveKeyFromText(text);
+    if (!key) continue;
+    byKey.set(key, text);
+  }
 
-    const directiveOptions = [];
-    for (const [key, text] of byKey.entries()) {
-      directiveOptions.push(
-        `<option value="${escapeHTML(key)}">${escapeHTML(text)}</option>`,
-      );
-    }
+  const directiveOptions = [];
+  for (const [key, text] of byKey.entries()) {
+    directiveOptions.push(
+      `<option value="${escapeHTML(key)}">${escapeHTML(text)}</option>`,
+    );
+  }
 
-    const pick = await foundry.applications.api.DialogV2.wait({
-      window: { title: t("sta-officers-log.dialog.useDirective.title") },
-      content: `
+  const pick = await foundry.applications.api.DialogV2.wait({
+    classes: ["sta-officers-log"],
+    window: { title: t("sta-officers-log.dialog.useDirective.title") },
+    content: `
         <div class="form-group">
           <label>${escapeHTML(
             t("sta-officers-log.dialog.useDirective.pick"),
@@ -213,201 +231,194 @@ export function installUseDirectiveButton(root, actor, app) {
           </p>
         </div>
       `,
-      render: (event, dialog) => {
-        const html = dialog.element;
-        const select = html?.querySelector('select[name="directiveKey"]');
-        const customGroup = html?.querySelector("[data-sta-directive-custom]");
-        const customInput = html?.querySelector('input[name="directiveText"]');
-        if (select) {
-          select.addEventListener("change", () => {
-            const shouldShow = select.value === "__other__";
-            if (customGroup)
-              customGroup.style.display = shouldShow ? "" : "none";
-            if (customInput) {
-              customInput.disabled = !shouldShow;
-              if (shouldShow) customInput.focus();
-            }
-          });
-        }
+    render: (event, dialog) => {
+      const html = dialog.element;
+      const select = html?.querySelector('select[name="directiveKey"]');
+      const customGroup = html?.querySelector("[data-sta-directive-custom]");
+      const customInput = html?.querySelector('input[name="directiveText"]');
+      if (select) {
+        select.addEventListener("change", () => {
+          const shouldShow = select.value === "__other__";
+          if (customGroup) customGroup.style.display = shouldShow ? "" : "none";
+          if (customInput) {
+            customInput.disabled = !shouldShow;
+            if (shouldShow) customInput.focus();
+          }
+        });
+      }
+    },
+    buttons: [
+      {
+        action: "ok",
+        label: t("sta-officers-log.dialog.chooseMilestoneBenefit.ok"),
+        default: true,
+        callback: (_event, button) => ({
+          directiveKey: button.form?.elements?.directiveKey?.value ?? "",
+          directiveText: button.form?.elements?.directiveText?.value ?? "",
+        }),
       },
-      buttons: [
-        {
-          action: "ok",
-          label: t("sta-officers-log.dialog.chooseMilestoneBenefit.ok"),
-          default: true,
-          callback: (_event, button) => ({
-            directiveKey: button.form?.elements?.directiveKey?.value ?? "",
-            directiveText: button.form?.elements?.directiveText?.value ?? "",
-          }),
-        },
-        {
-          action: "cancel",
-          label: t("sta-officers-log.dialog.chooseMilestoneBenefit.cancel"),
-        },
-      ],
-      rejectClose: false,
-      modal: false,
-    });
-
-    if (!pick) return;
-
-    const chosenKey = String(pick.directiveKey ?? "");
-    const typed = sanitizeDirectiveText(pick.directiveText ?? "");
-
-    const chosenTextRaw =
-      chosenKey && chosenKey !== "__other__" ? byKey.get(chosenKey) : typed;
-    const chosenText = sanitizeDirectiveText(chosenTextRaw);
-    if (!chosenText) {
-      ui.notifications?.warn?.(
-        t("sta-officers-log.dialog.useDirective.missing"),
-      );
-      return;
-    }
-
-    const directiveKey = makeDirectiveKeyFromText(chosenText);
-    const directiveValueId = `${DIRECTIVE_VALUE_ID_PREFIX}${directiveKey}`;
-
-    const choice = await promptUseValueChoice({
-      valueName: chosenText,
-      canChoosePositive: det > 0,
-    });
-
-    if (!choice) return;
-
-    const valueState =
-      choice === "positive"
-        ? "positive"
-        : choice === "challenge"
-          ? "challenged"
-          : "negative";
-
-    const applyLogUsage = async (logDoc) => {
-      if (!logDoc || isSupportingCharacter) return; // Skip for supporting characters
-
-      // Record invoked directive on the mission log
-      const existingRaw =
-        logDoc.system?.valueStates?.[String(directiveValueId)];
-      await logDoc.update({
-        [`system.valueStates.${directiveValueId}`]: mergeValueStateArray(
-          existingRaw,
-          valueState,
-        ),
-      });
-
-      // Store a mapping so later UI can display the directive name.
-      try {
-        const existing = logDoc.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
-        const cloned = isPlainObject(existing)
-          ? foundry.utils.deepClone(existing)
-          : {};
-        cloned[String(directiveKey)] = chosenText;
-        await logDoc.setFlag(MODULE_ID, "directiveLabels", cloned);
-      } catch (_) {
-        // ignore
-      }
-    };
-
-    if (game.user.isGM) {
-      if (valueState === "positive") {
-        await spendDetermination(actor);
-      } else {
-        await gainDetermination(actor);
-        if (choice === "challenge") {
-          await setDirectiveChallenged(actor, directiveKey, true);
-        }
-      }
-
-      await applyLogUsage(currentLog);
-
-      // Prompt callback locally, but apply for owning player's mission context.
-      // (only for main characters, not supporting characters)
-      if (!isSupportingCharacter) {
-        const owningUserId = getUserIdForCharacterActor(actor);
-        if (owningUserId) {
-          if (
-            hasEligibleCallbackTargetWithAnyInvokedDirective(
-              actor,
-              currentMissionLogId,
-            )
-          ) {
-            await promptCallbackForActorAsGM(actor, owningUserId, {
-              reason: "Directive used",
-              defaultValueId: directiveValueId,
-              defaultValueState: valueState,
-            });
-          }
-        }
-      }
-
-      scheduleRender(app);
-      return;
-    }
-
-    const moduleSocket = getModuleSocket();
-    if (!moduleSocket) {
-      ui.notifications?.error(t("sta-officers-log.errors.socketNotAvailable"));
-      return;
-    }
-
-    if (choice === "positive") {
-      await spendDetermination(actor);
-      await applyLogUsage(currentLog);
-
-      // Ask the GM to prompt the player for a callback (only for main characters).
-      if (!isSupportingCharacter) {
-        try {
-          if (
-            hasEligibleCallbackTargetWithAnyInvokedDirective(
-              actor,
-              currentMissionLogId,
-            )
-          ) {
-            await moduleSocket.executeAsGM("promptCallbackForUser", {
-              targetUserId: game.user.id,
-              reason: "Directive used",
-              defaultValueId: directiveValueId,
-              defaultValueState: "positive",
-            });
-          }
-        } catch (err) {
-          console.error(
-            "sta-officers-log | Failed to request callback prompt",
-            err,
-          );
-        }
-      }
-
-      scheduleRender(app);
-      return;
-    }
-
-    // GM approval required for negative and challenge
-    try {
-      const result = await moduleSocket.executeAsGM(
-        "requestDirectiveUseApproval",
-        {
-          requestingUserId: game.user.id,
-          actorUuid: actor.uuid,
-          actorName: actor.name,
-          directiveKey,
-          directiveText: chosenText,
-          usage: choice,
-          currentMissionLogId,
-        },
-      );
-
-      if (result?.approved) {
-        ui.notifications?.info(t("sta-officers-log.dialog.useValue.approved"));
-      } else {
-        ui.notifications?.warn(t("sta-officers-log.dialog.useValue.denied"));
-      }
-    } catch (err) {
-      console.error("sta-officers-log | Use Directive approval failed", err);
-      ui.notifications?.error(t("sta-officers-log.dialog.useValue.error"));
-    }
-
-    scheduleRender(app);
+      {
+        action: "cancel",
+        label: t("sta-officers-log.dialog.chooseMilestoneBenefit.cancel"),
+      },
+    ],
+    rejectClose: false,
+    modal: false,
   });
 
-  titleEl.appendChild(dirBtn);
+  if (!pick) return;
+
+  const chosenKey = String(pick.directiveKey ?? "");
+  const typed = sanitizeDirectiveText(pick.directiveText ?? "");
+
+  const chosenTextRaw =
+    chosenKey && chosenKey !== "__other__" ? byKey.get(chosenKey) : typed;
+  const chosenText = sanitizeDirectiveText(chosenTextRaw);
+  if (!chosenText) {
+    ui.notifications?.warn?.(t("sta-officers-log.dialog.useDirective.missing"));
+    return;
+  }
+
+  const directiveKey = makeDirectiveKeyFromText(chosenText);
+  const directiveValueId = `${DIRECTIVE_VALUE_ID_PREFIX}${directiveKey}`;
+
+  const choice = await promptUseValueChoice({
+    valueName: chosenText,
+    canChoosePositive: det > 0,
+  });
+
+  if (!choice) return;
+
+  const valueState =
+    choice === "positive"
+      ? "positive"
+      : choice === "challenge"
+        ? "challenged"
+        : "negative";
+
+  const applyLogUsage = async (logDoc) => {
+    if (!logDoc || isSupportingCharacter) return; // Skip for supporting characters
+
+    // Record invoked directive on the mission log
+    const existingRaw = logDoc.system?.valueStates?.[String(directiveValueId)];
+    await logDoc.update({
+      [`system.valueStates.${directiveValueId}`]: mergeValueStateArray(
+        existingRaw,
+        valueState,
+      ),
+    });
+
+    // Store a mapping so later UI can display the directive name.
+    try {
+      const existing = logDoc.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
+      const cloned = isPlainObject(existing)
+        ? foundry.utils.deepClone(existing)
+        : {};
+      cloned[String(directiveKey)] = chosenText;
+      await logDoc.setFlag(MODULE_ID, "directiveLabels", cloned);
+    } catch (_) {
+      // ignore
+    }
+  };
+
+  if (game.user.isGM) {
+    if (valueState === "positive") {
+      await spendDetermination(actor);
+    } else {
+      await gainDetermination(actor);
+      if (choice === "challenge") {
+        await setDirectiveChallenged(actor, directiveKey, true);
+      }
+    }
+
+    await applyLogUsage(currentLog);
+
+    // Prompt callback locally, but apply for owning player's mission context.
+    // (only for main characters, not supporting characters)
+    if (!isSupportingCharacter) {
+      const owningUserId = getUserIdForCharacterActor(actor);
+      if (owningUserId) {
+        if (
+          _hasEligibleCallbackTargetWithAnyInvokedDirective(
+            actor,
+            currentMissionLogId,
+          )
+        ) {
+          await promptCallbackForActorAsGM(actor, owningUserId, {
+            reason: "Directive used",
+            defaultValueId: directiveValueId,
+            defaultValueState: valueState,
+          });
+        }
+      }
+    }
+
+    rerenderActorSheet(actor);
+    return;
+  }
+
+  const moduleSocket = getModuleSocket();
+  if (!moduleSocket) {
+    ui.notifications?.error(t("sta-officers-log.errors.socketNotAvailable"));
+    return;
+  }
+
+  if (choice === "positive") {
+    await spendDetermination(actor);
+    await applyLogUsage(currentLog);
+
+    // Ask the GM to prompt the player for a callback (only for main characters).
+    if (!isSupportingCharacter) {
+      try {
+        if (
+          _hasEligibleCallbackTargetWithAnyInvokedDirective(
+            actor,
+            currentMissionLogId,
+          )
+        ) {
+          await moduleSocket.executeAsGM("promptCallbackForUser", {
+            targetUserId: game.user.id,
+            reason: "Directive used",
+            defaultValueId: directiveValueId,
+            defaultValueState: "positive",
+          });
+        }
+      } catch (err) {
+        console.error(
+          "sta-officers-log | Failed to request callback prompt",
+          err,
+        );
+      }
+    }
+
+    rerenderActorSheet(actor);
+    return;
+  }
+
+  // GM approval required for negative and challenge
+  try {
+    const result = await moduleSocket.executeAsGM(
+      "requestDirectiveUseApproval",
+      {
+        requestingUserId: game.user.id,
+        actorUuid: actor.uuid,
+        actorName: actor.name,
+        directiveKey,
+        directiveText: chosenText,
+        usage: choice,
+        currentMissionLogId,
+      },
+    );
+
+    if (result?.approved) {
+      ui.notifications?.info(t("sta-officers-log.dialog.useValue.approved"));
+    } else {
+      ui.notifications?.warn(t("sta-officers-log.dialog.useValue.denied"));
+    }
+  } catch (err) {
+    console.error("sta-officers-log | Use Directive approval failed", err);
+    ui.notifications?.error(t("sta-officers-log.dialog.useValue.error"));
+  }
+
+  rerenderActorSheet(actor);
 }

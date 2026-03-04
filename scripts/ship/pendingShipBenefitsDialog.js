@@ -86,6 +86,7 @@ export async function openPendingShipBenefitsDialog() {
   );
 
   const dialog = new foundry.applications.api.DialogV2({
+    classes: ["sta-officers-log"],
     window: {
       title: t("sta-officers-log.dialog.pendingShipBenefits.title"),
     },

@@ -208,9 +208,9 @@ async function handleImproveAttribute(actor, button) {
     let picked;
     while (true) {
       picked = await foundry.applications.api.DialogV2.wait({
+        classes: ["sta-officers-log", "choose-benefit"],
         window: {
           title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
-          classes: ["choose-benefit"],
         },
         content: `
           <div data-sta-callbacks-dialog="choose-benefit"></div>
@@ -298,9 +298,9 @@ async function handleImproveDepartment(actor, button) {
     let picked;
     while (true) {
       picked = await foundry.applications.api.DialogV2.wait({
+        classes: ["sta-officers-log", "choose-benefit"],
         window: {
           title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
-          classes: ["choose-benefit"],
         },
         content: `
           <div data-sta-callbacks-dialog="choose-benefit"></div>

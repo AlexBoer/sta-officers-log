@@ -282,6 +282,7 @@ export async function showGMSurveyMonitor(players) {
   const content = _buildMonitorContent(players);
 
   await foundry.applications.api.DialogV2.wait({
+    classes: ["sta-officers-log"],
     window: {
       title: t("sta-officers-log.gmMonitor.title"),
       icon: "fa-solid fa-eye",

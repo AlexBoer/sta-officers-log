@@ -78,10 +78,15 @@ function ensureActionsContainer(logsTitleEl) {
  * @returns {HTMLElement|null} The actions container for use by other buttons.
  */
 export function installMissionLogSortButton(root, actor) {
-  // Find the logs section title
-  const anyLogEntry = root.querySelector(
-    'div.section.milestones li.row.entry[data-item-type="log"]',
-  );
+  // Find the logs section title. On the mobile sheet logs live in
+  // div.section.character-log; on the standard sheet they're in .milestones.
+  const anyLogEntry =
+    root.querySelector(
+      'div.section.character-log li.row.entry[data-item-type="log"]',
+    ) ??
+    root.querySelector(
+      'div.section.milestones li.row.entry[data-item-type="log"]',
+    );
   const logsSection = anyLogEntry?.closest?.("div.section") ?? null;
   const logsTitleEl = logsSection
     ? logsSection.querySelector(":scope > div.title") ||

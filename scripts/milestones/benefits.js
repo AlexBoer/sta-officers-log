@@ -164,9 +164,9 @@ export async function applyNonArcMilestoneBenefitInternal(
 
       while (true) {
         const res = await foundry.applications.api.DialogV2.wait({
+          classes: ["sta-officers-log", "choose-benefit"],
           window: {
             title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
-            classes: ["choose-benefit"],
           },
           content: `
             <div data-sta-callbacks-dialog="choose-benefit"></div>
@@ -326,9 +326,9 @@ export async function applyNonArcMilestoneBenefitInternal(
 
       while (true) {
         const shipAction = await foundry.applications.api.DialogV2.wait({
+          classes: ["sta-officers-log", "choose-benefit"],
           window: {
             title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
-            classes: ["choose-benefit"],
           },
           content: `
             <div data-sta-callbacks-dialog="choose-benefit"></div>

@@ -28,7 +28,7 @@ export function installCallbackSourceButtons(root, actor) {
       String(root?.dataset?.staShowLogUsedToggle ?? "0") === "1";
 
     const logRows = root.querySelectorAll(
-      'div.section.milestones li.row.entry[data-item-type="log"]',
+      'div.section.milestones li.row.entry[data-item-type="log"], div.section.character-log li.row.entry[data-item-type="log"]',
     );
     // Get current mission log directly from the actor (no userId needed)
     const currentMissionLogId = getCurrentMissionLogForActor(actor) ?? "";
@@ -133,11 +133,11 @@ export function installCallbackSourceButtons(root, actor) {
     const findLogRowById = (logId) => {
       const normalized = escapeItemIdForSelector(logId);
       if (!normalized) return null;
-      const selector =
-        'div.section.milestones li.row.entry[data-item-type="log"][data-item-id="' +
-        normalized +
-        '"]';
-      const rowEl = root.querySelector(selector);
+      const suffix =
+        'li.row.entry[data-item-type="log"][data-item-id="' + normalized + '"]';
+      const rowEl =
+        root.querySelector("div.section.character-log " + suffix) ??
+        root.querySelector("div.section.milestones " + suffix);
       return rowEl instanceof HTMLElement ? rowEl : null;
     };
 
@@ -178,12 +178,12 @@ export function installCallbackSourceButtons(root, actor) {
     // because Officers Log's hook fires before sta-utils adds its classes to the DOM.
     let staUtilsHandlesMenu = false;
     try {
-      const staUtilsActive =
-        game.modules?.get?.("sta-utils")?.active ?? false;
+      const staUtilsActive = game.modules?.get?.("sta-utils")?.active ?? false;
       if (staUtilsActive) {
         staUtilsHandlesMenu =
           game.settings.get("sta-utils", "compactCharacterSheet") === true ||
-          game.settings.get("sta-utils", "tidyCharacterSheet") === true;
+          game.settings.get("sta-utils", "tidyCharacterSheet") === true ||
+          game.settings.get("sta-utils", "lcarsCharacterSheet") === true;
       }
     } catch (_) {
       // Settings not registered yet or module not present — fall through
@@ -195,12 +195,14 @@ export function installCallbackSourceButtons(root, actor) {
     );
 
     const milestonesSection = root.querySelector("div.section.milestones");
-    if (milestonesSection instanceof HTMLElement && !staUtilsHandlesMenu) {
+    const characterLogSection = root.querySelector("div.section.character-log");
+    const logContextMenuSection = characterLogSection ?? milestonesSection;
+    if (logContextMenuSection instanceof HTMLElement && !staUtilsHandlesMenu) {
       console.debug(
         `[sta-officers-log] INSTALLING milestones context menu (Officers Log owns it)`,
       );
       setupMissionLogContextMenu({
-        container: milestonesSection,
+        container: logContextMenuSection,
         selector: 'li.row.entry[data-item-type="log"][data-item-id]',
         label: makeCurrentMissionText,
         onSelect: async (element) => {
@@ -368,11 +370,11 @@ export function installMilestoneHighlightButtons(root, actor) {
     const findLogRowById = (logId) => {
       const normalized = escapeItemIdForSelector(logId);
       if (!normalized) return null;
-      const selector =
-        'div.section.milestones li.row.entry[data-item-type="log"][data-item-id="' +
-        normalized +
-        '"]';
-      const rowEl = root.querySelector(selector);
+      const suffix =
+        'li.row.entry[data-item-type="log"][data-item-id="' + normalized + '"]';
+      const rowEl =
+        root.querySelector("div.section.character-log " + suffix) ??
+        root.querySelector("div.section.milestones " + suffix);
       return rowEl instanceof HTMLElement ? rowEl : null;
     };
 

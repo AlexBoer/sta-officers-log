@@ -914,6 +914,7 @@ export async function openGMFlow() {
       .join("");
 
     const picked = await foundry.applications.api.DialogV2.wait({
+      classes: ["sta-officers-log"],
       window: { title: t("sta-officers-log.dialog.pickPlayer.title") },
       content: `
         <div class="form-group">
@@ -981,6 +982,7 @@ export async function openGMFlow() {
     .join("");
 
   const pickedValue = await foundry.applications.api.DialogV2.wait({
+    classes: ["sta-officers-log"],
     window: { title: t("sta-officers-log.dialog.pickValue.title") },
     content: `
       <div class="form-group">

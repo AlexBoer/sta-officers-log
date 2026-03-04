@@ -464,6 +464,7 @@ export async function openSpendDialog(type, amount, actor) {
     t("sta-officers-log.reputationSpend.confirm") || "Confirm";
 
   const result = await foundry.applications.api.DialogV2.wait({
+    classes: ["sta-officers-log"],
     window: {
       title,
       icon: isAcclaim ? "fa-solid fa-star" : "fa-solid fa-triangle-exclamation",
@@ -726,6 +727,7 @@ export async function promptGMSpendDialog() {
     </form>`;
 
   const result = await foundry.applications.api.DialogV2.wait({
+    classes: ["sta-officers-log"],
     window: { title: dialogTitle, icon: "fa-solid fa-paper-plane" },
     position: { width: 360 },
     content: formContent,

@@ -18,6 +18,7 @@ async function _confirmDelete({ title, contentHtml }) {
   if (DialogV2?.confirm) {
     try {
       const proceed = await DialogV2.confirm({
+        classes: ["sta-officers-log"],
         window: { title },
         content: `
           <div class="sta-confirm-delete-dialog" data-sta-callbacks-dialog="confirm-delete">
@@ -160,7 +161,8 @@ export function installConfirmDeleteControls(root, options = {}) {
  */
 export function installLogDeleteConfirmation(root, actor) {
   installConfirmDeleteControls(root, {
-    entrySelector: 'div.section.milestones li.row.entry[data-item-type="log"]',
+    entrySelector:
+      'div.section.milestones li.row.entry[data-item-type="log"], div.section.character-log li.row.entry[data-item-type="log"]',
     shouldInstall: (entryEl) => entryEl?.dataset?.itemType === "log",
     deleteSelector: 'a.delete[data-action="onItemDelete"], a.delete',
     onDelete: async (entryEl) => {

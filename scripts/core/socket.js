@@ -215,6 +215,7 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     if (game.user.id !== msg.targetUserId) return;
 
     await foundry.applications.api.DialogV2.prompt({
+      classes: ["sta-officers-log"],
       window: { title: msg.title ?? "Making a callback" },
       content: msg.rewardHtml ?? "",
       modal: false,
@@ -261,6 +262,7 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     const approved = shouldAutoApprove
       ? true
       : (await foundry.applications.api.DialogV2.wait({
+          classes: ["sta-officers-log"],
           window: { title: gmTitle },
           content: `
             <p><strong>${foundry.utils.escapeHTML(
@@ -366,6 +368,7 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
 
     const approved =
       (await foundry.applications.api.DialogV2.wait({
+        classes: ["sta-officers-log"],
         window: { title: "Approve Scar Usage" },
         content: `
           <p><strong>${requestingUserName}</strong> requests to use the scar <strong>${foundry.utils.escapeHTML(
@@ -425,6 +428,7 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     const approved = shouldAutoApprove
       ? true
       : (await foundry.applications.api.DialogV2.wait({
+          classes: ["sta-officers-log"],
           window: { title: t("sta-officers-log.dialog.useDirective.gmTitle") },
           content: `
             <p><strong>${requestingUserName}</strong> requests to use <strong>${foundry.utils.escapeHTML(

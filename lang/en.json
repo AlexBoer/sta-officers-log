@@ -93,6 +93,10 @@
       "enableScarRules": {
         "name": "Enable Scar Rules",
         "hint": "Enable the Scar rules from the 23rd Century Campaign Guide. When disabled, the 'Scar' checkbox on Traits will be hidden."
+      },
+      "enableLcarsMode": {
+        "name": "LCARS Mode",
+        "hint": "Apply LCARS-inspired styling (black & orange theme) to all Officer's Log dialogs and popups. Matches the visual style used by STA Utils."
       }
     },
     "tools": {
@@ -613,6 +617,7 @@
       "deleteWarning": "Warning: This character sheet is from an unlinked token. The deletion may not persist."
     },
     "errors": {
+      "noCharacter": "No character assigned. Set your character in User Configuration.",
       "socketNotAvailable": "SocketLib socket not available. Is the module initialized on GM and player?",
       "socketLibRequired": "STA Officers Log requires the SocketLib module. Please install and activate it.",
 

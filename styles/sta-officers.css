@@ -435,7 +435,8 @@
   letter-spacing: 0.05em;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-direction: row;
+  flex-wrap: wrap;
 }
 
 .tracker-container .sta-tracker-directives-edit-btn {
@@ -533,6 +534,36 @@
 
 .tracker-container .sta-tracker-directive-empty::before {
   content: none;
+}
+
+/* Header actions container (Use Directive + Edit buttons) */
+.tracker-container .sta-tracker-directives-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  justify-content: space-between;
+  flex-direction: row;
+  justify-self: flex-start;
+  width: 100%;
+}
+
+/* "Use Directive" button in the tracker directives header */
+.tracker-container .sta-tracker-use-directive-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.7rem;
+  border-radius: 3px;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.tracker-container .sta-tracker-use-directive-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #89CFF0;
+  border-color: #89CFF0;
 }
 
 /* =============================================================================
@@ -967,34 +998,19 @@
   gap: 0.35rem;
 }
 
-/* Container for left-side items in values title (Values text + info button) */
-.sta-values-title-left {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-/* Label Values button - positioned with small gap from left group */
-.sta-label-values-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 0.25rem;
-  cursor: pointer;
-  margin-left: 1rem;
-}
-
-.sta-label-values-btn i {
-  margin-left: 0.35rem;
-}
-
-/* Use Directive button - pushed to far right */
+/* Use Directive button - styled like the flowchart button, pushed to far right */
 .sta-use-directive-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  font-size: var(--font-size-11);
+  cursor: pointer;
   margin-left: auto;
 }
 
 .sta-use-directive-btn i {
-  margin-left: 0.35rem;
+  font-size: var(--font-size-12);
 }
 
 .sta-title-actions {
@@ -1085,6 +1101,7 @@
 
 /* Character sheet: draggable divider to resize Character Log/Milestones list height */
 div.section.milestones > .staol-log-resizer,
+div.section.character-log > .staol-log-resizer,
 div.section.milestones > .staol-milestone-resizer {
   height: 8px;
   margin: 2px 0 6px 0;
@@ -1098,6 +1115,7 @@ div.section.milestones > .staol-milestone-resizer {
 }
 
 div.section.milestones > .staol-log-resizer::after,
+div.section.character-log > .staol-log-resizer::after,
 div.section.milestones > .staol-milestone-resizer::after {
   content: "";
   position: absolute;
@@ -1111,6 +1129,7 @@ div.section.milestones > .staol-milestone-resizer::after {
 }
 
 div.section.milestones > .staol-log-resizer:hover,
+div.section.character-log > .staol-log-resizer:hover,
 div.section.milestones > .staol-milestone-resizer:hover {
   background: rgba(250, 223, 71, 0.10);
   border-color: rgba(250, 223, 71, 0.35);
@@ -1123,7 +1142,8 @@ body.staol-resize-dragging {
 
 /* Keep injected text actions inside the STA sheet columns */
 div.section.values li.row.entry a.value-used.control.toggle,
-div.section.milestones li.row.entry a.value-used.control.toggle {
+div.section.milestones li.row.entry a.value-used.control.toggle,
+div.section.character-log li.row.entry a.value-used.control.toggle {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -1137,12 +1157,18 @@ div.section.milestones li.row.entry a.value-used.control.toggle {
   div.section.milestones
   li.row.entry[data-item-type="log"]
   a.value-used.control.toggle
+  i[data-action="onStrikeThrough"],
+[data-sta-show-log-used-toggle="0"]
+  div.section.character-log
+  li.row.entry[data-item-type="log"]
+  a.value-used.control.toggle
   i[data-action="onStrikeThrough"] {
   display: none;
 }
 
 /* Icon-only control: show the source log that calls back to this log */
-div.section.milestones li.row.entry[data-item-type="log"] a.value-used.control.toggle .sta-show-source-btn {
+div.section.milestones li.row.entry[data-item-type="log"] a.value-used.control.toggle .sta-show-source-btn,
+div.section.character-log li.row.entry[data-item-type="log"] a.value-used.control.toggle .sta-show-source-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1152,7 +1178,8 @@ div.section.milestones li.row.entry[data-item-type="log"] a.value-used.control.t
   cursor: pointer;
 }
 
-div.section.milestones li.row.entry[data-item-type="log"] a.value-used.control.toggle .sta-show-source-btn:hover {
+div.section.milestones li.row.entry[data-item-type="log"] a.value-used.control.toggle .sta-show-source-btn:hover,
+div.section.character-log li.row.entry[data-item-type="log"] a.value-used.control.toggle .sta-show-source-btn:hover {
   opacity: 1;
 }
 
@@ -1187,19 +1214,22 @@ div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milest
 
 /* Soft double flash for the source row */
 div.section.milestones li.row.entry.sta-callbacks-source-flash,
-div.section.milestones li.row.entry[data-item-type="milestone"].sta-callbacks-source-flash {
+div.section.milestones li.row.entry[data-item-type="milestone"].sta-callbacks-source-flash,
+div.section.character-log li.row.entry.sta-callbacks-source-flash {
   animation: sta-callbacks-double-flash 1.05s ease-in-out;
   border-radius: 10px;
 }
 
-div.section.milestones li.row.entry.sta-current-mission-log {
+div.section.milestones li.row.entry.sta-current-mission-log,
+div.section.character-log li.row.entry.sta-current-mission-log {
   position: relative;
   border-radius: 10px;
   outline: 1px solid rgba(250, 223, 71, 0.7);
   outline-offset: -2px;
 }
 
-div.section.milestones li.row.entry .sta-current-mission-indicator {
+div.section.milestones li.row.entry .sta-current-mission-indicator,
+div.section.character-log li.row.entry .sta-current-mission-indicator {
     color: #fff;
     display: inline-flex;
     align-items: center;
@@ -1292,26 +1322,30 @@ div.section.milestones li.row.entry .sta-current-mission-indicator {
 }
 
 /* Completed Arc visualization and collapse helpers on sheet log rows */
-div.section.milestones li.row.entry.sta-callbacks-arc-start {
+div.section.milestones li.row.entry.sta-callbacks-arc-start,
+div.section.character-log li.row.entry.sta-callbacks-arc-start {
   border-top: 2px solid var(--color-border-light-primary);
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
   margin-top: 0.25rem;
 }
 
-div.section.milestones li.row.entry.sta-callbacks-arc-end {
+div.section.milestones li.row.entry.sta-callbacks-arc-end,
+div.section.character-log li.row.entry.sta-callbacks-arc-end {
   border-bottom: 2px solid var(--color-border-light-primary);
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
   margin-bottom: 0.25rem;
 }
 
-div.section.milestones li.row.entry.sta-callbacks-arc-collapsed {
+div.section.milestones li.row.entry.sta-callbacks-arc-collapsed,
+div.section.character-log li.row.entry.sta-callbacks-arc-collapsed {
   border-bottom: 2px solid var(--color-border-light-primary);
   border-radius: 8px;
 }
 
-div.section.milestones li.row.entry .sta-arc-collapse-btn {
+div.section.milestones li.row.entry .sta-arc-collapse-btn,
+div.section.character-log li.row.entry .sta-arc-collapse-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1322,14 +1356,18 @@ div.section.milestones li.row.entry .sta-arc-collapse-btn {
   white-space: nowrap;
 }
 
-div.section.milestones li.row.entry .sta-arc-collapse-btn:hover {
+div.section.milestones li.row.entry .sta-arc-collapse-btn:hover,
+div.section.character-log li.row.entry .sta-arc-collapse-btn:hover {
   opacity: 1;
 }
 
 /* Prevent long log names from running under the Arc label / controls */
 div.section.milestones li.row.entry[data-item-type="log"] .item-name,
 div.section.milestones li.row.entry[data-item-type="log"] .item-name h4,
-div.section.milestones li.row.entry[data-item-type="log"] .item-name a {
+div.section.milestones li.row.entry[data-item-type="log"] .item-name a,
+div.section.character-log li.row.entry[data-item-type="log"] .item-name,
+div.section.character-log li.row.entry[data-item-type="log"] .item-name h4,
+div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

@@ -49,34 +49,53 @@ function _getCurrentHeightPx(el) {
 export function installCharacterLogListResizer(root) {
   if (!root) return;
 
-  const section = root.querySelector?.("div.section.milestones");
-  if (!section) return;
+  // Support the standard sheet (one div.section.milestones containing both logs
+  // and milestones) and the mobile sheet (logs in div.section.character-log,
+  // milestones in div.section.milestones).
+  const milestonesSection = root.querySelector?.("div.section.milestones");
+  const characterLogSection = root.querySelector?.("div.section.character-log");
 
-  // STA v2.4.6+: logs and milestones are separate scrollable siblings.
-  const scrollableLists = Array.from(
-    section.querySelectorAll(":scope > .item-list-scrollable"),
-  ).filter((el) => el instanceof HTMLElement);
+  function _getScrollables(parentSection) {
+    if (!parentSection) return [];
+    return Array.from(
+      parentSection.querySelectorAll(":scope > .item-list-scrollable"),
+    ).filter((el) => el instanceof HTMLElement);
+  }
+
+  const milestoneLists = _getScrollables(milestonesSection);
+  const logOnlyLists = _getScrollables(characterLogSection);
 
   const logListScrollable =
-    scrollableLists.find((el) =>
+    logOnlyLists.find((el) =>
       el.querySelector('li.row.entry[data-item-type="log"]'),
-    ) ?? null;
+    ) ??
+    milestoneLists.find((el) =>
+      el.querySelector('li.row.entry[data-item-type="log"]'),
+    ) ??
+    null;
 
   const milestoneListScrollable =
-    scrollableLists.find((el) =>
+    milestoneLists.find((el) =>
       el.querySelector('li.row.entry[data-item-type="milestone"]'),
     ) ?? null;
 
   if (!logListScrollable && !milestoneListScrollable) return;
 
+  // Each resizer bar must be inserted inside the section that owns its list.
+  const logSection = logOnlyLists.includes(logListScrollable)
+    ? characterLogSection
+    : milestonesSection;
+  const milestoneSection = milestonesSection;
+
   const installResizer = ({
     listEl,
+    sectionEl,
     resizerClass,
     ariaLabel,
     settingKey,
     getSetting,
   }) => {
-    if (!listEl) return;
+    if (!listEl || !sectionEl) return;
 
     // Insert the resizer between the list and whatever follows.
     const insertBefore = listEl.nextElementSibling;
@@ -84,7 +103,7 @@ export function installCharacterLogListResizer(root) {
       resizerClass,
     )
       ? insertBefore.previousElementSibling
-      : section.querySelector(`:scope > .${resizerClass}`);
+      : sectionEl.querySelector(`:scope > .${resizerClass}`);
 
     const resizer = existing instanceof HTMLElement ? existing : null;
 
@@ -110,8 +129,8 @@ export function installCharacterLogListResizer(root) {
     bar.dataset.minHeight = String(minHeight);
 
     // Only insert if we have a stable anchor.
-    if (insertBefore) section.insertBefore(bar, insertBefore);
-    else section.appendChild(bar);
+    if (insertBefore) sectionEl.insertBefore(bar, insertBefore);
+    else sectionEl.appendChild(bar);
 
     let dragState = null;
     let rafId = 0;
@@ -274,6 +293,7 @@ export function installCharacterLogListResizer(root) {
 
   installResizer({
     listEl: logListScrollable,
+    sectionEl: logSection,
     resizerClass: "staol-log-resizer",
     ariaLabel: "Resize Character Log",
     settingKey: "characterLogMaxHeight",
@@ -282,6 +302,7 @@ export function installCharacterLogListResizer(root) {
 
   installResizer({
     listEl: milestoneListScrollable,
+    sectionEl: milestoneSection,
     resizerClass: "staol-milestone-resizer",
     ariaLabel: "Resize Milestones",
     settingKey: "characterMilestoneMaxHeight",

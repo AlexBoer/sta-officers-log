@@ -6,7 +6,11 @@ export function rerenderOpenStaSheetsForActorId(actorId) {
 
   const maybe = (app) => {
     try {
-      if (!app?.id?.startsWith?.("STACharacterSheet2e")) return;
+      if (
+        !app?.id?.startsWith?.("STACharacterSheet2e") &&
+        !app?.id?.startsWith?.("MobileCharacterSheet2e")
+      )
+        return;
       if (!actorId || app?.actor?.id !== actorId) return;
       renderNoFocus(app);
     } catch (_) {

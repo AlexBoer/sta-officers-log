@@ -6,6 +6,7 @@ export {
   CLIENT_CHARACTER_MILESTONE_MAX_HEIGHT_SETTING,
   WORLD_ENABLE_TRAUMA_RULES_SETTING,
   WORLD_ENABLE_SCAR_RULES_SETTING,
+  CLIENT_ENABLE_LCARS_MODE_SETTING,
   registerClientSettings,
   areSheetEnhancementsEnabled,
   shouldShowLogUsedToggle,
@@ -13,6 +14,7 @@ export {
   getCharacterMilestoneMaxHeightSetting,
   areTraumaRulesEnabled,
   areScarRulesEnabled,
+  isLcarsModeEnabled,
 } from "./clientSettings.js";
 
 export {

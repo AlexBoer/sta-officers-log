@@ -109,7 +109,8 @@ function handleCharacterSheetRender(app, root) {
   // Only target STA character sheet apps
   if (
     !app?.id?.startsWith("STACharacterSheet2e") &&
-    !app?.id?.startsWith("STASupportingSheet2e")
+    !app?.id?.startsWith("STASupportingSheet2e") &&
+    !app?.id?.startsWith("MobileCharacterSheet2e")
   )
     return;
 
@@ -230,6 +231,7 @@ export function installRenderApplicationV2Hook() {
       appId.startsWith("STASupportingSheet2e") ||
       appId.startsWith("STATracker") ||
       appId.startsWith("sta-") ||
+      appId.startsWith("MobileCharacterSheet2e") ||
       app?.constructor?.name?.startsWith?.("STA");
     const isDialog =
       app?.constructor?.name === "DialogV2" || appId.startsWith("dialog-");
@@ -246,7 +248,11 @@ export function installRenderApplicationV2Hook() {
 
     // Always drive CSS flags on STA character sheets, even if sheet enhancements are disabled.
     try {
-      if (app?.id?.startsWith?.("STACharacterSheet2e") && root?.dataset) {
+      if (
+        (app?.id?.startsWith?.("STACharacterSheet2e") ||
+          app?.id?.startsWith?.("MobileCharacterSheet2e")) &&
+        root?.dataset
+      ) {
         root.dataset.staShowLogUsedToggle = shouldShowLogUsedToggle()
           ? "1"
           : "0";

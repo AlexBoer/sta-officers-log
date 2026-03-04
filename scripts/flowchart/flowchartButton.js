@@ -22,10 +22,16 @@ export function installFlowchartButton(root, actor) {
   if (!isFlowchartViewEnabled()) return;
   if (!root || !actor) return;
 
-  // Find the logs section by locating a log entry and getting its parent section
-  const anyLogEntry = root?.querySelector?.(
-    'div.section.milestones li.row.entry[data-item-type="log"]',
-  );
+  // Find the logs section by locating a log entry and getting its parent section.
+  // The mobile sheet uses div.section.character-log; the standard sheet uses
+  // div.section.milestones for both logs and milestones.
+  const anyLogEntry =
+    root?.querySelector?.(
+      'div.section.character-log li.row.entry[data-item-type="log"]',
+    ) ??
+    root?.querySelector?.(
+      'div.section.milestones li.row.entry[data-item-type="log"]',
+    );
   const logsSection = anyLogEntry?.closest?.("div.section") ?? null;
 
   // If no logs exist, try to find by section title text

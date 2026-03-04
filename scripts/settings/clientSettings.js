@@ -8,6 +8,7 @@ export const CLIENT_CHARACTER_LOG_MAX_HEIGHT_SETTING = "characterLogMaxHeight";
 export const CLIENT_CHARACTER_MILESTONE_MAX_HEIGHT_SETTING =
   "characterMilestoneMaxHeight";
 export const CLIENT_ENABLE_FLOWCHART_VIEW_SETTING = "enableFlowchartView";
+export const CLIENT_ENABLE_LCARS_MODE_SETTING = "enableLcarsMode";
 export const WORLD_ENABLE_TRAUMA_RULES_SETTING = "enableTraumaRules";
 export const WORLD_ENABLE_SCAR_RULES_SETTING = "enableScarRules";
 
@@ -167,6 +168,39 @@ export function registerClientSettings() {
     },
   });
 
+  // Client setting: LCARS Mode — apply LCARS-inspired styling to all module dialogs
+  // Hidden from the settings UI when sta-utils is active (sta-utils owns the toggle).
+  game.settings.register(MODULE_ID, CLIENT_ENABLE_LCARS_MODE_SETTING, {
+    name: t("sta-officers-log.settings.enableLcarsMode.name"),
+    hint: t("sta-officers-log.settings.enableLcarsMode.hint"),
+    scope: "client",
+    config: false, // LCARS is controlled exclusively via sta-utils; never shown here
+    type: Boolean,
+    default: false,
+    onChange: (enabled) => {
+      // When sta-utils is active it manages this body class; skip to avoid conflicts.
+      if (game.modules.get("sta-utils")?.active) return;
+      try {
+        document.body.classList.toggle("sta-officers-lcars-active", !!enabled);
+      } catch (_) {
+        // body may not be available
+      }
+      try {
+        // Force existing STA character sheets to redraw so LCARS styling applies.
+        for (const app of Object.values(ui?.windows ?? {})) {
+          try {
+            if (app?.id?.startsWith?.("STACharacterSheet2e"))
+              app.render?.(true);
+          } catch (_) {
+            // sheet may have closed
+          }
+        }
+      } catch (_) {
+        // safe to fail silently
+      }
+    },
+  });
+
   // World setting: Enable Trauma rules (23rd Century Campaign Guide)
   game.settings.register(MODULE_ID, WORLD_ENABLE_TRAUMA_RULES_SETTING, {
     name: t("sta-officers-log.settings.enableTraumaRules.name"),
@@ -301,6 +335,16 @@ export function isFlowchartViewEnabled() {
   try {
     return Boolean(
       game.settings.get(MODULE_ID, CLIENT_ENABLE_FLOWCHART_VIEW_SETTING),
+    );
+  } catch (_) {
+    return false;
+  }
+}
+
+export function isLcarsModeEnabled() {
+  try {
+    return Boolean(
+      game.settings.get(MODULE_ID, CLIENT_ENABLE_LCARS_MODE_SETTING),
     );
   } catch (_) {
     return false;

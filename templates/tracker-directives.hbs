@@ -1,11 +1,16 @@
 <div class="sta-tracker-directives-section">
   <div class="sta-tracker-directives-header">
     <span>{{localize "sta-officers-log.tracker.missionDirectives"}}</span>
-    {{#if isGM}}
-    <button class="sta-tracker-directives-edit-btn" type="button" title="{{localize "sta-officers-log.tracker.editDirectives"}}" data-action="toggleEdit">
-      <i class="fas fa-pencil-alt"></i>
-    </button>
-    {{/if}}
+    <div class="sta-tracker-directives-header-actions">
+      <button class="sta-tracker-use-directive-btn" type="button" title="{{localize "sta-officers-log.values.useDirectiveTooltip"}}" data-action="useDirective">
+        <i class="fa-solid fa-flag"></i> {{localize "sta-officers-log.values.useDirective"}}
+      </button>
+      {{#if isGM}}
+      <button class="sta-tracker-directives-edit-btn" type="button" title="{{localize "sta-officers-log.tracker.editDirectives"}}" data-action="toggleEdit">
+        <i class="fas fa-pencil-alt"></i>
+      </button>
+      {{/if}}
+    </div>
   </div>
 
   <div class="sta-tracker-directives-display">

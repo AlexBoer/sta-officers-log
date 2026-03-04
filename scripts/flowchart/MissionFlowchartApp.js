@@ -2258,6 +2258,7 @@ export class MissionFlowchartApp extends Base {
         .join("");
 
       const result = await foundry.applications.api.DialogV2.prompt({
+        classes: ["sta-officers-log"],
         window: {
           title:
             t("sta-officers-log.flowchart.pickValueTitle") ??
@@ -3015,7 +3016,10 @@ export class MissionFlowchartApp extends Base {
     if (!log) return;
 
     const confirmed = await foundry.applications.api.DialogV2.confirm({
-      window: { title: t("sta-officers-log.confirmDelete.title") ?? "Delete" },
+      classes: ["sta-officers-log"],
+      window: {
+        title: t("sta-officers-log.confirmDelete.title") ?? "Delete",
+      },
       content: `<p>${t("sta-officers-log.flowchart.confirmDeleteLog") ?? "Are you sure you want to delete this log?"}</p>`,
       yes: { label: t("sta-officers-log.confirmDelete.delete") ?? "Delete" },
       no: { label: t("sta-officers-log.confirmDelete.cancel") ?? "Cancel" },
@@ -3328,6 +3332,7 @@ export class MissionFlowchartApp extends Base {
     // Check for unsaved changes
     if (this._isDirty) {
       const confirmed = await foundry.applications.api.DialogV2.confirm({
+        classes: ["sta-officers-log"],
         window: {
           title:
             t("sta-officers-log.flowchart.unsavedChangesTitle") ??

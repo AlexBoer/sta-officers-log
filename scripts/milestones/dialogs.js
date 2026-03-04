@@ -48,6 +48,7 @@ export function _getFirstExistingNumeric(actor, paths) {
 
 export async function _promptSelect({ title, label, name, optionsHtml }) {
   return foundry.applications.api.DialogV2.wait({
+    classes: ["sta-officers-log"],
     window: { title },
     content: `
       <div class="form-group">
@@ -78,6 +79,7 @@ export async function _promptSelect({ title, label, name, optionsHtml }) {
 
 export async function _promptText({ title, label, name, placeholder = "" }) {
   return foundry.applications.api.DialogV2.wait({
+    classes: ["sta-officers-log"],
     window: { title },
     content: `
       <div class="form-group">
@@ -116,6 +118,7 @@ export async function _promptTwoSelect({
   options2Html,
 }) {
   return foundry.applications.api.DialogV2.wait({
+    classes: ["sta-officers-log"],
     window: { title },
     content: `
       <div class="form-group">
@@ -165,6 +168,7 @@ export async function _promptSelectAndText({
   textPlaceholder = "",
 }) {
   return foundry.applications.api.DialogV2.wait({
+    classes: ["sta-officers-log"],
     window: { title },
     content: `
       <div class="form-group">
@@ -206,9 +210,9 @@ export async function _promptSelectAndText({
 
 export async function _promptBenefitType() {
   return foundry.applications.api.DialogV2.wait({
+    classes: ["sta-officers-log", "choose-benefit"],
     window: {
       title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
-      classes: ["choose-benefit"],
     },
     content: `
       <div data-sta-callbacks-dialog="choose-benefit"></div>
@@ -260,7 +264,8 @@ export async function _promptBenefitType() {
 
 export async function _promptManualMilestoneInstructions({ title, html }) {
   return foundry.applications.api.DialogV2.wait({
-    window: { title, classes: ["choose-benefit"] },
+    classes: ["sta-officers-log", "choose-benefit"],
+    window: { title },
     content: `<div data-sta-callbacks-dialog="choose-benefit"></div>${html}`,
     buttons: [
       {
@@ -284,9 +289,9 @@ export async function _promptManualMilestoneInstructions({ title, html }) {
 
 export async function _promptArcBenefitType() {
   return foundry.applications.api.DialogV2.wait({
+    classes: ["sta-officers-log", "choose-benefit"],
     window: {
       title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
-      classes: ["choose-benefit"],
     },
     content: `
       <div data-sta-callbacks-dialog="choose-benefit"></div>

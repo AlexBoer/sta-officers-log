@@ -1,2 +1,5 @@
 export * from "./directives.js";
-export { installUseDirectiveButton } from "./useDirectiveButton.js";
+export {
+  installUseDirectiveButton,
+  promptUseDirective,
+} from "./useDirectiveButton.js";

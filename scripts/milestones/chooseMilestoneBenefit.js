@@ -46,7 +46,7 @@ function _openCreatedItemSheet(actor, createdItemId) {
  */
 export function installChooseMilestoneBenefitButtons(root, actor, app) {
   const pendingMilestoneLogs = root.querySelectorAll(
-    'div.section.milestones li.row.entry[data-item-type="log"]',
+    'div.section.milestones li.row.entry[data-item-type="log"], div.section.character-log li.row.entry[data-item-type="log"]',
   );
 
   for (const entry of pendingMilestoneLogs) {

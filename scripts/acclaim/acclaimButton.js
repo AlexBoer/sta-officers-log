@@ -468,6 +468,7 @@ async function _showAcclaimDialog(actor, options = {}) {
   );
 
   const result = await foundry.applications.api.DialogV2.wait({
+    classes: ["sta-officers-log"],
     window: {
       title: t("sta-officers-log.acclaimSurvey.dialogTitle"),
       icon: "fa-solid fa-star",

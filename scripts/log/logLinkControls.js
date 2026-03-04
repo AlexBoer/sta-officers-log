@@ -127,6 +127,7 @@ async function _ensureSourceHasMatchingValueState(
     const valueName = targetValue?.name ?? "this value";
 
     const confirmed = await foundry.applications.api.DialogV2.confirm({
+      classes: ["sta-officers-log"],
       window: {
         title:
           t("sta-officers-log.flowchart.pickValueTitle") ?? "Confirm Value",
@@ -176,6 +177,7 @@ async function _ensureSourceHasMatchingValueState(
       .join("");
 
     const pickedValueId = await foundry.applications.api.DialogV2.prompt({
+      classes: ["sta-officers-log"],
       window: {
         title: t("sta-officers-log.flowchart.pickValueTitle") ?? "Choose Value",
       },
@@ -247,6 +249,7 @@ export async function promptLinkLogToChain({ actor, log }) {
     .join("");
 
   const res = await foundry.applications.api.DialogV2.wait({
+    classes: ["sta-officers-log"],
     window: { title: "Link Log to Chain" },
     content: `
       <div class="form-group">
@@ -1167,6 +1170,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         .join("");
 
       const res = await foundry.applications.api.DialogV2.wait({
+        classes: ["sta-officers-log"],
         window: { title: "Add Directive" },
         content: `
           <div class="form-group">
