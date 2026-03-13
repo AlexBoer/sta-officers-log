@@ -169,13 +169,13 @@ function _getValueIconMapForActor(actor) {
 
   const values = getValueItems(actor);
 
-  // Keep signature creation cheap: Values are typically a small set (V1..V8).
-  // We only need to rebuild the sorted mapping when ids/sort order changes.
+  // Check for a cache hit before paying the O(n) signature build cost.
+  const cached = _valueIconMapCache.get(actor);
+
   const signature = values
     .map((v) => `${String(v.id)}:${Number(v.sort ?? 0)}`)
     .join("|");
 
-  const cached = _valueIconMapCache.get(actor);
   if (cached?.signature === signature) return cached.mapById;
 
   const sorted = values

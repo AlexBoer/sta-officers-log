@@ -172,18 +172,38 @@ export function installCallbackSourceButtons(root, actor) {
     };
 
     // Set up right-click context menu for mission log rows using Foundry's ContextMenu API.
-    // Skip when sta-utils compact/tidy mode is active — sta-utils provides a unified
-    // context menu that already includes the "Set Current Mission" action.
-    // We check sta-utils *settings* (available synchronously) rather than CSS classes
-    // because Officers Log's hook fires before sta-utils adds its classes to the DOM.
+    // Skip when sta-utils provides a unified context menu that already includes the
+    // "Set Current Mission" action (compact/tidy/lcars/mobile modes all do this).
     let staUtilsHandlesMenu = false;
     try {
       const staUtilsActive = game.modules?.get?.("sta-utils")?.active ?? false;
       if (staUtilsActive) {
-        staUtilsHandlesMenu =
+        // Legacy boolean settings (pre-migration to sheetVariant)
+        const legacyHandles =
           game.settings.get("sta-utils", "compactCharacterSheet") === true ||
           game.settings.get("sta-utils", "tidyCharacterSheet") === true ||
           game.settings.get("sta-utils", "lcarsCharacterSheet") === true;
+
+        // Unified sheetVariant setting (compact/tidy/lcars post-migration)
+        let variantHandles = false;
+        try {
+          const v = game.settings.get("sta-utils", "sheetVariant");
+          variantHandles = v === "compact" || v === "tidy" || v === "lcars";
+        } catch (_) {
+          // not yet registered
+        }
+
+        // Mobile sheet (MobileCharacterSheet2e) — detected via DOM class since
+        // this sheet is registered as a distinct class, not via sheetVariant.
+        const mobileHandles = !!root?.querySelector?.(
+          ".character-sheet--mobile",
+        );
+
+        // LCARS bespoke sheet (LcarsCharacterSheet2e) — detected via DOM class.
+        const lcarsSheetHandles = !!root?.querySelector?.(".sta-lcars");
+
+        staUtilsHandlesMenu =
+          legacyHandles || variantHandles || mobileHandles || lcarsSheetHandles;
       }
     } catch (_) {
       // Settings not registered yet or module not present — fall through

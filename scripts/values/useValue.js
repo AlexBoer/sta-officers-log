@@ -365,7 +365,10 @@ export async function useValue({ actor, valueItemId, useType } = {}) {
       actor?.getFlag?.("core", "sheetClass") ??
       foundry.utils.getProperty(actor, "flags.core.sheetClass") ??
       "";
-    return String(sheetClass) === "sta.STASupportingSheet2e";
+    return (
+      String(sheetClass) === "sta.STASupportingSheet2e" ||
+      String(sheetClass) === "sta-utils.LcarsSupportingSheet2e"
+    );
   })();
 
   const missionUserId = !isSupportingCharacter

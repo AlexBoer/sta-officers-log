@@ -146,6 +146,10 @@
       "momentumNotFound": "Could not find an STA Momentum setting to decrement.",
       "newSceneDone": "New scene: Momentum -1. NPC Personal Threat refreshed.",
       "callbacksReset": "Callback usage reset for a new mission.",
+      "callbackMade": "{user} made a callback.",
+      "callbackMadeWithLog": "{user} made a callback ({log}).",
+      "pendingShipBenefitsReview": "{count} pending ship benefit to review. Click here to review it.",
+      "pendingShipBenefitsReviewMany": "{count} pending ship benefits to review. Click here to review them.",
       "scarsReset": "All scars marked as unused.",
 
       "pendingShipBenefitsAllProcessed": "All pending ship benefits have been processed.",
@@ -599,6 +603,10 @@
       "alreadyUsedThisMission": "{user} already made a callback this mission.",
       "allActivePlayersUsed": "All active players have already made a callback this mission.",
       "noEligibleLogs": "{user} has no eligible logs to callback to.",
+      "callbackTargetTaken": "Another player already used that log for a callback. Choose another log.",
+      "callbackUniquenessFailed": "Callback rejected: unable to validate callback target uniqueness.",
+      "callbackChainMismatch": "Callback rejected: {log} is in a different primary-value chain.",
+      "callbackChainFailed": "Callback rejected: unable to validate chain rules.",
 
       "pendingShipBenefitsTalentSwapManual": "Ship talent swap for {character} requires manual application. The talent selection dialog should be shown.",
       "pendingShipBenefitsUnknownAction": "Unknown ship benefit action: {action}. Please apply manually.",

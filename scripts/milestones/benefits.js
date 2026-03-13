@@ -47,7 +47,11 @@ function _getEligibleSupportingCharacters() {
       a.getFlag?.("core", "sheetClass") ??
       foundry.utils.getProperty(a, "flags.core.sheetClass") ??
       "";
-    if (String(sheetClass) !== "sta.STASupportingSheet2e") continue;
+    if (
+      String(sheetClass) !== "sta.STASupportingSheet2e" &&
+      String(sheetClass) !== "sta-utils.LcarsSupportingSheet2e"
+    )
+      continue;
 
     const canEdit = (() => {
       try {

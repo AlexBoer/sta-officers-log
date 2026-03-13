@@ -151,7 +151,10 @@ export async function promptUseDirective(actor) {
       actor?.getFlag?.("core", "sheetClass") ??
       foundry.utils.getProperty(actor, "flags.core.sheetClass") ??
       "";
-    return String(sheetClass) === "sta.STASupportingSheet2e";
+    return (
+      String(sheetClass) === "sta.STASupportingSheet2e" ||
+      String(sheetClass) === "sta-utils.LcarsSupportingSheet2e"
+    );
   })();
 
   const det = Number(actor.system?.determination?.value ?? 0);

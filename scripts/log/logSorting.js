@@ -301,15 +301,33 @@ export function applyMissionLogSorting(root, actor, mode) {
     // class check alone would miss them.  LCARS is already on the DOM by
     // the time we run, so a CSS check is fine for it.
     let isAltSheet =
-      root?.closest?.(".sta-lcars, .sta-compact, .sta-tidy") != null;
+      root?.closest?.(
+        ".sta-lcars, .sta-compact, .sta-tidy, .character-sheet--mobile",
+      ) != null;
     if (!isAltSheet) {
       try {
         const staUtilsActive =
           game.modules?.get?.("sta-utils")?.active ?? false;
         if (staUtilsActive) {
+          // Legacy boolean settings (pre-migration to sheetVariant)
           isAltSheet =
             game.settings.get("sta-utils", "compactCharacterSheet") === true ||
             game.settings.get("sta-utils", "tidyCharacterSheet") === true;
+
+          // Unified sheetVariant setting (compact/tidy/lcars post-migration)
+          if (!isAltSheet) {
+            try {
+              const v = game.settings.get("sta-utils", "sheetVariant");
+              isAltSheet = v === "compact" || v === "tidy" || v === "lcars";
+            } catch (_) {
+              // not yet registered
+            }
+          }
+
+          // Mobile sheet — detected via DOM class
+          if (!isAltSheet) {
+            isAltSheet = !!root?.querySelector?.(".character-sheet--mobile");
+          }
         }
       } catch (_) {
         // Settings not registered yet or module not present — fall through
@@ -1286,7 +1304,11 @@ function _getApplicationRootElement(app) {
 function _doRefreshMissionLogSortingForActorId(actorId) {
   const maybe = (app) => {
     try {
-      if (!app?.id?.startsWith?.("STACharacterSheet2e")) return;
+      if (
+        !app?.id?.startsWith?.("STACharacterSheet2e") &&
+        !app?.id?.startsWith?.("LcarsCharacterSheet2e")
+      )
+        return;
       if (!actorId || app?.actor?.id !== actorId) return;
       const root = _getApplicationRootElement(app);
       if (!root) return;

@@ -280,12 +280,14 @@ export function hasActiveMission() {
  * Checks the user's character actor flag.
  */
 export function hasUsedCallbackThisMission(userId) {
-  // Find the actor assigned to this user
-  const actor = game.actors?.find(
-    (a) =>
-      a.type === "character" &&
-      a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
-  );
+  const actor =
+    _getAssignedCharacterActorForUserId(userId) ??
+    game.actors?.find(
+      (a) =>
+        a.type === "character" &&
+        a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
+    ) ??
+    null;
 
   if (actor) {
     const flagValue = actor.getFlag?.(MODULE_ID, "usedCallbackThisMission");
@@ -302,12 +304,14 @@ export function hasUsedCallbackThisMission(userId) {
  * Updates the user's character actor flag.
  */
 export async function setUsedCallbackThisMission(userId, used) {
-  // Update actor flag (new method)
-  const actor = game.actors?.find(
-    (a) =>
-      a.type === "character" &&
-      a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
-  );
+  const actor =
+    _getAssignedCharacterActorForUserId(userId) ??
+    game.actors?.find(
+      (a) =>
+        a.type === "character" &&
+        a.getUserLevel?.(userId) >= CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
+    ) ??
+    null;
 
   if (actor) {
     try {
@@ -558,7 +562,11 @@ export async function newScene() {
   const updates = [];
   for (const actor of game.actors ?? []) {
     const sheetClass = actor?.flags?.core?.sheetClass;
-    if (sheetClass !== "sta.STANPCSheet2e") continue;
+    if (
+      sheetClass !== "sta.STANPCSheet2e" &&
+      sheetClass !== "sta-utils.LcarsNPCSheet2e"
+    )
+      continue;
 
     const npcType = actor?.system?.npcType ?? actor?.system?.npctype;
     if (npcType !== "notable" && npcType !== "major") continue;

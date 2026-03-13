@@ -92,7 +92,10 @@ function isSupportingCharacterSheet(actor) {
     actor?.getFlag?.("core", "sheetClass") ??
     foundry.utils.getProperty(actor, "flags.core.sheetClass") ??
     "";
-  return String(sheetClass) === "sta.STASupportingSheet2e";
+  return (
+    String(sheetClass) === "sta.STASupportingSheet2e" ||
+    String(sheetClass) === "sta-utils.LcarsSupportingSheet2e"
+  );
 }
 
 /**
@@ -110,19 +113,14 @@ function handleCharacterSheetRender(app, root) {
   if (
     !app?.id?.startsWith("STACharacterSheet2e") &&
     !app?.id?.startsWith("STASupportingSheet2e") &&
-    !app?.id?.startsWith("MobileCharacterSheet2e")
+    !app?.id?.startsWith("MobileCharacterSheet2e") &&
+    !app?.id?.startsWith("LcarsCharacterSheet2e") &&
+    !app?.id?.startsWith("LcarsSupportingSheet2e")
   )
     return;
 
   const actor = app.actor;
   if (!actor || actor.type !== "character") return;
-
-  // Add sort button to Character Logs section and apply sorting
-  try {
-    installFlowchartButton(root, actor);
-  } catch (_) {
-    // ignore
-  }
 
   // Add flowchart button to Character Logs section (if enabled)
   try {
@@ -232,6 +230,8 @@ export function installRenderApplicationV2Hook() {
       appId.startsWith("STATracker") ||
       appId.startsWith("sta-") ||
       appId.startsWith("MobileCharacterSheet2e") ||
+      appId.startsWith("LcarsCharacterSheet2e") ||
+      appId.startsWith("LcarsSupportingSheet2e") ||
       app?.constructor?.name?.startsWith?.("STA");
     const isDialog =
       app?.constructor?.name === "DialogV2" || appId.startsWith("dialog-");
@@ -250,7 +250,8 @@ export function installRenderApplicationV2Hook() {
     try {
       if (
         (app?.id?.startsWith?.("STACharacterSheet2e") ||
-          app?.id?.startsWith?.("MobileCharacterSheet2e")) &&
+          app?.id?.startsWith?.("MobileCharacterSheet2e") ||
+          app?.id?.startsWith?.("LcarsCharacterSheet2e")) &&
         root?.dataset
       ) {
         root.dataset.staShowLogUsedToggle = shouldShowLogUsedToggle()

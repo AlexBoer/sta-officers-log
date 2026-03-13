@@ -231,7 +231,7 @@ async function applyCallbackUpdates(
 
     if (!allowed) {
       ui.notifications?.warn?.(
-        "Another player already used that log for a callback. Choose another log.",
+        t("sta-officers-log.warnings.callbackTargetTaken"),
       );
       return;
     }
@@ -258,7 +258,9 @@ async function applyCallbackUpdates(
       const chosenValueId = String(response.valueId ?? "");
       if (primary && chosenValueId && String(primary) !== chosenValueId) {
         ui.notifications?.warn(
-          `Callback rejected: ${chosenLog.name} is in a different primary-value chain.`,
+          tf("sta-officers-log.warnings.callbackChainMismatch", {
+            log: chosenLog.name,
+          }),
         );
         return;
       }
@@ -268,9 +270,7 @@ async function applyCallbackUpdates(
       "sta-officers-log | Callback rejected: unable to validate chain rules.",
       err,
     );
-    ui.notifications?.warn(
-      "Callback rejected: unable to validate chain rules.",
-    );
+    ui.notifications?.warn(t("sta-officers-log.warnings.callbackChainFailed"));
     return;
   }
 
@@ -450,9 +450,14 @@ async function applyCallbackUpdates(
   }
 
   ui.notifications.info(
-    `${targetUser.name} made a callback${
-      chosenLog?.name ? ` (${chosenLog.name})` : ""
-    }.`,
+    chosenLog?.name
+      ? tf("sta-officers-log.notifications.callbackMadeWithLog", {
+          user: targetUser.name,
+          log: chosenLog.name,
+        })
+      : tf("sta-officers-log.notifications.callbackMade", {
+          user: targetUser.name,
+        }),
   );
 
   const rewardHtml = `
@@ -509,7 +514,9 @@ async function orchestrateCallbackPrompt({
   if (hasUsedCallbackThisMission(targetUser.id)) {
     if (warnOnUsed) {
       ui.notifications.warn(
-        `${targetUser.name} already made a callback this mission.`,
+        tf("sta-officers-log.warnings.alreadyUsedThisMission", {
+          user: targetUser.name,
+        }),
       );
     }
     return;
@@ -544,7 +551,9 @@ async function orchestrateCallbackPrompt({
   if (!unusedLogs.length) {
     if (warnOnNoLogs) {
       ui.notifications.warn(
-        `${targetUser.name} has no eligible logs to callback to.`,
+        tf("sta-officers-log.warnings.noEligibleLogs", {
+          user: targetUser.name,
+        }),
       );
     }
     return;

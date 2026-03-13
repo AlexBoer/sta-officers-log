@@ -25,7 +25,10 @@ export function registerClientSettings() {
         // Force existing sheets/controls to redraw so injected UI is removed/added.
         for (const app of Object.values(ui?.windows ?? {})) {
           try {
-            if (app?.id?.startsWith?.("STACharacterSheet2e"))
+            if (
+              app?.id?.startsWith?.("STACharacterSheet2e") ||
+              app?.id?.startsWith?.("LcarsCharacterSheet2e")
+            )
               app.render?.(true);
           } catch (_) {
             // sheet may have closed
@@ -55,7 +58,10 @@ export function registerClientSettings() {
         // Force existing STA character sheets to redraw so the CSS toggle applies immediately.
         for (const app of Object.values(ui?.windows ?? {})) {
           try {
-            if (app?.id?.startsWith?.("STACharacterSheet2e"))
+            if (
+              app?.id?.startsWith?.("STACharacterSheet2e") ||
+              app?.id?.startsWith?.("LcarsCharacterSheet2e")
+            )
               app.render?.(true);
           } catch (_) {
             // sheet could be mid-render
@@ -79,7 +85,10 @@ export function registerClientSettings() {
         // Force existing STA character sheets to redraw so the CSS toggle applies immediately.
         for (const app of Object.values(ui?.windows ?? {})) {
           try {
-            if (app?.id?.startsWith?.("STACharacterSheet2e"))
+            if (
+              app?.id?.startsWith?.("STACharacterSheet2e") ||
+              app?.id?.startsWith?.("LcarsCharacterSheet2e")
+            )
               app.render?.(true);
           } catch (_) {
             // skip if sheet was destroyed
@@ -103,7 +112,10 @@ export function registerClientSettings() {
       try {
         for (const app of Object.values(ui?.windows ?? {})) {
           try {
-            if (app?.id?.startsWith?.("STACharacterSheet2e"))
+            if (
+              app?.id?.startsWith?.("STACharacterSheet2e") ||
+              app?.id?.startsWith?.("LcarsCharacterSheet2e")
+            )
               app.render?.(true);
           } catch (_) {
             // sheet no longer exists
@@ -130,7 +142,10 @@ export function registerClientSettings() {
         try {
           for (const app of Object.values(ui?.windows ?? {})) {
             try {
-              if (app?.id?.startsWith?.("STACharacterSheet2e"))
+              if (
+                app?.id?.startsWith?.("STACharacterSheet2e") ||
+                app?.id?.startsWith?.("LcarsCharacterSheet2e")
+              )
                 app.render?.(true);
             } catch (_) {
               // app may have been closed
@@ -156,7 +171,10 @@ export function registerClientSettings() {
         // Force existing STA character sheets to redraw so flowchart button appears/disappears.
         for (const app of Object.values(ui?.windows ?? {})) {
           try {
-            if (app?.id?.startsWith?.("STACharacterSheet2e"))
+            if (
+              app?.id?.startsWith?.("STACharacterSheet2e") ||
+              app?.id?.startsWith?.("LcarsCharacterSheet2e")
+            )
               app.render?.(true);
           } catch (_) {
             // sheet may have closed
@@ -189,7 +207,10 @@ export function registerClientSettings() {
         // Force existing STA character sheets to redraw so LCARS styling applies.
         for (const app of Object.values(ui?.windows ?? {})) {
           try {
-            if (app?.id?.startsWith?.("STACharacterSheet2e"))
+            if (
+              app?.id?.startsWith?.("STACharacterSheet2e") ||
+              app?.id?.startsWith?.("LcarsCharacterSheet2e")
+            )
               app.render?.(true);
           } catch (_) {
             // sheet may have closed
@@ -214,7 +235,10 @@ export function registerClientSettings() {
         // Force existing STA character sheets to redraw
         for (const app of Object.values(ui?.windows ?? {})) {
           try {
-            if (app?.id?.startsWith?.("STACharacterSheet2e"))
+            if (
+              app?.id?.startsWith?.("STACharacterSheet2e") ||
+              app?.id?.startsWith?.("LcarsCharacterSheet2e")
+            )
               app.render?.(true);
           } catch (_) {
             // sheet might be gone
@@ -239,7 +263,10 @@ export function registerClientSettings() {
         // Force existing STA character sheets to redraw
         for (const app of Object.values(ui?.windows ?? {})) {
           try {
-            if (app?.id?.startsWith?.("STACharacterSheet2e"))
+            if (
+              app?.id?.startsWith?.("STACharacterSheet2e") ||
+              app?.id?.startsWith?.("LcarsCharacterSheet2e")
+            )
               app.render?.(true);
           } catch (_) {
             // closed sheets can't rerender

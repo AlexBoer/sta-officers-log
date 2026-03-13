@@ -8,7 +8,8 @@ export function rerenderOpenStaSheetsForActorId(actorId) {
     try {
       if (
         !app?.id?.startsWith?.("STACharacterSheet2e") &&
-        !app?.id?.startsWith?.("MobileCharacterSheet2e")
+        !app?.id?.startsWith?.("MobileCharacterSheet2e") &&
+        !app?.id?.startsWith?.("LcarsCharacterSheet2e")
       )
         return;
       if (!actorId || app?.actor?.id !== actorId) return;

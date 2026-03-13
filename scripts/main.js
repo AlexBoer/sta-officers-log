@@ -1,5 +1,5 @@
 ﻿import { CallbackRequestApp } from "./callback/CallbackRequestApp.js";
-import { MODULE_ID, t, initSocket } from "./core/index.js";
+import { MODULE_ID, t, tf, initSocket } from "./core/index.js";
 import {
   addParticipantToCurrentMission,
   endCurrentMission,
@@ -202,9 +202,12 @@ async function checkPendingShipBenefits() {
 
     if (totalPending > 0) {
       const notification = ui.notifications.info(
-        `${totalPending} pending ship benefit${
-          totalPending === 1 ? "" : "s"
-        } to review. Click here to review them.`,
+        tf(
+          totalPending === 1
+            ? "sta-officers-log.notifications.pendingShipBenefitsReview"
+            : "sta-officers-log.notifications.pendingShipBenefitsReviewMany",
+          { count: totalPending },
+        ),
         { permanent: true },
       );
 
