@@ -175,52 +175,52 @@ export function installCallbackSourceButtons(root, actor) {
     // Skip when sta-utils provides a unified context menu that already includes the
     // "Set Current Mission" action (compact/tidy/lcars/mobile modes all do this).
     let staUtilsHandlesMenu = false;
-    try {
-      const staUtilsActive = game.modules?.get?.("sta-utils")?.active ?? false;
-      if (staUtilsActive) {
-        // Legacy boolean settings (pre-migration to sheetVariant)
-        const legacyHandles =
+    const staUtilsActive = game.modules?.get?.("sta-utils")?.active ?? false;
+    if (staUtilsActive) {
+      // Legacy boolean settings (pre-migration to sheetVariant)
+      let legacyHandles = false;
+      try {
+        legacyHandles =
           game.settings.get("sta-utils", "compactCharacterSheet") === true ||
           game.settings.get("sta-utils", "tidyCharacterSheet") === true ||
           game.settings.get("sta-utils", "lcarsCharacterSheet") === true;
-
-        // Unified sheetVariant setting (compact/tidy/lcars post-migration)
-        let variantHandles = false;
-        try {
-          const v = game.settings.get("sta-utils", "sheetVariant");
-          variantHandles = v === "compact" || v === "tidy" || v === "lcars";
-        } catch (_) {
-          // not yet registered
-        }
-
-        // Mobile sheet (MobileCharacterSheet2e) — detected via DOM class since
-        // this sheet is registered as a distinct class, not via sheetVariant.
-        const mobileHandles = !!root?.querySelector?.(
-          ".character-sheet--mobile",
-        );
-
-        // LCARS bespoke sheet (LcarsCharacterSheet2e) — detected via DOM class.
-        const lcarsSheetHandles = !!root?.querySelector?.(".sta-lcars");
-
-        staUtilsHandlesMenu =
-          legacyHandles || variantHandles || mobileHandles || lcarsSheetHandles;
+      } catch (_) {
+        // not yet registered
       }
-    } catch (_) {
-      // Settings not registered yet or module not present — fall through
-    }
 
-    console.debug(
-      `[sta-officers-log] callbackSourceButtons context menu check:`,
-      `staUtilsHandlesMenu=${staUtilsHandlesMenu}`,
-    );
+      // Unified sheetVariant setting (compact/tidy/lcars post-migration)
+      let variantHandles = false;
+      try {
+        const v = game.settings.get("sta-utils", "sheetVariant");
+        variantHandles = v === "compact" || v === "tidy" || v === "lcars";
+      } catch (_) {
+        // not yet registered
+      }
+
+      // Mobile sheet (MobileCharacterSheet2e) — detected via DOM class since
+      // this sheet is registered as a distinct class, not via sheetVariant.
+      // root may itself be the .character-sheet--mobile element, so check both
+      // root.matches() and querySelector() for descendants.
+      const mobileHandles =
+        !!root?.matches?.(".character-sheet--mobile") ||
+        !!root?.querySelector?.(".character-sheet--mobile");
+
+      // LCARS bespoke sheet (LcarsCharacterSheet2e) — detected via DOM class.
+      // sta-lcars-sheet is always present; sta-lcars is omitted when the
+      // "STA Original" theme is active. root may itself carry these classes,
+      // so check root.matches() in addition to querySelector() for descendants.
+      const lcarsSheetHandles =
+        !!root?.matches?.(".sta-lcars, .sta-lcars-sheet") ||
+        !!root?.querySelector?.(".sta-lcars, .sta-lcars-sheet");
+
+      staUtilsHandlesMenu =
+        legacyHandles || variantHandles || mobileHandles || lcarsSheetHandles;
+    }
 
     const milestonesSection = root.querySelector("div.section.milestones");
     const characterLogSection = root.querySelector("div.section.character-log");
     const logContextMenuSection = characterLogSection ?? milestonesSection;
     if (logContextMenuSection instanceof HTMLElement && !staUtilsHandlesMenu) {
-      console.debug(
-        `[sta-officers-log] INSTALLING milestones context menu (Officers Log owns it)`,
-      );
       setupMissionLogContextMenu({
         container: logContextMenuSection,
         selector: 'li.row.entry[data-item-type="log"][data-item-id]',
