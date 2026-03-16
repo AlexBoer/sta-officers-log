@@ -247,7 +247,9 @@
 }
 
 .sta-callbacks-arc-group > li.row.entry {
-  margin: 0;
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
   padding-top: 0.25rem;
 }
 
@@ -1318,9 +1320,12 @@ div.section.character-log li.row.entry .sta-current-mission-indicator {
 
 /* Chain-sort: visually nest subsequent logs in a callback chain.
    Uses margin-left (not padding-left) so it cannot be overridden by
-   sheet-variant padding shorthands on .row.entry. */
+   sheet-variant padding shorthands on .row.entry.
+   margin-right mirrors the left indent so the row's buttons stay
+   aligned with non-indented rows at the container's right edge. */
 .sta-callbacks-chain-child {
   margin-left: 20px;
+  margin-right: 20px;
 }
 
 /* Completed Arc visualization and collapse helpers on sheet log rows */
