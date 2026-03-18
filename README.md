@@ -46,11 +46,14 @@ After installation, enable **STA Officers Log** in your world's **Manage Modules
 ---
 
 ## 1. Mission Management
+
 The GM can start a new mission, which manages many of the new features in this module. This also automated much of the bookkeeping associated with started a new mission.
+
 <img width="259" height="141" alt="image" src="https://github.com/user-attachments/assets/6ba2a060-5354-4092-8b9c-0210a72da7ab" />
-<img width="583" height="1013" alt="image" src="https://github.com/user-attachments/assets/adcdb61e-cfbe-44d4-8f72-389029834f8b" />
+<img width="333" height="507" alt="image" src="https://github.com/user-attachments/assets/adcdb61e-cfbe-44d4-8f72-389029834f8b" />
 
 ### Adding Participants
+
 Use the **Add Participant** macro to add a character to the current mission. A mission log is automatically created for them.
 
 ### Mission Settings
@@ -68,57 +71,55 @@ Use the **Add Participant** macro to add a character to the current mission. A m
 ---
 
 ## 2. Using Values
-_Player feature._
 
-Each Value on a character sheet has a **Use Value** button added by this module. Clicking it opens a dialog where the player selects how they are using the Value this scene.
+Each Value on a character sheet has a **Use Value** button added to it. Clicking it opens a dialog where the player selects how they are using the Value this scene.
+
+<img width="646" height="184" alt="image" src="https://github.com/user-attachments/assets/1f1766f3-fdbd-4cd7-9f7c-67409072af3b" />
+
 
 | Use Type | Effect |
 |---|---|
-| **Positive** | Spends 1 Determination (if available); marks the current mission log. |
-| **Negative** | Gains 1 Determination; marks the log; triggers the callback prompt. |
-| **Challenge** | Marks the value as Challenged; triggers the callback prompt. |
+| **Positive** | Spends 1 Determination |
+| **Negative** | Gains 1 Determination |
+| **Challenge** | Gains 1 Determination |
 
-The dialog also lets players select a **Directive** instead of a Value (see [Directives](#12-directives)).
+In all cases, the value is marked as used on the current mission log.
 
-> **Screenshot placeholder** — Use Value dialog on the character sheet
+<img width="926" height="377" alt="image" src="https://github.com/user-attachments/assets/83629aab-7d1e-4c50-88c7-4f74aa8e89bd" />
+
 
 ### Challenged Values
 
-Once a Value has been challenged via the dialog, the Challenged toggle becomes visible on the sheet. The **Hide Challenged Toggle** client setting (on by default) keeps things clean until that point.
+The Challenged Toggle is hidden by default to prevent players from using it inccorectly. Once a Value has been challenged via the "Use Value" button, the Challenged toggle becomes visible to allow players to reset it after rewriting the value.
+
+<img width="649" height="116" alt="image" src="https://github.com/user-attachments/assets/bb1f83eb-9f3e-47f0-9408-e4a0c1b91db4" />
 
 ---
 
-## 3. The Callback Flow
+## 3. Making Callbacks
 
-_Player initiates; GM approves._
-
-A **callback** is when a player references a past use of one of their Values to earn Determination. This module automates the entire process.
+Callbacks are automated, including recording value usage and checking for if a MIelstone has been earned.
 
 **How it works:**
 
-1. A player uses a Value negatively or challenges it.
+1. A player uses a Value.
 2. The module checks their logs for previous uses of the same Value.
 3. If eligible sources exist, a **Callback Request** dialog opens on the player's screen listing those previous logs.
-4. The player selects the source log they are calling back to (or declines).
-5. The callback link is recorded on the new log, and the player gains 1 Determination.
+4. The player selects the log they are calling back to (or declines).
+5. The current mission log has a new property that remembers which log it called back to.
+6. 1 Determination is added to the character (max 3)
 
-> **Screenshot placeholder** — Callback Request dialog showing available source logs
+Each character can only make 1 callback per mission.
+
+<img width="554" height="350" alt="image" src="https://github.com/user-attachments/assets/336fe86f-d91a-49f6-9504-160e9afffda4" />
 
 **Eligibility rules:**
-- A log can only be the target of one callback per mission.
-- Logs already at the end of a completed arc chain count differently.
+- A log can only be the target of one callback.
+- Making a callback sets a property called 'Primary Value" to the used value. Once a mission log has a Primary value, it can ONLY be called back to using that value. This prevents players from breaking a chain of missions with a different value and accidentally preventing them from earning an Arc.
 
-**GM-initiated callbacks:** The GM can also manually trigger a callback prompt for any online player from the STA Tracker.
+**GM-initiated callbacks:** The GM can also manually trigger a callback prompt for any online player using a button on the STA Momentum Tracker.
 
 ---
-
-## 4. Mission Logs
-
-_Visible on all character sheets._
-
-Every time a Value (or Directive) is used, a **Log** item is automatically created on the character tracking that mission's events. Logs are the building blocks for arc detection and milestone selection.
-
-> **Screenshot placeholder** — Logs section on a character sheet
 
 ### Sorting Logs
 
@@ -127,15 +128,15 @@ Click the **Sort** button in the Logs section header to cycle through four modes
 | Mode | Description |
 |---|---|
 | **Date** | Creation order (default). |
-| **Alphabetical** | Sorted A→Z by value name. |
-| **Chain** | Sorted by callback chain depth — great for visualising arc progress. |
-| **Custom** | Drag-to-reorder manually. |
+| **Alphabetical** | Sorted A→Z by Log name. |
+| **Chain** | Sorted by callback chain depth to visualize arc-chains. |
+| **Custom** | Drag-to-reorder manually. This is the default from the STA system. |
 
-Your preference is saved per character.
+<img width="652" height="111" alt="image" src="https://github.com/user-attachments/assets/9863a5e9-d441-419d-8a98-927257558eb5" />
 
 ### Hiding Unused Logs
 
-The **eye icon** in the Logs header hides logs that have no Value invoked yet. The current mission log is never hidden.
+The **eye icon** in the Logs header hides logs that have no Value invoked yet. This let's players keep session notes in their mission log items, but can still filter to just the logs that contribute towards character advancement. The current mission log is never hidden.
 
 ### Callback Source Highlighting
 
@@ -143,162 +144,71 @@ Each log with a callback link shows a small icon button. Clicking it briefly hig
 
 ### Resizing Sections
 
-Drag the divider between the Logs and Milestones sections to resize them. Your preference is saved per character per client.
+Drag the divider between the Logs and Milestones sections to resize them.
 
 ---
 
-## 5. Milestones & Benefits
-
-_Player feature._
+## 4. Milestones & Arcs
 
 When a mission ends, the **Choose Milestone** button activates on the character's current mission log. Clicking it opens a benefit selection dialog.
 
-> **Screenshot placeholder** — Milestone benefit selection dialog
+<img width="744" height="410" alt="image" src="https://github.com/user-attachments/assets/bad85b17-9d8c-4b64-886f-e5ced3999448" />
 
-**Normal Milestone benefits** include:
-- Swap or gain a **Focus**
-- Swap or gain a **Talent**
-- Adjust an **Attribute** or **Discipline**
-- Gain **Determination**
-
-**Arc Milestone benefits** (unlocked by completing an Arc — see [Arcs](#6-arcs)) include:
-- Increase an Attribute or Discipline (not just a swap)
-- Change a Value
-- Other major advancements per the rulebook
-
-Once selected, a **Milestone item** is created on the character sheet recording the choice.
+Choosing an option from this dialog will automatically revise the character sheet. When players without Owner permission on the group ship chooses ship-related milestone benefits, those benefits are **queued** rather than applied immediately. The GM will be prompted to apply those benefits.
 
 ### Talent & Focus Pickers
 
-The benefit dialog includes search-and-select pickers for talents and focuses sourced from the official STA compendium packs. GMs can add custom compendium packs in the world settings.
+The benefit dialog includes search-and-select pickers for talents and focuses sourced from the STA compendium packs. GMs can add custom compendium packs in the world settings.
+
+<img width="514" height="600" alt="image" src="https://github.com/user-attachments/assets/1787531b-5bb9-4491-86fc-b651f1029d02" />
 
 ---
 
-## 6. Arcs
+## 5. Reputation & Acclaim
 
-_Automatic detection._
+This module replaces the default Reputation roll button with a **Acclaim Survey**.
 
-Arcs are major character growth moments earned by building long callback chains. The module tracks this automatically.
+<img width="897" height="654" alt="image" src="https://github.com/user-attachments/assets/cb01447c-35bf-41a2-9d03-6855e50a8244" />
 
-**Requirements for an Arc:**
-- A callback chain of at least **3 logs** for your first arc, **4 logs** for your second, **5** for your third, and so on.
-- All logs in the chain must use the **same Value**.
-- Logs already consumed by a previous arc cannot be reused.
-
-When a log qualifies as the end of an arc chain, the **Choose Milestone** dialog automatically offers an **Arc Milestone** instead of a Normal Milestone, and displays the chain of logs that forms it.
-
-> **Screenshot placeholder** — Arc detection shown in the milestone dialog
-
----
-
-## 7. Reputation & Acclaim
-
-_Player and GM feature._
-
-This module replaces the default Reputation roll button with a richer **Acclaim Survey** system.
-
-> **Screenshot placeholder** — Acclaim survey dialog
 
 ### Rolling Reputation
 
-Instead of rolling immediately, the player is presented with a survey of yes/no questions drawn from the rulebook (and any custom questions the GM has defined). Their answers determine the number of **Positive** and **Negative Influences** before the roll.
-
-- **Positive influence questions** (7 by default, based on the rulebook)
-- **Negative influence questions** (10 by default, based on the rulebook)
-
-GMs can customise both lists in **Module Settings**.
+Instead of rolling immediately, the player is presented with a survey of yes/no questions. Their answers determine the number of **Positive** and **Negative Influences** before the roll.
 
 ### GM Survey Monitor
 
-When the GM triggers **Survey All Players**, a monitor dialog opens showing the realtime answer status for every player (Waiting / Answering / Rolled).
-
-> **Screenshot placeholder** — GM Survey Monitor
+The macro "Monitor Reputation Surveys" allows the GM to see the players answers updated in the survey in real time.
 
 ### Spending Acclaim & Reprimands
 
 The **Spend Acclaim** and **Spend Reprimands** buttons open spend dialogs with pre-built options from the rulebook:
 
-**Acclaim options include:** Pike Medal of Valor, Cochrane Medal of Excellence, Grankite Order of Tactics, Commend Another, Elevation, Gain Favor, Promotion, and more.
+<img width="312" height="201" alt="image" src="https://github.com/user-attachments/assets/5c4971bb-7519-4268-992f-b93d32451b25" />
 
-**Reprimand options include:** Court-Martial, Demotion, Detention, Stripped of Award, and more.
+<img width="511" height="1132" alt="image" src="https://github.com/user-attachments/assets/9d93b3c8-5edc-46ee-be5d-e7b47d665a6a" />
 
-GMs can add **custom awards** and **custom spend options** in Module Settings using the format `Name | Cost | Description`.
-
----
-
-## 8. Trauma Rules _(optional)_
-
-_Requires **Enable Trauma Rules** to be turned on in Module Settings._
-
-From the _23rd Century Campaign Guide_, Trauma is an optional rule for values that have turned against a character.
-
-### Marking a Value as Trauma
-
-On any Value item sheet, tick the **Trauma** checkbox. The Value will be visually labelled on the character sheet.
-
-### Using a Trauma Value
-
-Each positive use of a Trauma Value inflicts stress equal to the cumulative use count during this mission:
-- 1st use → 1 Stress
-- 2nd use → 2 Stress
-- 3rd use → 3 Stress
-- …and so on
-
-All use counts reset when a new mission begins.
-
-> **Screenshot placeholder** — Trauma value on the character sheet
 
 ---
 
-## 9. Scar Rules _(optional)_
+## 6. Trauma Rules
 
-_Requires **Enable Scar Rules** to be turned on in Module Settings._
+When a value is marked as a Trauma, it will automate the stress gain and recovering from using it.
 
-Also from the _23rd Century Campaign Guide_, Scars are Traits with mechanical consequences.
+## 7. Scar Rules
 
-### Marking a Trait as a Scar
-
-On a Trait item sheet, tick the **Scar** checkbox.
-
-### Using a Scar
-
-A **Use Scar** button appears on Scar traits. Using it follows the same approval flow as using a Value — the GM is notified and the use is logged. Scars reset to "unused" at the start of each new mission.
+On a Trait item sheet, tick the **Scar** checkbox. A **Use Scar** button appears on Scar traits. Pushing the buttons adds 1 Determination to the cahracter sheet after the GM gives approval. Scars reset to "unused" at the start of each new mission.
 
 ---
 
-## 10. Supporting Characters
+## 8. Supporting Character Advancement
 
-_GM feature._
-
-The **Development** tab on supporting character sheets lets the GM advance supporting characters between missions.
-
-Available improvements:
-- Increase an **Attribute** (up to max 12)
-- Increase a **Discipline** (up to max 5)
-- Add a **Focus** (up to 6 total)
-- Add a **Talent** (up to 4 total)
-
-Buttons disable automatically when their cap is reached.
+The **Development** tab on supporting character sheets lets the GM advance supporting characters between missions. Buttons disable automatically when their cap is reached.
 
 ---
 
-## 11. Ship Benefits
+## 9. Directives
 
-_GM feature._
-
-When players without Owner permission on the group ship earn ship-related milestone benefits, those benefits are **queued** rather than applied immediately.
-
-The GM can review and process queued benefits from the **Review Ship Benefits** button in the STA Tracker. A notification also appears if benefits are waiting.
-
-> **Screenshot placeholder** — Pending Ship Benefits dialog
-
----
-
-## 12. Directives
-
-_Player and GM feature._
-
-Mission Directives (like the Prime Directive) can be configured by the GM in **Module Settings → Mission Directives**.
+Mission Directives can be configured by the GM in **Module Settings → Mission Directives** or above the Momentum Tracker. The momentum tracker must be set to the bottom left in the STA system settings.
 
 On the character sheet, a **Use Directive** button lets players invoke the active directives similarly to Values. Directive uses are recorded on the current mission log.
 
@@ -306,27 +216,30 @@ Directives also appear as options inside the Use Value dialog.
 
 ---
 
-## 13. Macros & GM Tools
+## 11. Macros & GM Tools
 
 The module includes a **STA Officers Log Macros** compendium pack with ready-to-use macros:
 
 | Macro | Description |
 |---|---|
 | **New Scene** | Decrements Momentum and refreshes NPC Personal Threat. |
-| **Open Group Ship** | Opens the configured group ship actor sheet. |
 | **Label Values** | Renumbers Value icons (V1–V8) based on current sort order. |
-
-All key GM functions are also accessible from the **STA Tracker** panel without needing macros.
+| **New Mission** | Starts a new mission |
+| **Add New Player to Mission** | Select a player to add to the current mission. |
+| **Reset Callbacks** | Allows players to make a new callback |
+| **Send Reputation Roll** | Allows the GM to give the players a preset Reputation Roll result. |
+| **Start Reputation Survey** | Opens the Reputation Survey for all players. |
+| **Monitor Reputation Surveys** | Allows the GM to see what answers players are giving, to facilitate conversation. |
 
 ### Experimental: Mission Log Flowchart
 
-Enable **"[Experimental] Enable Mission Log Flowchart"** in client settings to add a **Flowchart** button to the Logs section. This renders your callback chains as an interactive diagram.
+Adds a button to characer sheets that opens a new window to visualize callback chains. Each mission log is a node, coloured with the values they used. Arrows show callbacks. Nodes that are a part of arcs are put in a box.
 
-> **Screenshot placeholder** — Mission Log Flowchart view
+<img width="882" height="642" alt="image" src="https://github.com/user-attachments/assets/ce5c5a04-16b1-44e3-a3e3-f80a4f2eb0f2" />
 
 ---
 
-## 14. Settings Reference
+## 12. Settings Reference
 
 ### World Settings _(GM only)_
 
@@ -344,7 +257,7 @@ Enable **"[Experimental] Enable Mission Log Flowchart"** in client settings to a
 | Custom Acclaim Spend | Custom spend options for Acclaim. |
 | Custom Reprimand Spend | Custom spend options for Reprimands. |
 | Talent Picker: Custom Compendium | Comma-separated pack IDs to add to the talent picker. |
-| Talent Picker: Filter by Folder | Enable if your custom talent pack uses Crew/Starship folder structure. |
+| Talent Picker: Filter by Folder | Enable if your custom talent pack uses Crew/Starship folder structure (true by default on the most recent release of the STA system) |
 | Focus Picker: Custom Compendium | Comma-separated pack IDs to add to the focus picker. |
 
 ### Client Settings _(per user)_
