@@ -1,6 +1,6 @@
 ﻿# STA Officers Log
 
-**STA Officers Log** is a Foundry VTT module for the _Star Trek Adventures_ tabletop RPG system. It automates the full character development loop — Value callbacks, arc milestones, and reputation management — so your table can focus on the story instead of the bookkeeping.
+**STA Officers Log** is a Foundry VTT module for the _Star Trek Adventures_ tabletop RPG system. It automates character advancement, including callbacks, milestones and arcs, and reputation rolls.
 
 ---
 
@@ -46,7 +46,6 @@ After installation, enable **STA Officers Log** in your world's **Manage Modules
 ---
 
 ## 1. Mission Management
-
 _GM feature._
 
 The GM controls the mission lifecycle from the **STA Tracker** panel. Starting a new mission:
@@ -54,24 +53,29 @@ The GM controls the mission lifecycle from the **STA Tracker** panel. Starting a
 - Resets Determination, Stress, and Ship Readiness for all characters.
 - Creates a fresh **Mission Log** item on each participating character's sheet.
 - Resets all callback eligibility, trauma use counts, and scar used-states.
+<img width="259" height="141" alt="image" src="https://github.com/user-attachments/assets/6ba2a060-5354-4092-8b9c-0210a72da7ab" />
+<img width="583" height="1013" alt="image" src="https://github.com/user-attachments/assets/adcdb61e-cfbe-44d4-8f72-389029834f8b" />
 
-> **Screenshot placeholder** — STA Tracker with New Mission / End Mission buttons
 
 ### Adding Participants
 
-Use the **Add Participant** button in the STA Tracker to add a character to the current mission. A mission log is automatically created for them.
+Use the **Add Participant** macro to add a character to the current mission. A mission log is automatically created for them.
 
 ### Mission Settings
 
 | Setting | Description |
 |---|---|
-| **Group Ship** | The starship actor used for party-wide ship benefits. |
-| **Auto-prompt on Determination Roll** | Automatically asks for a callback whenever a Determination roll is detected in chat. |
-
+| **Reset Callbacks** | Allow characters to make a new callback this mission. If false, characters will save their callback status from the previous mission. |
+| **Reset Determination** | Sets each character's Determination to 1. |
+| **Reset Stress** | Sets each character's Determination to 0 |
+| **Reset Ships** | Set's Reserve Power to TRUE, Shields to max, and Shaken to FALSE |
+| **Reset Scars** | Allows characters to use their scars once per mission. If false, characters will save their scar usage status from the previous mission. |
+| **Reset Momentum** | Sets momentum to 0 |
+| **Reset Threat** | Sets Threat to 2 x Player Count |
+| **Create New Mission Logs** | Adds a mission to each participating character, and marks it as the current mission. |
 ---
 
 ## 2. Using Values
-
 _Player feature._
 
 Each Value on a character sheet has a **Use Value** button added by this module. Clicking it opens a dialog where the player selects how they are using the Value this scene.
