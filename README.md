@@ -46,19 +46,11 @@ After installation, enable **STA Officers Log** in your world's **Manage Modules
 ---
 
 ## 1. Mission Management
-_GM feature._
-
-The GM controls the mission lifecycle from the **STA Tracker** panel. Starting a new mission:
-
-- Resets Determination, Stress, and Ship Readiness for all characters.
-- Creates a fresh **Mission Log** item on each participating character's sheet.
-- Resets all callback eligibility, trauma use counts, and scar used-states.
+The GM can start a new mission, which manages many of the new features in this module. This also automated much of the bookkeeping associated with started a new mission.
 <img width="259" height="141" alt="image" src="https://github.com/user-attachments/assets/6ba2a060-5354-4092-8b9c-0210a72da7ab" />
 <img width="583" height="1013" alt="image" src="https://github.com/user-attachments/assets/adcdb61e-cfbe-44d4-8f72-389029834f8b" />
 
-
 ### Adding Participants
-
 Use the **Add Participant** macro to add a character to the current mission. A mission log is automatically created for them.
 
 ### Mission Settings
