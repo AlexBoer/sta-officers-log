@@ -110,9 +110,11 @@ function handleCharacterSheetRender(app, root) {
   if (
     !app?.id?.startsWith("STACharacterSheet2e") &&
     !app?.id?.startsWith("STASupportingSheet2e") &&
+    !app?.id?.startsWith("STANPCSheet2e") &&
     !app?.id?.startsWith("MobileCharacterSheet2e") &&
     !app?.id?.startsWith("LcarsCharacterSheet2e") &&
-    !app?.id?.startsWith("LcarsSupportingSheet2e")
+    !app?.id?.startsWith("LcarsSupportingSheet2e") &&
+    !app?.id?.startsWith("LcarsNPCSheet2e")
   )
     return;
 
