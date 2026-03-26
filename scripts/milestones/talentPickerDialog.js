@@ -634,6 +634,18 @@ function _extractTalentDescription(document) {
   return null;
 }
 
+function _isNpcTalentFromDocument(document) {
+  if (!document) return false;
+
+  const values = [
+    foundry.utils.getProperty(document, "system.type"),
+    foundry.utils.getProperty(document, "system.talenttype.type"),
+    foundry.utils.getProperty(document, "system.talenttype.typeenum"),
+  ];
+
+  return values.some((value) => normalizeRequirementString(value) === "npc");
+}
+
 function _isCharacterCreationOnlyTalentDescription(rawDescription) {
   const html = String(rawDescription ?? "");
   if (!html) return false;
@@ -826,6 +838,10 @@ async function _collectTalentPickerEntries({
         customFolderFilterEnabled && customPackKeys.includes(packKey);
       const shouldFilterByFolder = isConsolidated || isCustomWithFolderFilter;
       const doc = await _getTalentDocumentByUuid(talent.uuid);
+      if (_isNpcTalentFromDocument(doc)) {
+        return null;
+      }
+
       const rawDescription = _extractTalentDescription(doc);
       if (
         wantedKind === "crew" &&

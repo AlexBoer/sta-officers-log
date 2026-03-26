@@ -336,16 +336,17 @@ export function applyMissionLogSorting(root, actor, mode) {
 
     // Try multiple selectors to find the milestone create button
     // (handles different Foundry versions and structures)
-    let milestoneCreate = section.querySelector(
+    const milestoneCreate = section.querySelector(
       'a.control.create[data-type="milestone"]',
     );
 
     // Determine the container where the custom button should be placed.
     // In sta-utils alternate sheet modes (LCARS / compact / tidy) the
     // button should live in the Milestones / Arcs .title element.
-    // In LCARS mode sta-utils already moves it there; in compact / tidy
-    // the button is still in the header row, so we walk to the preceding
-    // .title sibling instead.
+    // In the LCARS bespoke template the create button is already inside the
+    // .title bar, so buttonIsInTitle will be true regardless of isAltSheet.
+    // In compact / tidy the button is still in the header row, so we walk
+    // to the preceding .title sibling when isAltSheet is true.
     // In default / other modes it stays in the header row.
     const milestoneHeaderRow =
       milestoneCreate?.closest?.("div.header.row.item") ?? null;
@@ -355,7 +356,9 @@ export function applyMissionLogSorting(root, actor, mode) {
         ? milestoneHeaderRow.previousElementSibling
         : null);
 
-    const targetContainer = isAltSheet ? milestoneTitle : milestoneHeaderRow;
+    const buttonIsInTitle = milestoneCreate?.closest?.(".title") != null;
+    const targetContainer =
+      buttonIsInTitle || isAltSheet ? milestoneTitle : milestoneHeaderRow;
 
     if (milestoneCreate && targetContainer) {
       // Avoid duplicates across rerenders.

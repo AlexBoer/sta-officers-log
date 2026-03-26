@@ -170,9 +170,6 @@ export async function installMissionDirectivesInStaTracker(root) {
       existingSection.remove();
     }
 
-    // Measure current height before adding the section.
-    const heightBefore = trackerContainer.offsetHeight;
-
     // Render the directives section from template
     const html = await foundry.applications.handlebars.renderTemplate(
       TRACKER_DIRECTIVES_TEMPLATE,
@@ -283,28 +280,9 @@ export async function installMissionDirectivesInStaTracker(root) {
       }
     });
 
-    // After adding the section, use negative margin-top to shift the tracker up.
-    // The STA system continuously resets the inline `top` style, but margin-top
-    // via CSS should persist and effectively move the tracker upward.
-    // We use multiple animation frames to account for text wrapping and layout shifts.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        try {
-          const sectionHeight = section?.offsetHeight ?? 0;
-
-          if (sectionHeight > 0) {
-            // Apply negative margin to the outermost app element to shift it up.
-            // This works even when the STA system resets the `top` style.
-            const appElement = root.closest?.(`[id^='app-']`) ?? root;
-            if (appElement instanceof HTMLElement) {
-              appElement.style.marginTop = `-${sectionHeight}px`;
-            }
-          }
-        } catch (_) {
-          // margin tweak is cosmetic
-        }
-      });
-    });
+    // The section is positioned with CSS `position: absolute; bottom: 100%`
+    // relative to the app element (the nearest positioned ancestor), so it
+    // floats above the tracker and expands upward — no JS positioning needed.
   } catch (_) {
     // directives section is optional
   }
@@ -457,28 +435,6 @@ function toggleDirectivesEditMode(section, trackerContainer, root) {
       textarea.focus();
     }
   }
-
-  // Recalculate margin-top after switching modes, since the edit mode
-  // (especially with 0 directives) can be significantly taller than display mode.
-  // Use multiple animation frames to ensure layout has settled.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      try {
-        const appElement = root.closest?.("[id^='app-']") ?? root;
-        if (!(appElement instanceof HTMLElement)) return;
-
-        const sectionHeight = section?.offsetHeight ?? 0;
-
-        if (sectionHeight > 0) {
-          appElement.style.marginTop = `-${sectionHeight}px`;
-        } else {
-          appElement.style.marginTop = "";
-        }
-      } catch (_) {
-        // ignore
-      }
-    });
-  });
 }
 
 /**

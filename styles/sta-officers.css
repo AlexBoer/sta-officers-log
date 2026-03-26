@@ -411,10 +411,13 @@
 
 /* STA system tracker: Mission Directives section */
 .tracker-container .sta-tracker-directives-section {
-  margin-top: 0.5rem;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: 100%;
+  box-sizing: border-box;
   padding: 0.5rem 0.75rem;
   background: var(--sidebar-background);
-  max-width: 235px;
 }
 
 /* STA system tracker: align Momentum/Threat header text + info button */
