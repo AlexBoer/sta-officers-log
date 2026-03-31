@@ -41,6 +41,25 @@
         "name": "Focus Picker: Extra Compendium",
         "hint": "Optional compendium pack id(s) to include in the Focus picker. You can provide multiple pack ids separated by commas (e.g. module-name.focuses-homebrew, another-module.more-focuses)."
       },
+      "compendiumPicker": {
+        "name": "Picker Compendiums",
+        "label": "Configure",
+        "hint": "Configure the compendium packs used as custom sources for the Focus and Talent pickers.",
+        "menuTitle": "Picker Compendium Sources",
+        "editorHint": "Select compendium packs to add as extra sources for the Focus and Talent pickers. Only Item compendiums are shown.",
+        "focusLabel": "Focus Picker Compendiums",
+        "focusHint": "These packs are searched in addition to the built-in STA packs when a player opens the Focus picker.",
+        "talentLabel": "Talent Picker Compendiums",
+        "talentHint": "These packs are searched in addition to the built-in STA packs when a player opens the Talent picker.",
+        "folderFilterName": "Filter Talent Compendiums by Folder",
+        "folderFilterHint": "If enabled, talents in custom compendiums are filtered by folder structure (Crew vs Starship), just like the official STA consolidated packs. Use this if your custom compendium organises crew and starship talents in separate folders.",
+        "selectPlaceholder": "— Select a compendium to add —",
+        "addPack": "Add",
+        "removePack": "Remove",
+        "noneSelected": "No compendiums added.",
+        "save": "Save",
+        "saved": "Compendium picker settings saved."
+      },
       "directives": {
         "name": "Mission Directives",
         "label": "Edit Directives",

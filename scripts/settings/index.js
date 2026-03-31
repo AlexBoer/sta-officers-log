@@ -24,6 +24,7 @@ export {
   parseCompendiumPackKeys,
   registerFocusPickerSettings,
   registerTalentPickerSettings,
+  registerCompendiumPickerMenu,
   getFocusPickerCustomCompendiumKey,
   getFocusPickerCustomCompendiumKeys,
   getTalentPickerCustomCompendiumKey,

@@ -1,0 +1,87 @@
+<section class="sta-settings-form sta-compendium-picker-settings">
+  <p class="hint">{{localize "sta-officers-log.settings.compendiumPicker.editorHint"}}</p>
+
+  {{!-- ── Focus Compendiums ────────────────────────────────────────────── --}}
+  <div class="form-group">
+    <label>{{localize "sta-officers-log.settings.compendiumPicker.focusLabel"}}</label>
+    <p class="hint">{{localize "sta-officers-log.settings.compendiumPicker.focusHint"}}</p>
+    <div class="form-fields" style="flex-direction:column;align-items:stretch;gap:0.4rem;">
+      <div class="pack-badges" data-target="focusKeys">
+        {{#each focusPacks}}
+        <span class="pack-badge" data-key="{{key}}">
+          <span class="pack-badge-label">{{label}}</span>
+          <button type="button" class="pack-badge-remove" data-key="{{key}}" data-target="focusKeys"
+            title="{{localize "sta-officers-log.settings.compendiumPicker.removePack"}}">
+            <i class="fa-solid fa-times"></i>
+          </button>
+        </span>
+        {{else}}
+        <span class="pack-badges-empty">{{localize "sta-officers-log.settings.compendiumPicker.noneSelected"}}</span>
+        {{/each}}
+      </div>
+      <div class="pack-add-row">
+        <select class="pack-select" data-target="focusKeys">
+          <option value="">{{localize "sta-officers-log.settings.compendiumPicker.selectPlaceholder"}}</option>
+          {{#each availablePacks}}
+          <option value="{{packId}}">{{label}}</option>
+          {{/each}}
+        </select>
+        <button type="button" class="pack-add-btn" data-target="focusKeys">
+          <i class="fa-solid fa-plus"></i>
+          {{localize "sta-officers-log.settings.compendiumPicker.addPack"}}
+        </button>
+      </div>
+      <input type="hidden" name="focusKeys" value="{{focusKeysValue}}">
+    </div>
+  </div>
+
+  {{!-- ── Talent Compendiums ───────────────────────────────────────────── --}}
+  <div class="form-group">
+    <label>{{localize "sta-officers-log.settings.compendiumPicker.talentLabel"}}</label>
+    <p class="hint">{{localize "sta-officers-log.settings.compendiumPicker.talentHint"}}</p>
+    <div class="form-fields" style="flex-direction:column;align-items:stretch;gap:0.4rem;">
+      <div class="pack-badges" data-target="talentKeys">
+        {{#each talentPacks}}
+        <span class="pack-badge" data-key="{{key}}">
+          <span class="pack-badge-label">{{label}}</span>
+          <button type="button" class="pack-badge-remove" data-key="{{key}}" data-target="talentKeys"
+            title="{{localize "sta-officers-log.settings.compendiumPicker.removePack"}}">
+            <i class="fa-solid fa-times"></i>
+          </button>
+        </span>
+        {{else}}
+        <span class="pack-badges-empty">{{localize "sta-officers-log.settings.compendiumPicker.noneSelected"}}</span>
+        {{/each}}
+      </div>
+      <div class="pack-add-row">
+        <select class="pack-select" data-target="talentKeys">
+          <option value="">{{localize "sta-officers-log.settings.compendiumPicker.selectPlaceholder"}}</option>
+          {{#each availablePacks}}
+          <option value="{{packId}}">{{label}}</option>
+          {{/each}}
+        </select>
+        <button type="button" class="pack-add-btn" data-target="talentKeys">
+          <i class="fa-solid fa-plus"></i>
+          {{localize "sta-officers-log.settings.compendiumPicker.addPack"}}
+        </button>
+      </div>
+      <input type="hidden" name="talentKeys" value="{{talentKeysValue}}">
+    </div>
+  </div>
+
+  {{!-- ── Talent folder filter (inline below talent section) ───────────── --}}
+  <div class="form-group">
+    <label>{{localize "sta-officers-log.settings.compendiumPicker.folderFilterName"}}</label>
+    <p class="hint">{{localize "sta-officers-log.settings.compendiumPicker.folderFilterHint"}}</p>
+    <div class="form-fields">
+      <input type="checkbox" name="talentFolderFilter" {{#if talentFolderFilter}}checked{{/if}}>
+    </div>
+  </div>
+
+  <footer class="form-footer">
+    <button type="submit" class="dialog-button">
+      <i class="fa-solid fa-save"></i>
+      {{localize "sta-officers-log.settings.compendiumPicker.save"}}
+    </button>
+  </footer>
+</section>

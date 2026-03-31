@@ -16,6 +16,7 @@ import {
 import {
   registerFocusPickerSettings,
   registerTalentPickerSettings,
+  registerCompendiumPickerMenu,
 } from "./settings/pickerSettings.js";
 import { getCharacterArcEligibility } from "./arcs/arcChains.js";
 import {
@@ -33,7 +34,11 @@ import {
 } from "./acclaim/reputationSpend.js";
 import { openGMSurveyMonitor } from "./acclaim/gmSurveyMonitor.js";
 import { registerClientSettings } from "./settings/clientSettings.js";
-import { registerDirectiveSettings } from "./directives/directives.js";
+import {
+  registerDirectiveSettings,
+  getMissionDirectives,
+  makeDirectiveValueIdFromText,
+} from "./directives/directives.js";
 import { registerAcclaimSurveySettings } from "./acclaim/acclaimSurvey.js";
 import { registerCustomSpendOptionsSettings } from "./acclaim/customSpendOptions.js";
 import { useValue } from "./values/useValue.js";
@@ -78,6 +83,10 @@ function registerApi() {
 
     // Public API: programmatic value use (for external module integration)
     useValue,
+
+    // Public API: mission directives (for external module integration, e.g. sta-utils dropdown)
+    getMissionDirectives,
+    makeDirectiveValueIdFromText,
   };
 
   // Back-compat for macros that reference a global symbol.
@@ -154,6 +163,15 @@ function safeRegisterSettings() {
   } catch (err) {
     console.error(
       `${MODULE_ID} | failed to register talent picker settings`,
+      err,
+    );
+  }
+
+  try {
+    registerCompendiumPickerMenu();
+  } catch (err) {
+    console.error(
+      `${MODULE_ID} | failed to register compendium picker menu`,
       err,
     );
   }

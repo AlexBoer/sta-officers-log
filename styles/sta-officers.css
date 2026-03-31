@@ -3156,3 +3156,81 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
   margin: 0 0 6px;
   font-size: 0.9rem;
 }
+
+/* =============================================================================
+ * COMPENDIUM PICKER SETTINGS — badge + add-row UI
+ * ============================================================================= */
+
+.sta-compendium-picker-settings .pack-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.3rem 0;
+}
+
+.sta-compendium-picker-settings .pack-badges-empty {
+  font-style: italic;
+  color: var(--color-text-light-3);
+  font-size: var(--font-size-12);
+  align-self: center;
+}
+
+.sta-compendium-picker-settings .pack-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem 0.2rem 0.6rem;
+  border: 1px solid var(--color-border-light-secondary, rgba(0, 0, 0, 0.25));
+  border-radius: 1rem;
+  background: var(--color-bg-option, rgba(0, 0, 0, 0.06));
+  font-size: var(--font-size-12);
+  line-height: 1.3;
+  max-width: 100%;
+}
+
+.sta-compendium-picker-settings .pack-badge-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sta-compendium-picker-settings .pack-badge-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-light-3);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sta-compendium-picker-settings .pack-badge-remove:hover {
+  background: var(--color-level-error, #ce0707);
+  color: #fff;
+}
+
+.sta-compendium-picker-settings .pack-add-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.sta-compendium-picker-settings .pack-select {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.sta-compendium-picker-settings .pack-add-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}

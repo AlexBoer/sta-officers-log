@@ -1,5 +1,6 @@
 import { MODULE_ID } from "../core/constants.js";
 import { t } from "../core/i18n.js";
+import { CompendiumPickerSettingsApp } from "./compendiumPickerSettingsApp.js";
 
 export const FOCUS_PICKER_CUSTOM_COMPENDIUM_SETTING =
   "focusPickerCustomCompendium";
@@ -32,7 +33,7 @@ export function registerFocusPickerSettings() {
     name: t("sta-officers-log.settings.focusPickerCustomCompendium.name"),
     hint: t("sta-officers-log.settings.focusPickerCustomCompendium.hint"),
     scope: "world",
-    config: true,
+    config: false,
     restricted: true,
     type: String,
     default: "",
@@ -73,7 +74,7 @@ export function registerTalentPickerSettings() {
     name: t("sta-officers-log.settings.talentPickerCustomCompendium.name"),
     hint: t("sta-officers-log.settings.talentPickerCustomCompendium.hint"),
     scope: "world",
-    config: true,
+    config: false,
     restricted: true,
     type: String,
     default: "",
@@ -90,12 +91,27 @@ export function registerTalentPickerSettings() {
         "sta-officers-log.settings.talentPickerCustomCompendiumFolderFilter.hint",
       ),
       scope: "world",
-      config: true,
+      config: false,
       restricted: true,
       type: Boolean,
       default: false,
     },
   );
+}
+
+export function registerCompendiumPickerMenu() {
+  game.settings.registerMenu(MODULE_ID, "compendiumPickerSettings", {
+    name:
+      t("sta-officers-log.settings.compendiumPicker.name") ||
+      "Picker Compendiums",
+    label: t("sta-officers-log.settings.compendiumPicker.label") || "Configure",
+    hint:
+      t("sta-officers-log.settings.compendiumPicker.hint") ||
+      "Configure the compendium packs used as custom sources for the Focus and Talent pickers.",
+    icon: "fa-solid fa-book-open",
+    type: CompendiumPickerSettingsApp,
+    restricted: true,
+  });
 }
 
 export function getTalentPickerCustomCompendiumKey() {
