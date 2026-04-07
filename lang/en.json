@@ -478,8 +478,15 @@
         "createLog": "Create mission log for this player",
         "ok": "Add",
         "cancel": "Cancel"
-      },
-      "newMission": {
+      },      "unaddedPlayers": {
+        "title": "Active Players Not in Mission",
+        "hint": "The following player(s) are online but not part of the current mission. Would you like to add them?",
+        "missionLabel": "Mission:",
+        "noCharacter": "no assigned character",
+        "createLog": "Create mission logs for added players",
+        "add": "Add Selected",
+        "ignore": "Ignore"
+      },      "newMission": {
         "title": "Start New Mission",
         "missionTitle": "Mission Title",
         "missionTitlePlaceholder": "e.g. Journey to Alpha Centauri",

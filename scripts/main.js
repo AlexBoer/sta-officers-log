@@ -10,6 +10,7 @@ import {
   openGroupShip,
   promptAddParticipant,
   promptNewMissionAndReset,
+  promptUnaddedActivePlayers,
   registerMissionSettings,
   resetMissionCallbacks,
 } from "./missions/mission.js";
@@ -283,8 +284,35 @@ Hooks.once("ready", () => {
     console.error(`${MODULE_ID} | checkPendingShipBenefits failed`, err);
   }
 
+  // Prompt GM if active players are not yet in the current mission
+  try {
+    if (game.user.isGM) promptUnaddedActivePlayers();
+  } catch (err) {
+    console.error(`${MODULE_ID} | promptUnaddedActivePlayers failed`, err);
+  }
+
   // Hooks moved out of main.js
   safeInstallChatHooks();
+});
+
+// When a player connects mid-session, check whether they need to be added to the mission.
+Hooks.on("userConnected", (user, active) => {
+  try {
+    if (!game.user?.isGM) return;
+    if (!active) return; // user disconnected — nothing to do
+    if (user?.isGM) return;
+    // Small delay so Foundry fully settles the user's connected state before we query it.
+    setTimeout(() => {
+      promptUnaddedActivePlayers().catch((err) => {
+        console.error(
+          `${MODULE_ID} | promptUnaddedActivePlayers (userConnected) failed`,
+          err,
+        );
+      });
+    }, 1000);
+  } catch (err) {
+    console.error(`${MODULE_ID} | userConnected hook failed`, err);
+  }
 });
 
 // If the module was loaded after init/ready already fired, run best-effort setup.

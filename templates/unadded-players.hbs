@@ -1,0 +1,35 @@
+<p class="hint">{{localize "sta-officers-log.dialog.unaddedPlayers.hint"}}</p>
+
+{{#if missionTitle}}
+<p style="margin-bottom: 0.5rem;">
+  <strong>{{localize "sta-officers-log.dialog.unaddedPlayers.missionLabel"}}</strong>
+  {{missionTitle}}
+</p>
+{{/if}}
+
+<div style="margin: 0.5rem 0;">
+  {{#each players}}
+  <div class="form-group" style="margin-bottom: 0.25rem;">
+    <label class="checkbox" style="display: flex; align-items: center; gap: 0.5rem; {{#unless hasChar}}opacity: 0.6;{{/unless}}">
+      <input type="checkbox" name="p_{{id}}" {{#if checked}}checked{{/if}} {{#unless hasChar}}disabled{{/unless}} />
+      <span>
+        <strong>{{name}}</strong>
+        {{#if characterName}}
+          <span style="opacity: 0.75;">→ {{characterName}}</span>
+        {{else}}
+          <em style="opacity: 0.6;">— {{localize "sta-officers-log.dialog.unaddedPlayers.noCharacter"}}</em>
+        {{/if}}
+      </span>
+    </label>
+  </div>
+  {{/each}}
+</div>
+
+<hr style="margin: 0.5rem 0;" />
+
+<div class="form-group">
+  <label class="checkbox">
+    <input type="checkbox" name="createLog" checked />
+    {{localize "sta-officers-log.dialog.unaddedPlayers.createLog"}}
+  </label>
+</div>

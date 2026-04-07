@@ -823,6 +823,72 @@ export async function promptAddParticipant() {
   });
 }
 
+// Guard against stacking multiple concurrent "unadded players" dialogs.
+let _unaddedPlayersDialogOpen = false;
+
+/**
+ * Check if any currently-active players are missing from the current mission,
+ * and if so, prompt the GM to add them.
+ *
+ * Called automatically on ready (GM login) and when a user connects.
+ * GM-only. Silent no-op when no mission is active or all players are included.
+ */
+export async function promptUnaddedActivePlayers() {
+  if (!game.user?.isGM) return;
+  if (!hasActiveMission()) return;
+  if (_unaddedPlayersDialogOpen) return;
+
+  const participants = new Set(
+    game.settings.get(MODULE_ID, "missionParticipants") ?? [],
+  );
+
+  const unaddedActive = (game.users ?? []).filter(
+    (u) => !u.isGM && u.active && !participants.has(u.id),
+  );
+
+  if (!unaddedActive.length) return;
+
+  const missionTitle = (
+    game.settings.get(MODULE_ID, "missionTitle") ?? ""
+  ).trim();
+
+  const players = unaddedActive.map((u) => ({
+    id: u.id,
+    name: u.name ?? u.id,
+    characterName: u.character?.name ?? null,
+    hasChar: Boolean(u.character && u.character.type === "character"),
+    checked: Boolean(u.character && u.character.type === "character"),
+  }));
+
+  const content = await foundry.applications.handlebars.renderTemplate(
+    `modules/${MODULE_ID}/templates/unadded-players.hbs`,
+    { players, missionTitle },
+  );
+
+  _unaddedPlayersDialogOpen = true;
+  try {
+    const result = await foundry.applications.api.DialogV2.input({
+      classes: ["sta-officers-log"],
+      window: { title: t("sta-officers-log.dialog.unaddedPlayers.title") },
+      modal: false,
+      rejectClose: false,
+      content,
+      ok: { label: t("sta-officers-log.dialog.unaddedPlayers.add") },
+      cancel: { label: t("sta-officers-log.dialog.unaddedPlayers.ignore") },
+    });
+
+    if (result) {
+      const createLog = Boolean(result.createLog);
+      for (const player of players) {
+        if (!result[`p_${player.id}`]) continue;
+        await addParticipantToCurrentMission(player.id, { createLog });
+      }
+    }
+  } finally {
+    _unaddedPlayersDialogOpen = false;
+  }
+}
+
 /**
  * End the currently active mission.
  * Shows a summary dialog listing each participant's callback and milestone/arc status,
