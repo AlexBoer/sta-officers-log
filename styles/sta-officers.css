@@ -66,7 +66,7 @@
   right: 0.5rem;
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.75);
   pointer-events: none;
   user-select: none;
   z-index: 1;
@@ -133,7 +133,8 @@
   word-wrap: break-word;
 }
 
-.sta-callback-log-button:hover {
+.sta-callback-log-button:hover,
+.sta-callback-log-button:focus-visible {
   border-color: rgba(255, 255, 255, 0.6);
   background: linear-gradient(135deg, rgba(120, 120, 140, 0.6) 0%, rgba(80, 80, 100, 0.6) 100%);
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
@@ -163,7 +164,8 @@
   transition: color 0.2s ease;
 }
 
-.sta-callback-show-all-link:hover {
+.sta-callback-show-all-link:hover,
+.sta-callback-show-all-link:focus-visible {
   color: rgba(255, 220, 120, 1);
 }
 
@@ -283,7 +285,8 @@
   white-space: nowrap;
 }
 
-.sta-callbacks-arc-title .sta-arc-collapse-btn:hover {
+.sta-callbacks-arc-title .sta-arc-collapse-btn:hover,
+.sta-callbacks-arc-title .sta-arc-collapse-btn:focus-visible {
   opacity: 1;
 }
 
@@ -302,7 +305,8 @@
   cursor: pointer;
 }
 
-.sta-callbacks-arc-title .sta-arc-title-edit:hover {
+.sta-callbacks-arc-title .sta-arc-title-edit:hover,
+.sta-callbacks-arc-title .sta-arc-title-edit:focus-visible {
   opacity: 1;
 }
 
@@ -347,6 +351,9 @@
   padding: 0;
   margin: 0;
   line-height: 1;
+  border: none;
+  background: none;
+  cursor: pointer;
 }
 
 /* Match STA tracker icon styling (size + color) */
@@ -361,7 +368,8 @@
   height: 1em;
 }
 
-.tracker-container .icon-container .sta-officers-log-group .button i:hover {
+.tracker-container .icon-container .sta-officers-log-group .button i:hover,
+.tracker-container .icon-container .sta-officers-log-group .button:focus-visible i {
   color:#89CFF0;
 }
 
@@ -385,13 +393,14 @@
   padding: 0;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.85);
   cursor: pointer;
   font-size: 0.75rem;
   line-height: 1;
 }
 
-.tracker-container .sta-officers-log-info-btn:hover {
+.tracker-container .sta-officers-log-info-btn:hover,
+.tracker-container .sta-officers-log-info-btn:focus-visible {
   color: #89CFF0;
 }
 
@@ -447,13 +456,14 @@
 .tracker-container .sta-tracker-directives-edit-btn {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.8);
   cursor: pointer;
   padding: 0.15rem 0.3rem;
   font-size: 0.75rem;
 }
 
-.tracker-container .sta-tracker-directives-edit-btn:hover {
+.tracker-container .sta-tracker-directives-edit-btn:hover,
+.tracker-container .sta-tracker-directives-edit-btn:focus-visible {
   color: #89CFF0;
   background-color: rgba(255, 255, 255, 0.1);
 }
@@ -479,8 +489,9 @@
   line-height: 1.4;
 }
 
-.tracker-container .sta-tracker-directives-textarea:focus {
-  outline: none;
+.tracker-container .sta-tracker-directives-textarea:focus-visible {
+  outline: 2px solid var(--input-focus-outline-color, #f0b872);
+  outline-offset: 2px;
   border-color: #89CFF0;
 }
 
@@ -500,7 +511,8 @@
   transition: background-color 0.15s ease;
 }
 
-.tracker-container .sta-tracker-directives-save-btn:hover {
+.tracker-container .sta-tracker-directives-save-btn:hover,
+.tracker-container .sta-tracker-directives-save-btn:focus-visible {
   background: #a8dbf5;
 }
 
@@ -565,7 +577,8 @@
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.tracker-container .sta-tracker-use-directive-btn:hover {
+.tracker-container .sta-tracker-use-directive-btn:hover,
+.tracker-container .sta-tracker-use-directive-btn:focus-visible {
   background: rgba(255, 255, 255, 0.15);
   color: #89CFF0;
   border-color: #89CFF0;
@@ -1066,11 +1079,12 @@
   padding: 0 0.25rem;
   cursor: pointer;
   white-space: nowrap;
-  opacity: 0.75;
+  opacity: 0.85;
   transition: opacity 0.15s ease;
 }
 
-.sta-log-filter-unused-btn:hover {
+.sta-log-filter-unused-btn:hover,
+.sta-log-filter-unused-btn:focus-visible {
   opacity: 1;
 }
 
@@ -1096,7 +1110,8 @@
   white-space: nowrap;
 }
 
-.sta-choose-milestone-btn:hover {
+.sta-choose-milestone-btn:hover,
+.sta-choose-milestone-btn:focus-visible {
   border-color: rgba(250, 223, 71, 0.7);
 } 
 
@@ -2444,7 +2459,7 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.8);
   margin: 0;
 }
 
@@ -3234,4 +3249,69 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
 .sta-compendium-picker-settings .pack-add-btn {
   flex-shrink: 0;
   white-space: nowrap;
+}
+
+/* =============================================================================
+ * REDUCED MOTION (WCAG 2.3.3)
+ * ============================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  .sta-callbacks-source-flash {
+    animation: none !important;
+  }
+  .sta-talent-loading-spin,
+  .talent-loading-dialog .talent-loading-spinner {
+    animation: none !important;
+  }
+  .sta-flowchart-btn-dirty {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* =============================================================================
+ * HIGH CONTRAST (WCAG 1.4.11)
+ * ============================================================================= */
+@media (prefers-contrast: more) {
+  .sta-callback-log-button {
+    border-color: rgba(255, 255, 255, 0.8);
+  }
+  .sta-callback-timer {
+    color: rgba(255, 255, 255, 1);
+  }
+  .tracker-container .sta-officers-log-info-btn,
+  .tracker-container .sta-tracker-directives-edit-btn {
+    color: rgba(255, 255, 255, 1);
+  }
+  .sta-flowchart-info-label {
+    color: rgba(255, 255, 255, 1);
+  }
+  .sta-tracker-directive-item {
+    color: #fff;
+  }
+  .sta-log-filter-unused-btn {
+    opacity: 1;
+  }
+}
+
+@media (forced-colors: active) {
+  .sta-callback-log-button {
+    border: 1px solid ButtonText;
+  }
+  .sta-callback-log-button.selected {
+    border: 2px solid Highlight;
+  }
+  .tracker-container .sta-tracker-directives-textarea {
+    border: 1px solid ButtonText;
+  }
+  .tracker-container .sta-tracker-directives-textarea:focus-visible {
+    outline: 2px solid Highlight;
+  }
+  .sta-tracker-use-directive-btn {
+    border: 1px solid ButtonText;
+  }
+  .sta-flowchart-btn {
+    border: 1px solid ButtonText;
+  }
 }

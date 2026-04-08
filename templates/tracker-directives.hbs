@@ -6,8 +6,8 @@
         <i class="fa-solid fa-flag"></i> {{localize "sta-officers-log.values.useDirective"}}
       </button>
       {{#if isGM}}
-      <button class="sta-tracker-directives-edit-btn" type="button" title="{{localize "sta-officers-log.tracker.editDirectives"}}" data-action="toggleEdit">
-        <i class="fas fa-pencil-alt"></i>
+      <button class="sta-tracker-directives-edit-btn" type="button" title="{{localize "sta-officers-log.tracker.editDirectives"}}" aria-label="{{localize "sta-officers-log.tracker.editDirectives"}}" data-action="toggleEdit">
+        <i class="fas fa-pencil-alt" aria-hidden="true"></i>
       </button>
       {{/if}}
     </div>

@@ -255,7 +255,9 @@ class NewMilestoneArcApp extends Base {
         if (!tab) return;
 
         for (const el of tabButtons) {
-          el.classList.toggle("active", el.dataset.tab === tab);
+          const isActive = el.dataset.tab === tab;
+          el.classList.toggle("active", isActive);
+          el.setAttribute("aria-selected", String(isActive));
         }
         for (const el of tabPanels) {
           el.classList.toggle("active", el.dataset.tab === tab);

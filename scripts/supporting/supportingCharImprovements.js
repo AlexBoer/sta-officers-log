@@ -524,7 +524,10 @@ export function installSupportingCharImprovementButtons(root, actor) {
 
       btn.addEventListener("click", onAction);
       btn.addEventListener("keydown", (ev) => {
-        if (ev.key === "Enter" || ev.key === " ") onAction(ev);
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          onAction(ev);
+        }
       });
 
       // Replace label content with button
@@ -543,6 +546,7 @@ export function installSupportingCharImprovementButtons(root, actor) {
 
       if (allChecked) {
         btn.classList.add("is-disabled");
+        btn.setAttribute("aria-disabled", "true");
         btn.tabIndex = -1;
       }
     }

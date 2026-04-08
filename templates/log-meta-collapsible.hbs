@@ -4,19 +4,19 @@
   <div class="row sta-log-meta-fields-row">
     {{#if showTraumaCheckbox}}
     <div class="sta-log-meta-field" title="{{traumaTooltip}}">
-      <span class="sta-log-meta-label">{{traumaLabel}}</span>
-      <input type="checkbox" data-sta-callbacks-field="createdWithTrauma" {{#if createdWithTrauma}}checked{{/if}}>
+      <label class="sta-log-meta-label" for="meta-trauma">{{traumaLabel}}</label>
+      <input type="checkbox" id="meta-trauma" data-sta-callbacks-field="createdWithTrauma" {{#if createdWithTrauma}}checked{{/if}}>
     </div>
     {{/if}}
     <div class="sta-log-meta-field" title="Show or hide the 'Choose Milestone/Arc' button on this log.">
-      <span class="sta-log-meta-label">Show milestone/arc button</span>
-      <input type="checkbox" data-sta-callbacks-field="showMilestoneArcButton" {{#if showMilestoneArcButton}}checked{{/if}}>
+      <label class="sta-log-meta-label" for="meta-milestone">Show milestone/arc button</label>
+      <input type="checkbox" id="meta-milestone" data-sta-callbacks-field="showMilestoneArcButton" {{#if showMilestoneArcButton}}checked{{/if}}>
     </div>
     <div class="sta-log-meta-field" title="Set a custom creation date for this log (overrides the actual creation timestamp for sorting).">
-      <span class="sta-log-meta-label">Custom Date</span>
+      <label class="sta-log-meta-label" for="meta-custom-date">Custom Date</label>
       <div class="sta-custom-date-input-row">
-        <input type="date" data-sta-callbacks-field="customDate" value="{{customDate}}">
-        <button type="button" data-sta-callbacks-action="clearCustomDate" title="Clear custom date">✕</button>
+        <input type="date" id="meta-custom-date" data-sta-callbacks-field="customDate" value="{{customDate}}">
+        <button type="button" data-sta-callbacks-action="clearCustomDate" title="Clear custom date" aria-label="Clear custom date">✕</button>
       </div>
     </div>
   </div>

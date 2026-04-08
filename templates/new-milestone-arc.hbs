@@ -1,11 +1,11 @@
 <form class="sta-new-milestone-arc" autocomplete="off">
-  <nav class="tabs" data-group="primary">
-    <a class="item" data-tab="milestone">{{milestoneTabTitle}}</a>
-    <a class="item" data-tab="arc">{{arcTabTitle}}</a>
+  <nav class="tabs" role="tablist" data-group="primary">
+    <a class="item" role="tab" aria-selected="true" data-tab="milestone">{{milestoneTabTitle}}</a>
+    <a class="item" role="tab" aria-selected="false" data-tab="arc">{{arcTabTitle}}</a>
   </nav>
 
   <section class="content">
-    <div class="tab" data-group="primary" data-tab="milestone">
+    <div class="tab" role="tabpanel" data-group="primary" data-tab="milestone">
       <div data-sta-callbacks-dialog="choose-benefit"></div>
       <p>{{milestonePrompt}}</p>
       <div class="sta-callbacks-vertical-footer sta-benefit-buttons">
@@ -15,7 +15,7 @@
       </div>
     </div>
 
-    <div class="tab" data-group="primary" data-tab="arc">
+    <div class="tab" role="tabpanel" data-group="primary" data-tab="arc">
       <div data-sta-callbacks-dialog="choose-benefit"></div>
       <p>{{arcPrompt}}</p>
       <div class="sta-callbacks-vertical-footer sta-benefit-buttons">
