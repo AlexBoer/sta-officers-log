@@ -224,7 +224,13 @@ export async function promptUseValueChoice({
       buttonLabel: canChoosePositive ? null : "No Determination!",
     };
 
-    // When sta-utils is active, split the positive button into two variants.
+    const gainTalentButton = {
+      action: "positive-gain-talent",
+      label: t("sta-officers-log.dialog.useValue.gainTalentButton"),
+      disabled: !canChoosePositive,
+    };
+
+    // Always split the positive button into sub-buttons (2 without sta-utils, 3 with).
     if (staUtilsActive) {
       positiveOption.buttons = [
         {
@@ -237,6 +243,16 @@ export async function promptUseValueChoice({
           label: "Before Roll: Auto-Crit",
           disabled: !canChoosePositive,
         },
+        gainTalentButton,
+      ];
+    } else {
+      positiveOption.buttons = [
+        {
+          action: "positive",
+          label: t("sta-officers-log.dialog.useValue.positiveButton"),
+          disabled: !canChoosePositive,
+        },
+        gainTalentButton,
       ];
     }
 
@@ -633,6 +649,23 @@ export function installUseValueButtons(root, actor, app) {
 
       if (choice === "positive-crit") {
         await handleAutoCritValueUse({ actor, valueItem });
+        scheduleRender(app);
+        return;
+      }
+
+      if (choice === "positive-gain-talent") {
+        await useValue({
+          actor,
+          valueItemId: valueItem.id,
+          useType: "positive",
+        });
+        ChatMessage.create({
+          content: tf("sta-officers-log.dialog.useValue.gainTalentChat", {
+            character: actor.name,
+            value: valueItem.name,
+          }),
+          speaker: ChatMessage.getSpeaker({ actor }),
+        });
         scheduleRender(app);
         return;
       }

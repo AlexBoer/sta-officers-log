@@ -4,11 +4,11 @@
     {{#each options as |opt|}}
       <section class="sta-use-value-card" data-action="{{opt.action}}">
         <header class="sta-use-value-card-header">
-          <h3 class="sta-use-value-card-title">{{opt.title}}</h3>
+          <h3 class="sta-use-value-card-title" id="sta-uvc-title-{{opt.action}}">{{opt.title}}</h3>
         </header>
 
         <div class="sta-use-value-card-body">
-          <div class="sta-use-value-card-desc">{{{opt.description}}}</div>
+          <div class="sta-use-value-card-desc" id="sta-uvc-desc-{{opt.action}}">{{{opt.description}}}</div>
         </div>
       </section>
     {{/each}}
@@ -17,13 +17,13 @@
   <footer class="form-footer sta-use-value-footer">
     {{#each options as |opt|}}
       {{#if opt.buttons}}
-        <span class="sta-use-value-btn-group">
+        <span class="sta-use-value-btn-group" role="group" aria-labelledby="sta-uvc-title-{{opt.action}}">
         {{#each opt.buttons as |btn|}}
-          <button type="button" class="dialog-button" data-action="{{btn.action}}" {{disabled btn.disabled}}>{{btn.label}}</button>
+          <button type="button" class="dialog-button" data-action="{{btn.action}}" {{disabled btn.disabled}} aria-describedby="sta-uvc-desc-{{../action}}">{{btn.label}}</button>
         {{/each}}
         </span>
       {{else}}
-        <button type="button" class="dialog-button" data-action="{{opt.action}}" {{disabled opt.disabled}}>{{#if opt.buttonLabel}}{{{opt.buttonLabel}}}{{else}}{{../chooseLabel}}{{/if}}</button>
+        <button type="button" class="dialog-button" data-action="{{opt.action}}" {{disabled opt.disabled}} aria-describedby="sta-uvc-desc-{{opt.action}}">{{#if opt.buttonLabel}}{{{opt.buttonLabel}}}{{else}}{{../chooseLabel}}{{/if}}</button>
       {{/if}}
     {{/each}}
   </footer>
