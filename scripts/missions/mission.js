@@ -349,10 +349,18 @@ export async function resetMissionCallbacks({ notify = true } = {}) {
   }
 }
 
+const SUPPORTING_CHARACTER_SHEET_CLASSES = new Set([
+  "sta.STASupportingSheet2e",
+  "sta-utils.LcarsSupportingSheet2e",
+]);
+
 export async function resetDetermination({ notify = true } = {}) {
   const updates = [];
   for (const actor of game.actors) {
     if (actor.type !== "character") continue;
+    // Supporting characters do not reset Determination at the start of a mission.
+    const sheetClass = actor.flags?.core?.sheetClass ?? "";
+    if (SUPPORTING_CHARACTER_SHEET_CLASSES.has(sheetClass)) continue;
     updates.push(actor.update({ "system.determination.value": 1 }));
   }
   await Promise.allSettled(updates);
