@@ -38,6 +38,7 @@ import { installChooseMilestoneBenefitButtons } from "../milestones/chooseMilest
 import { installItemUpdateHooks } from "./itemUpdateHooks.js";
 import { installFlowchartButton } from "../flowchart/flowchartButton.js";
 import { installAcclaimButtonOverride } from "../acclaim/acclaimButton.js";
+import { installCreationInPlayTab } from "../creation/creation-tab.mjs";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Handler: STA Tracker
@@ -193,6 +194,13 @@ function handleCharacterSheetRender(app, root) {
     } catch (_) {
       // ignore
     }
+  }
+
+  // Install Creation in Play tab (if the actor has the creationInPlay flag).
+  try {
+    installCreationInPlayTab(root, actor, app);
+  } catch (_) {
+    // ignore
   }
 }
 

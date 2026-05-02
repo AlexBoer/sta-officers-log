@@ -20,7 +20,8 @@ import {
  * Rules:
  * - If no value is selected, do not restrict.
  * - "No Value Used" logs cannot form callback chains.
- * - Always allow completed arc-end logs (they are valid chain boundaries).
+ * - Arc-completing logs cannot be callback targets (see isCompletedArcEnd — callers must
+ *   exclude these before this function is reached; the parameter is retained for compatibility).
  * - If the target log has no known primary value, do not restrict.
  * - Otherwise, the target primary value must match the selected value.
  */
@@ -35,7 +36,8 @@ export function isCallbackTargetCompatibleWithValue({
   // "No Value Used" logs cannot form callback chains.
   if (isNoValueUsedId(vId)) return false;
 
-  if (isCompletedArcEnd === true) return true;
+  // Arc-completing logs are excluded at the call sites before reaching here.
+  void isCompletedArcEnd;
 
   const targetPrimary = targetPrimaryValueId
     ? String(targetPrimaryValueId)
@@ -84,6 +86,9 @@ export function hasEligibleCallbackTargetForValueId(
       if (logId === missionLogId) continue;
       if (callbackTargetIds.has(logId)) continue;
       if (isLogUsed(log)) continue;
+
+      // Arc-completing logs cannot be callback targets.
+      if (completedArcEndLogIds.has(logId)) continue;
 
       const stateArray = getValueStateArray(log, vId);
       const invokedStates = stateArray.filter((s) => isValueInvokedState(s));

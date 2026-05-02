@@ -17,10 +17,16 @@ const _collapsedArcsByActorId = new Map(); // actorId -> Set<arcId>
 
 const _FLAG_KEY = "collapsedArcIds";
 
-/** Hydrate the in-memory cache from the actor's flags (synchronous read). */
+/**
+ * Hydrate the in-memory cache from the actor's flags (synchronous read).
+ * Only runs once per actor per page-load; subsequent calls are no-ops so that
+ * in-flight changes from _persistToActor are not overwritten by a re-render
+ * that fires before the server confirms the actor.update().
+ */
 function _hydrateFromActor(actor) {
   if (!actor?.id) return;
   const aId = String(actor.id);
+  if (_collapsedArcsByActorId.has(aId)) return; // already hydrated this session
   const arr = actor.getFlag?.(MODULE_ID, _FLAG_KEY) ?? [];
   _collapsedArcsByActorId.set(aId, new Set(Array.isArray(arr) ? arr : []));
 }
@@ -59,6 +65,15 @@ function _setArcCollapsed(actorId, arcId, collapsed, actor) {
   if (collapsed) set.add(gId);
   else set.delete(gId);
   if (actor) _persistToActor(actor);
+}
+
+/**
+ * Remove the in-memory cache entry for an actor so the next render re-hydrates
+ * from the actor's flags. Called when another client updates the collapsedArcIds flag.
+ */
+export function invalidateArcCollapseCache(actorId) {
+  if (!actorId) return;
+  _collapsedArcsByActorId.delete(String(actorId));
 }
 
 function _unwrapArcGroups(containerEl) {

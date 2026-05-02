@@ -1,0 +1,24 @@
+{
+  "_comment": "Role benefit talents added at character creation. These do NOT count against the 4-talent limit. Populate talentUuid by running the Foundry console snippet to look up role talents from sta.items-2e, then paste the UUID here. talentUuid: null means no role talent is applied automatically.",
+  "roles": [
+    { "name": "Commanding Officer",    "talentUuid": "Compendium.sta.items-2e.Item.Ws51i0XJZ7Ufo6wy" },
+    { "name": "Executive Officer",     "talentUuid": "Compendium.sta.items-2e.Item.bpnORpJnCYk9s3sg" },
+    { "name": "Chief Medical Officer", "talentUuid": "Compendium.sta.items-2e.Item.2sRJXQE7UiATLJcD" },
+    { "name": "Chief Engineer",        "talentUuid": "Compendium.sta.items-2e.Item.I4EGxgAxEdzyaigc" },
+    { "name": "Chief of Security",     "talentUuid": "Compendium.sta.items-2e.Item.XTEOFyOJp5LMvpIn" },
+    { "name": "Science Officer",       "talentUuid": "Compendium.sta.items-2e.Item.qVN6z2k1S6MDWN4f" },
+    { "name": "Flight Controller",     "talentUuid": "Compendium.sta.items-2e.Item.BlwvDQwKSO8xVAGs" },
+    { "name": "Operations Manager",    "talentUuid": "Compendium.sta.items-2e.Item.IpAp4zr7M1GQdgps" },
+    { "name": "Counselor",             "talentUuid": "Compendium.sta.items-2e.Item.l1VFaqnHzWHLht8S" },
+    { "name": "Communications Officer","talentUuid": "Compendium.sta.items-2e.Item.mufH3m3Pdm0nJG9P" },
+    { "name": "Tactical Officer",      "talentUuid": "Compendium.sta.items-2e.Item.39z8qUuIVngMzOAV" },
+    { "name": "Doctor",                "talentUuid": "Compendium.sta.items-2e.Item.w5TRLIuJvbdECx67" },
+    { "name": "Political Liaison",     "talentUuid": null },
+    { "name": "Translator",            "talentUuid": null },
+    { "name": "Intelligence Officer",  "talentUuid": null },
+    { "name": "Merchant",              "talentUuid": null },
+    { "name": "Bodyguard ",            "talentUuid": null },
+    { "name": "Expert",                "talentUuid": null },
+    { "name": "Navigator",             "talentUuid": "Compendium.sta.items-2e.Item.gDItWTpcIFIbIxAm" }
+  ]
+}

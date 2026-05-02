@@ -43,6 +43,8 @@ import {
 import { registerAcclaimSurveySettings } from "./acclaim/acclaimSurvey.js";
 import { registerCustomSpendOptionsSettings } from "./acclaim/customSpendOptions.js";
 import { useValue } from "./values/useValue.js";
+import { CreationWizardApp } from "./creation/creation-wizard-app.mjs";
+import { preloadCreationTabTemplate } from "./creation/creation-tab.mjs";
 
 function registerApi() {
   // Public API (available on all clients; methods may GM-guard internally)
@@ -88,6 +90,9 @@ function registerApi() {
     // Public API: mission directives (for external module integration, e.g. sta-utils dropdown)
     getMissionDirectives,
     makeDirectiveValueIdFromText,
+
+    // Creation in Play wizard
+    openCreationWizard: () => new CreationWizardApp().render(true),
   };
 
   // Back-compat for macros that reference a global symbol.
@@ -254,6 +259,9 @@ try {
 Hooks.once("init", () => {
   safeRegisterClientSettings();
   safeRegisterSettings();
+
+  // Pre-load creation tab template so it renders synchronously on sheet renders.
+  preloadCreationTabTemplate();
 
   // Public API (refresh in case something overwrote it)
   registerApi();

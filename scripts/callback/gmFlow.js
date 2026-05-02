@@ -100,13 +100,8 @@ function buildValuesPayload(
         const logPrimaryValueId = log.primaryValueId
           ? String(log.primaryValueId)
           : "";
-        const isCompletedArcEnd = log.isCompletedArcEnd;
-
         // Empty primary value: always compatible
         if (!logPrimaryValueId) return true;
-
-        // Completed arc end: always compatible
-        if (isCompletedArcEnd) return true;
 
         // Otherwise: primary value must match
         return logPrimaryValueId === valueId;
@@ -540,12 +535,15 @@ async function orchestrateCallbackPrompt({
     // ignore
   }
 
+  const completedArcEndLogIds = getCompletedArcEndLogIds(actor);
+
   const unusedLogs = actor.items.filter(
     (i) =>
       i.type === "log" &&
       !isLogUsed(i) &&
       i.id !== missionLogId &&
-      !callbackTargetIds.has(String(i.id)),
+      !callbackTargetIds.has(String(i.id)) &&
+      !completedArcEndLogIds.has(String(i.id)),
   );
 
   if (!unusedLogs.length) {
@@ -560,7 +558,6 @@ async function orchestrateCallbackPrompt({
   }
 
   const valueItems = getValueItems(actor);
-  const completedArcEndLogIds = getCompletedArcEndLogIds(actor);
 
   // Include directive "value" options found in eligible logs,
   // PLUS the current mission's directive list (so the user can select a directive
@@ -631,9 +628,6 @@ async function orchestrateCallbackPrompt({
 
       // Empty primary value: always compatible
       if (!logPrimaryValueId) return true;
-
-      // Completed arc end: always compatible
-      if (log.isCompletedArcEnd) return true;
 
       // Otherwise: primary value must match
       return logPrimaryValueId === dvi;

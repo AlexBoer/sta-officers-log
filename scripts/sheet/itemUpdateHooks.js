@@ -21,7 +21,10 @@ import {
   getItemFromApp,
   rerenderOpenStaSheetsForActorId as refreshOpenSheet,
 } from "./sheetUtils.js";
-import { refreshMissionLogSortingForActorId } from "../log/logSorting.js";
+import {
+  refreshMissionLogSortingForActorId,
+  invalidateArcCollapseCache,
+} from "../log/logSorting.js";
 import {
   enforceUniqueFromLogIdTargets,
   syncCallbackTargetUsedFlags,
@@ -37,6 +40,7 @@ import { installLogMetaCollapsible } from "../log/logMetaCollapsible.js";
 
 let _staOfficersLogMilestoneUpdateHookInstalled = false;
 let _staOfficersLogItemSheetRenderHookInstalled = false;
+let _staOfficersLogActorUpdateHookInstalled = false;
 
 /**
  * Install hooks for keeping character sheets responsive when items are edited.
@@ -684,6 +688,28 @@ export function installItemUpdateHooks() {
 
         // Avoid full character-sheet rerenders (they flash/steal focus). We only
         // need to refresh the log ordering/arc wrappers.
+        refreshMissionLogSortingForActorId(actor.id);
+      } catch (_) {
+        // ignore
+      }
+    });
+  }
+
+  // Sync arc collapse state across clients: when another user toggles an arc box,
+  // invalidate our local cache so the next render reads the updated flags.
+  if (!_staOfficersLogActorUpdateHookInstalled) {
+    _staOfficersLogActorUpdateHookInstalled = true;
+
+    Hooks.on("updateActor", (actor, changes, _options, userId) => {
+      try {
+        // Only react to updates from other users; our own updates are already
+        // reflected in the in-memory cache and we don't want to race with
+        // the async actor.update() that hasn't confirmed yet.
+        if (userId === game?.user?.id) return;
+        if (!changes?.flags?.[MODULE_ID]?.hasOwnProperty("collapsedArcIds"))
+          return;
+        if (!actor?.id) return;
+        invalidateArcCollapseCache(actor.id);
         refreshMissionLogSortingForActorId(actor.id);
       } catch (_) {
         // ignore

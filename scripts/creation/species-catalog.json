@@ -1,0 +1,1227 @@
+﻿{
+  "_comment": "attributeBonuses null means player chooses 3 attributes. talentUuid: explicit Foundry UUID overrides name lookup. abilityName: talent name to search in configured talent compendiums (case-insensitive). abilityDescription: shown in the wizard species info box. aliases: alternative names that also match this entry (case-insensitive).",
+  "species": [
+    {
+      "name": "Aenar",
+      "talentUuid": "Compendium.sta.items-2e.Item.HCSFqry1Ln9Y1Foc",
+      "abilityName": "Telepathic",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Akaru",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Anabaj",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "insight": 1
+      }
+    },
+    {
+      "name": "Andorian",
+      "talentUuid": "Compendium.sta.items-2e.Item.fydee9lZAjtiWRt4",
+      "abilityName": "Intense",
+      "attributeBonuses": {
+        "control": 1,
+        "daring": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Android (Soong-type)",
+      "aliases": [
+        "Android"
+      ],
+      "talentUuid": null,
+      "abilityName": "Synthetic Life-Form",
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Ankari",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "fitness": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Apergosian",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Aquan",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "daring": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Arbazan",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Arcadian",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "insight": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Ardanan",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "fitness": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Argrathi",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "fitness": 1,
+        "insight": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Ariolo",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Arkarian",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "daring": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Aurelian",
+      "talentUuid": null,
+      "abilityName": "Airborne Avian",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "insight": 1
+      }
+    },
+    {
+      "name": "Ba'ul",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Bajoran",
+      "talentUuid": "Compendium.sta.items-2e.Item.iebNapKuHtBKk42G",
+      "abilityName": "The Will of the Prophets",
+      "attributeBonuses": {
+        "control": 1,
+        "daring": 1,
+        "insight": 1
+      }
+    },
+    {
+      "name": "Barzan",
+      "talentUuid": null,
+      "abilityName": "Unyielding Resolve",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Benzite",
+      "talentUuid": null,
+      "abilityName": "All Fingers and Thumbs",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Betelgeusian",
+      "talentUuid": null,
+      "abilityName": "Hardened for Battle",
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Betazoid",
+      "talentUuid": "Compendium.sta.items-2e.Item.0Q5X38iYTiBeOLt9",
+      "abilityName": "Telepathic",
+      "attributeBonuses": {
+        "insight": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Blue Orion",
+      "aliases": [
+        "Orion, Blue"
+      ],
+      "talentUuid": null,
+      "abilityName": "Honor Among Thieves",
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Bolian",
+      "talentUuid": null,
+      "abilityName": "Amiable",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Borg",
+      "talentUuid": null,
+      "attributeBonuses": null
+    },
+    {
+      "name": "Breen",
+      "talentUuid": null,
+      "abilityName": "Gelatinous Form",
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "insight": 1
+      }
+    },
+    {
+      "name": "Brikar",
+      "talentUuid": null,
+      "abilityName": "Rock Hard",
+      "attributeBonuses": {
+        "fitness": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Bynar",
+      "talentUuid": null,
+      "abilityName": "Bynar Pair",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Caitian",
+      "talentUuid": null,
+      "abilityName": "Feline Form",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "insight": 1
+      }
+    },
+    {
+      "name": "Cal-Mirran",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Cardassian",
+      "talentUuid": "Compendium.sta.items-2e.Item.fPotQ6WK8Ul87tCJ",
+      "abilityName": "Healthy Suspicions",
+      "attributeBonuses": {
+        "control": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Cetacean",
+      "talentUuid": null,
+      "abilityName": "Aquatic Mammal",
+      "attributeBonuses": {
+        "daring": 1,
+        "insight": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Chameloid",
+      "talentUuid": null,
+      "abilityName": "Natural Shapeshifter",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Changeling",
+      "talentUuid": null,
+      "abilityName": "Morphogenic Matrix",
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "insight": 1
+      }
+    },
+    {
+      "name": "Child of Tama",
+      "talentUuid": null,
+      "abilityName": "Sokath, “His Eyes Uncovered”",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Clicket",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "fitness": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Coridanite",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Cybernetically Enhanced",
+      "talentUuid": null,
+      "attributeBonuses": null
+    },
+    {
+      "name": "Deltan",
+      "talentUuid": null,
+      "abilityName": "Empath",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Denobulan",
+      "talentUuid": "Compendium.sta.items-2e.Item.z4IMs5bbdSFHZrod",
+      "abilityName": "Breadth of Study",
+      "attributeBonuses": {
+        "fitness": 1,
+        "insight": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Doopler",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "fitness": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Dosi",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "fitness": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Drai",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Edosian",
+      "talentUuid": null,
+      "abilityName": "Trilateral Symmetry",
+      "attributeBonuses": {
+        "fitness": 1,
+        "insight": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Efrosian",
+      "talentUuid": null,
+      "abilityName": "Visual Spectrum",
+      "attributeBonuses": {
+        "fitness": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "El-Aurian",
+      "talentUuid": null,
+      "abilityName": "Transtemporal Awareness",
+      "attributeBonuses": {
+        "fitness": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Exocomp",
+      "talentUuid": null,
+      "abilityName": "Technological Life",
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Ferengi",
+      "talentUuid": "Compendium.sta.items-2e.Item.EVN76eqI9zSBXmyu",
+      "abilityName": "The Great Material Continuum",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Gorn",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Grazerite",
+      "talentUuid": null,
+      "abilityName": "Agreeable",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Haliian",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "daring": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Hologram",
+      "talentUuid": null,
+      "abilityName": "Photonic",
+      "attributeBonuses": null
+    },
+    {
+      "name": "Horta",
+      "talentUuid": null,
+      "abilityName": "Silicon-Based Burrower",
+      "attributeBonuses": {
+        "fitness": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Human",
+      "talentUuid": "Compendium.sta.items-2e.Item.i7DUBVbcrhdDiJcn",
+      "abilityName": "Faith of the Heart",
+      "attributeBonuses": null
+    },
+    {
+      "name": "Human Augment",
+      "talentUuid": null,
+      "abilityName": "Genetically Enhanced",
+      "attributeBonuses": null
+    },
+    {
+      "name": "Hupyrian",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "insight": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "I'Qosa",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Illyrian",
+      "talentUuid": null,
+      "abilityName": "Adapt and Excel",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Iotian",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Jem'Hadar",
+      "talentUuid": null,
+      "abilityName": "Perfect Soldier",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "insight": 1
+      }
+    },
+    {
+      "name": "Jye",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Kaelon",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "daring": 1,
+        "insight": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Karemma",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Kazon",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Kellerun",
+      "talentUuid": null,
+      "abilityName": "Intense Defiance",
+      "attributeBonuses": {
+        "daring": 1,
+        "control": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Kelpien",
+      "talentUuid": null,
+      "abilityName": "Hunter or Prey",
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "insight": 1
+      }
+    },
+    {
+      "name": "Klingon",
+      "talentUuid": "Compendium.sta.items-2e.Item.KZbisbcxtFOA7Ykb",
+      "abilityName": "Brak'lul",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Klingon (QuchHa')",
+      "aliases": [
+        "Klingon QuchHa'"
+      ],
+      "talentUuid": null,
+      "abilityName": "Superior Ambition",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Klowahkan",
+      "talentUuid": null,
+      "abilityName": "Epicurean",
+      "attributeBonuses": {
+        "control": 1,
+        "reason": 1,
+        "insight": 1
+      }
+    },
+    {
+      "name": "Kobali",
+      "talentUuid": null,
+      "attributeBonuses": null
+    },
+    {
+      "name": "Ktarian",
+      "talentUuid": null,
+      "abilityName": "Deep Determination",
+      "attributeBonuses": null
+    },
+    {
+      "name": "Kwejian",
+      "talentUuid": null,
+      "abilityName": "Natural Balance",
+      "attributeBonuses": {
+        "daring": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Kzinti",
+      "talentUuid": null,
+      "abilityName": "Feline Predator",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Lanthanite",
+      "talentUuid": null,
+      "abilityName": "Lived Nearly Forever",
+      "attributeBonuses": null
+    },
+    {
+      "name": "Liberated Borg",
+      "talentUuid": null,
+      "abilityName": "Borg Implants",
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Lokirrim",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "daring": 1,
+        "insight": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Lurian",
+      "talentUuid": null,
+      "abilityName": "Resistant Anatomy",
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Mari",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Medusan",
+      "talentUuid": null,
+      "abilityName": "Sublime Mind, Hideous Form",
+      "attributeBonuses": {
+        "reason": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Megarite",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Monean",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Nanokin",
+      "talentUuid": null,
+      "abilityName": "Tiny Being in a Lifelike Android",
+      "attributeBonuses": {
+        "daring": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Napean",
+      "talentUuid": null,
+      "attributeBonuses": null
+    },
+    {
+      "name": "Nausicaan",
+      "talentUuid": null,
+      "abilityName": "Brute Force",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Ocampa",
+      "talentUuid": null,
+      "abilityName": "Extraordinary Mind",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Orion",
+      "talentUuid": "Compendium.sta.items-2e.Item.N6xVNYr73ATq8u0a",
+      "abilityName": "Never at Face Value",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Osnullus",
+      "talentUuid": null,
+      "abilityName": "Unreadable Face",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Pakled",
+      "talentUuid": null,
+      "abilityName": "Straightforward",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "insight": 1
+      }
+    },
+    {
+      "name": "Pandronian",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "insight": 1
+      }
+    },
+    {
+      "name": "Paradan",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "fitness": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Pendari",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Phylosian",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Qofuari",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "fitness": 1,
+        "insight": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Rakhari",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "daring": 1,
+        "insight": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Reman",
+      "talentUuid": null,
+      "abilityName": "Born to the Dark",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "insight": 1
+      }
+    },
+    {
+      "name": "Rigellian Chelon",
+      "talentUuid": null,
+      "abilityName": "Atavistic Defenses",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "insight": 1
+      }
+    },
+    {
+      "name": "Rigellian Jelna",
+      "talentUuid": null,
+      "abilityName": "Divergent Physiology",
+      "attributeBonuses": {
+        "fitness": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Risian",
+      "talentUuid": null,
+      "abilityName": "Clarity in Peace",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Romulan",
+      "talentUuid": "Compendium.sta.items-2e.Item.QfymxTqHmBsxRLwz",
+      "abilityName": "Paranoia",
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Saurian",
+      "talentUuid": null,
+      "abilityName": "Superior Metabolism",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Sikarian",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Skreeaa",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Skorr",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "daring": 1,
+        "fitness": 1
+      }
+    },
+    {
+      "name": "Son'a",
+      "talentUuid": null,
+      "abilityName": "At All Costs",
+      "attributeBonuses": {
+        "control": 1,
+        "daring": 1,
+        "insight": 1
+      }
+    },
+    {
+      "name": "Suliban",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "daring": 1,
+        "fitness": 1
+      }
+    },
+    {
+      "name": "Talaxian",
+      "talentUuid": null,
+      "abilityName": "Widely Traveled",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Talarian",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "daring": 1,
+        "fitness": 1
+      }
+    },
+    {
+      "name": "Tamarian",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Tellarite",
+      "talentUuid": "Compendium.sta.items-2e.Item.4DIRtDqtNv5lYAtw",
+      "abilityName": "Sturdy",
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "insight": 1
+      }
+    },
+    {
+      "name": "Terran",
+      "talentUuid": null,
+      "abilityName": "Accustomed to Violence",
+      "attributeBonuses": null
+    },
+    {
+      "name": "Tholian",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "daring": 1,
+        "fitness": 1
+      }
+    },
+    {
+      "name": "Tiburonian",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "insight": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Tosk",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "daring": 1,
+        "fitness": 1
+      }
+    },
+    {
+      "name": "Tribble",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "fitness": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Trill",
+      "talentUuid": "Compendium.sta.items-2e.Item.LqdVLvnmp1kEPeWy",
+      "abilityName": "Patient",
+      "attributeBonuses": {
+        "control": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Turei",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "daring": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Tzenkethi",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Vau N'Akat",
+      "talentUuid": null,
+      "abilityName": "Neuroflux",
+      "attributeBonuses": {
+        "control": 1,
+        "daring": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "VinShari",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Vorta",
+      "talentUuid": null,
+      "abilityName": "The Voice of the Founders",
+      "attributeBonuses": {
+        "insight": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Vulcan",
+      "talentUuid": "Compendium.sta.items-2e.Item.AhVrvilGn3wvrhDD",
+      "abilityName": "Mental Discipline",
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Wadi",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "fitness": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Xahean",
+      "talentUuid": null,
+      "abilityName": "Camouflage Field",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Xindi-Aquatic",
+      "talentUuid": null,
+      "abilityName": "Aquatic",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Xindi-Arboreal",
+      "talentUuid": null,
+      "abilityName": "Calm Under Pressure",
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Xindi-Insectoid",
+      "talentUuid": null,
+      "abilityName": "Insectoid",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Xindi-Primate",
+      "talentUuid": null,
+      "abilityName": "Adaptable and Talented",
+      "attributeBonuses": {
+        "daring": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Xindi-Reptilian",
+      "talentUuid": null,
+      "abilityName": "Durable Physiology",
+      "attributeBonuses": {
+        "daring": 1,
+        "fitness": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Yridian",
+      "talentUuid": null,
+      "abilityName": "Eidetic Memory",
+      "attributeBonuses": {
+        "insight": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Zakdorn",
+      "talentUuid": null,
+      "abilityName": "Several Moves Ahead",
+      "attributeBonuses": {
+        "insight": 1,
+        "presence": 1,
+        "reason": 1
+      }
+    },
+    {
+      "name": "Zahl",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "insight": 1,
+        "presence": 1
+      }
+    },
+    {
+      "name": "Zaranite",
+      "talentUuid": null,
+      "attributeBonuses": {
+        "control": 1,
+        "fitness": 1,
+        "reason": 1
+      }
+    }
+  ]
+}

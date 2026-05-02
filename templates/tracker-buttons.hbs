@@ -9,4 +9,9 @@
   <button type="button" id="sta-officers-log-new-scene-button" class="button sta-officers-log-new-scene" title="{{localize "sta-officers-log.tools.newScene"}}" aria-label="{{localize "sta-officers-log.tools.newScene"}}" data-action="newScene">
     <i class="fa-solid fa-clapperboard fa-fw" aria-hidden="true"></i>
   </button>
+  {{#if showCreationWizardButton}}
+  <button type="button" id="sta-officers-log-creation-wizard-button" class="button sta-officers-log-creation-wizard" title="{{localize "sta-officers-log.creation.wizardTitle"}}" aria-label="{{localize "sta-officers-log.creation.wizardTitle"}}" data-action="openCreationWizard">
+    <i class="fa-solid fa-user-plus fa-fw" aria-hidden="true"></i>
+  </button>
+  {{/if}}
 </div>

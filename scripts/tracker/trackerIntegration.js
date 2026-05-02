@@ -89,10 +89,22 @@ export async function installOfficersLogButtonsInStaTracker(app, root) {
     }
 
     // Render buttons from template
+    const staUtilsActive = game.modules.get("sta-utils")?.active ?? false;
+    let showCreationWizardButton = false;
+    if (staUtilsActive) {
+      try {
+        showCreationWizardButton = Boolean(
+          game.settings.get("sta-utils", "showCreationWizardButton"),
+        );
+      } catch (_) {
+        showCreationWizardButton = false;
+      }
+    }
     const buttonsHtml = await foundry.applications.handlebars.renderTemplate(
       TRACKER_BUTTONS_TEMPLATE,
       {
         moduleId: MODULE_ID,
+        showCreationWizardButton,
       },
     );
     columns.insertAdjacentHTML("beforeend", buttonsHtml);
@@ -131,6 +143,8 @@ export async function installOfficersLogButtonsInStaTracker(app, root) {
             game.staofficerslog.promptNewMissionAndReset();
           } else if (action === "newScene") {
             game.staofficerslog.newScene();
+          } else if (action === "openCreationWizard") {
+            game.staofficerslog.openCreationWizard();
           }
         } catch (err) {
           console.error(`${MODULE_ID} | tracker button failed`, err);

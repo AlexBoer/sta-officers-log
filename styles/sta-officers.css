@@ -3315,3 +3315,929 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
     border: 1px solid ButtonText;
   }
 }
+
+/* =============================================================================
+   Creation in Play — Wizard (sta-creation-wizard / .cw-*)
+   ============================================================================= */
+
+/* Window frame */
+.sta-creation-wizard {
+  overflow: hidden !important;
+  border-radius: 24px !important;
+}
+
+.sta-creation-wizard .window-content {
+  padding: 0 !important;
+  overflow-y: auto !important;
+  border-radius: 0 0 21px 21px;
+}
+
+/* Root container */
+.cw-wizard {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Step panels */
+.cw-panel {
+  display: none;
+  padding: 1rem 1.1rem 0.5rem;
+}
+
+.cw-panel.active {
+  display: block;
+}
+
+.cw-panel-title {
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #f1a43c;
+  margin: 0 0 0.85rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(241, 164, 60, 0.25);
+}
+
+/* Form rows */
+.cw-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.7rem;
+}
+
+.cw-label {
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #f0b872;
+}
+
+.cw-hint {
+  font-size: 0.72rem;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: rgba(240, 184, 114, 0.55);
+}
+
+.cw-input {
+  background: rgba(155, 143, 194, 0.1);
+  border: 1px solid rgba(155, 143, 194, 0.35);
+  border-radius: 6px;
+  color: #f0b872;
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.9rem;
+  padding: 0.35rem 0.6rem;
+  width: 100%;
+  box-sizing: border-box;
+
+  &:focus-visible {
+    outline: 2px solid transparent;
+    border-color: #f1a43c;
+    box-shadow: 0 0 4px rgba(241, 164, 60, 0.35);
+  }
+
+  &::placeholder {
+    color: rgba(240, 184, 114, 0.5);
+  }
+
+  &[multiple] option,
+  &:not([multiple]) option {
+    background: #1a1a1a;
+    color: #f0b872;
+  }
+}
+
+/* Chip pool (attribute drag-drop) */
+.cw-chip-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.5rem 0.6rem;
+  margin-bottom: 0.85rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px dashed rgba(155, 143, 194, 0.25);
+  border-radius: 10px;
+  transition: border-color 0.12s, background 0.12s;
+
+  &.done {
+    border-color: rgba(241, 164, 60, 0.3);
+    border-style: solid;
+  }
+
+  &.drag-over {
+    border-color: rgba(241, 164, 60, 0.6);
+    background: rgba(241, 164, 60, 0.06);
+  }
+}
+
+.cw-pool-done {
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.8rem;
+  color: rgba(241, 164, 60, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  i {
+    margin-right: 0.3em;
+  }
+}
+
+/* Chips */
+.cw-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 0.5rem;
+  background: rgba(241, 164, 60, 0.15);
+  border: 2px solid #f1a43c;
+  border-radius: 18px;
+  color: #f1a43c;
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: grab;
+  user-select: none;
+  transition: background 0.1s, transform 0.1s;
+
+  &:hover {
+    background: rgba(241, 164, 60, 0.28);
+    transform: scale(1.06);
+  }
+
+  &.dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+  }
+}
+
+/* Slot grid */
+.cw-slot-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cw-slot-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cw-slot-label {
+  flex: 0 0 110px;
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #f0b872;
+}
+
+.cw-drop-zone {
+  flex: 0 0 52px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 2px dashed rgba(155, 143, 194, 0.25);
+  background: rgba(0, 0, 0, 0.3);
+  transition: border-color 0.12s, background 0.12s;
+
+  &.drag-over {
+    border-color: #f1a43c;
+    background: rgba(241, 164, 60, 0.1);
+    border-style: solid;
+  }
+
+  &:not(.empty) {
+    border-style: solid;
+    border-color: rgba(241, 164, 60, 0.4);
+  }
+}
+
+.cw-slot-placeholder {
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.9rem;
+  color: rgba(155, 143, 194, 0.35);
+}
+
+.cw-bonus-col {
+  flex: 0 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cw-bonus-fixed {
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #f0b872;
+  background: rgba(241, 164, 60, 0.15);
+  border: 1px solid rgba(241, 164, 60, 0.45);
+  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+  line-height: 1;
+}
+
+.cw-bonus-col input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: #f0b872;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+}
+
+/* Read-only drop-zone in bonus selection grid (species step) */
+.cw-drop-zone--static {
+  pointer-events: none;
+  border-style: solid;
+  border-color: rgba(241, 164, 60, 0.25);
+
+  &.active {
+    border-color: rgba(241, 164, 60, 0.5);
+  }
+
+  .cw-chip--static {
+    cursor: default;
+
+    &:hover {
+      background: rgba(241, 164, 60, 0.15);
+      transform: none;
+    }
+  }
+}
+
+/* Bonus selection tally badge (X/3) */
+.cw-bonus-tally {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  letter-spacing: 0.5px;
+  color: rgba(240, 184, 114, 0.5);
+  background: rgba(155, 143, 194, 0.1);
+  border: 1px solid rgba(155, 143, 194, 0.3);
+  border-radius: 10px;
+  text-transform: none;
+  vertical-align: middle;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+
+  &.done {
+    color: #f1a43c;
+    background: rgba(241, 164, 60, 0.12);
+    border-color: rgba(241, 164, 60, 0.5);
+  }
+}
+
+.cw-bonus-selection-row {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(241, 164, 60, 0.15);
+}
+
+/* Generic combobox (role, division, species) */
+.cw-combobox {
+  position: relative;
+  width: 100%;
+}
+
+.cw-combobox-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  background: #1a1a1a;
+  border: 1px solid rgba(241, 164, 60, 0.45);
+  border-radius: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+
+  &.open {
+    display: block;
+  }
+}
+
+.cw-combobox-option {
+  padding: 0.35rem 0.7rem;
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.88rem;
+  color: #f0b872;
+  cursor: pointer;
+
+  &[hidden] {
+    display: none;
+  }
+
+  &:hover,
+  &.cw-combobox-option--active {
+    background: rgba(241, 164, 60, 0.15);
+    color: #fff;
+  }
+}
+
+/* Species info box (fixed bonuses + ability description) */
+.cw-species-info-box {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  background: rgba(241, 164, 60, 0.06);
+  border: 1px solid rgba(241, 164, 60, 0.2);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cw-species-info-label {
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: rgba(240, 184, 114, 0.7);
+  margin-right: 0.45rem;
+}
+
+.cw-species-bonus-display,
+.cw-species-ability-display {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.cw-species-bonus-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.cw-species-bonus-tag {
+  padding: 0.1rem 0.55rem;
+  border-radius: 10px;
+  background: rgba(241, 164, 60, 0.18);
+  border: 1px solid rgba(241, 164, 60, 0.35);
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.82rem;
+  color: #f0b872;
+}
+
+.cw-species-ability-name {
+  color: #f0b872;
+  font-size: 0.9rem;
+}
+
+.cw-species-ability-desc {
+  width: 100%;
+  margin: 0.2rem 0 0 0;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.4;
+}
+
+/* Species combobox (kept for backward compat, maps to generic) */
+.cw-species-combobox {
+  position: relative;
+  width: 100%;
+}
+
+.cw-species-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  background: #1a1a1a;
+  border: 1px solid rgba(241, 164, 60, 0.45);
+  border-radius: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+
+  &.open {
+    display: block;
+  }
+}
+
+.cw-species-option {
+  padding: 0.35rem 0.7rem;
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.88rem;
+  color: #f0b872;
+  cursor: pointer;
+
+  &[hidden] {
+    display: none;
+  }
+
+  &:hover,
+  &.cw-species-option--active {
+    background: rgba(241, 164, 60, 0.15);
+    color: #fff;
+  }
+}
+
+/* Department split radio */
+.cw-dept-split-radios {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.cw-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.9rem;
+  border: 2px solid rgba(155, 143, 194, 0.3);
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: rgba(240, 184, 114, 0.5);
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+
+  input[type="radio"] {
+    display: none;
+  }
+
+  &:hover {
+    border-color: rgba(241, 164, 60, 0.5);
+    color: #f0b872;
+  }
+
+  &.active {
+    border-color: #f1a43c;
+    background: rgba(241, 164, 60, 0.12);
+    color: #f1a43c;
+  }
+}
+
+/* Summary grid */
+.cw-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1.2rem;
+  margin-bottom: 0.75rem;
+}
+
+.cw-summary-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.cw-summary-section-title {
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #f0b872;
+  margin-bottom: 0.2rem;
+  border-bottom: 1px solid rgba(241, 164, 60, 0.2);
+  padding-bottom: 0.15rem;
+}
+
+.cw-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.82rem;
+  color: rgba(240, 184, 114, 0.8);
+}
+
+.cw-summary-key {
+  color: rgba(240, 184, 114, 0.55);
+}
+
+.cw-summary-value {
+  font-weight: 700;
+  color: #f0b872;
+}
+
+/* Navigation footer */
+.cw-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1.1rem;
+  border-top: 1px solid rgba(241, 164, 60, 0.2);
+  margin-top: 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 0 0 21px 21px;
+}
+
+.cw-step-indicator {
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(240, 184, 114, 0.4);
+}
+
+.cw-back,
+.cw-next,
+.cw-create {
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-radius: 14px;
+  padding: 0.35rem 1rem;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, opacity 0.12s;
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+}
+
+.cw-next,
+.cw-create {
+  background: #f1a43c;
+  border: none;
+  color: #111;
+
+  &:hover:not(:disabled) {
+    background: #f0b872;
+  }
+}
+
+.cw-back {
+  background: transparent;
+  border: 1px solid rgba(241, 164, 60, 0.45);
+  color: rgba(240, 184, 114, 0.7);
+
+  &:hover:not(:disabled) {
+    border-color: #f1a43c;
+    color: #f1a43c;
+  }
+}
+
+/* Equipment section in the role step */
+.cw-equipment-section {
+  border: 1px solid rgba(241, 164, 60, 0.2);
+  border-radius: 6px;
+  padding: 0.65rem 0.85rem;
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.cw-equipment-section-label {
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: rgba(240, 184, 114, 0.65);
+  margin-bottom: 0.1rem;
+}
+
+.cw-equipment-auto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cw-equipment-auto-label {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.45);
+  margin-right: 0.2rem;
+}
+
+.cw-auto-item {
+  font-size: 0.8rem;
+  color: rgba(240, 184, 114, 0.7);
+  background: rgba(241, 164, 60, 0.08);
+  border: 1px solid rgba(241, 164, 60, 0.2);
+  border-radius: 10px;
+  padding: 0.15rem 0.6rem;
+
+  i { color: rgba(140, 200, 130, 0.7); margin-right: 0.25rem; }
+}
+
+.cw-equipment-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cw-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: rgba(240, 184, 114, 0.85);
+
+  input[type="checkbox"] {
+    accent-color: #f1a43c;
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+  }
+}
+
+/* Attribute bonus grid on the species step (Human etc.) */
+.cw-attr-bonus-selection {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(240, 184, 114, 0.25);
+  border-radius: 4px;
+}
+
+.cw-attr-bonus-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.cw-attr-bonus-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.2rem 0.3rem;
+  border-radius: 3px;
+  color: rgba(200, 200, 200, 0.8);
+  transition: background 0.1s;
+
+  &.selected {
+    color: rgba(240, 184, 114, 1);
+    background: rgba(240, 184, 114, 0.1);
+  }
+
+  input[type="checkbox"] {
+    accent-color: #f1a43c;
+    width: 0.9rem;
+    height: 0.9rem;
+    flex-shrink: 0;
+  }
+}
+
+.cw-attr-bonus-label {
+  flex: 1;
+}
+
+/* =============================================================================
+   Creation in Play — Sheet Tab (.cip-*)
+   ============================================================================= */
+
+.cip-tab {
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cip-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cip-header-title {
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #f1a43c;
+  margin: 0;
+}
+
+.cip-header-subtitle {
+  font-size: 0.78rem;
+  color: rgba(240, 184, 114, 0.55);
+  margin: 0;
+}
+
+.cip-equipment-block {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(241, 164, 60, 0.2);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+
+.cip-equip-label {
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: rgba(240, 184, 114, 0.55);
+  margin-bottom: 0.2rem;
+}
+
+.cip-equip-text {
+  font-size: 0.85rem;
+  color: #f0b872;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* Progress rows */
+.cip-progress-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cip-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(155, 143, 194, 0.12);
+  transition: background 0.1s;
+
+  &.cip-complete {
+    border-color: rgba(241, 164, 60, 0.3);
+    background: rgba(241, 164, 60, 0.05);
+  }
+}
+
+.cip-row-icon {
+  flex: 0 0 18px;
+  color: rgba(240, 184, 114, 0.5);
+  font-size: 0.9rem;
+
+  .cip-complete & {
+    color: #f1a43c;
+  }
+}
+
+.cip-row-label {
+  flex: 0 0 110px;
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #f0b872;
+}
+
+.cip-row-count {
+  flex: 0 0 48px;
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.8rem;
+  color: rgba(240, 184, 114, 0.6);
+  text-align: right;
+}
+
+.cip-dots {
+  display: flex;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.cip-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(155, 143, 194, 0.2);
+  border: 1px solid rgba(155, 143, 194, 0.3);
+  transition: background 0.1s, border-color 0.1s;
+
+  &.filled {
+    background: #f1a43c;
+    border-color: #f1a43c;
+  }
+}
+
+.cip-row-hint {
+  flex: 1;
+  font-size: 0.72rem;
+  color: rgba(240, 184, 114, 0.4);
+  text-align: right;
+}
+
+.cip-define-btn {
+  flex: 0 0 auto;
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: 10px;
+  padding: 0.2rem 0.65rem;
+  background: transparent;
+  border: 1px solid rgba(241, 164, 60, 0.5);
+  color: rgba(240, 184, 114, 0.7);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+
+  &:hover {
+    background: rgba(241, 164, 60, 0.12);
+    border-color: #f1a43c;
+    color: #f1a43c;
+  }
+}
+
+.cip-done-badge {
+  flex: 0 0 auto;
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(241, 164, 60, 0.55);
+  padding: 0.2rem 0.5rem;
+}
+
+/* Finish section */
+.cip-finish-section {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.cip-finish-hint {
+  font-size: 0.78rem;
+  color: rgba(240, 184, 114, 0.45);
+}
+
+.cip-finish-btn {
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-radius: 14px;
+  padding: 0.4rem 1.2rem;
+  background: #f1a43c;
+  border: none;
+  color: #111;
+  cursor: pointer;
+  transition: background 0.12s, opacity 0.12s;
+
+  &:hover:not(:disabled) {
+    background: #f0b872;
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+}
+
+/* High contrast overrides for creation wizard/tab */
+@media (forced-colors: active) {
+  .cw-drop-zone,
+  .cw-chip-pool {
+    border: 1px solid ButtonText;
+  }
+  .cw-chip {
+    border: 2px solid ButtonText;
+  }
+  .cip-dot.filled {
+    background: Highlight;
+    border-color: Highlight;
+  }
+  .cip-finish-btn,
+  .cw-next,
+  .cw-create {
+    border: 1px solid ButtonText;
+  }
+}

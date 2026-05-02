@@ -1111,6 +1111,51 @@ const getTraitNames = (actor) => {
     .map((trait) => normalizeRequirementString(trait?.name));
 };
 
+/**
+ * Check whether an actor has a given species (case-insensitive).
+ * Checks trait items first (most reliable for STA characters created via the
+ * wizard), then the system.species field (STA 2e), then system.details.species
+ * (legacy path).
+ */
+const _actorHasSpecies = (actor, speciesNorm) => {
+  if (!speciesNorm) return true;
+  const traits = getTraitNames(actor);
+  if (traits.some((name) => name === speciesNorm || name.includes(speciesNorm)))
+    return true;
+  const sysSpecies =
+    normalizeRequirementString(
+      foundry.utils.getProperty(actor, "system.species"),
+    ) ||
+    normalizeRequirementString(
+      foundry.utils.getProperty(actor, "system.details.species"),
+    );
+  return sysSpecies === speciesNorm || sysSpecies.includes(speciesNorm);
+};
+
+/**
+ * Try to infer the required species name from a talent entry when the talent
+ * does not have typeenum set to "species". Returns a normalized species name
+ * string, or null if the talent doesn't appear to be species-locked.
+ *
+ * Uses two signals:
+ *   1. The talent name itself is a known species name (e.g. "Vulcan").
+ *   2. The talent image path contains a species name (e.g. "talent-vulcan.svg").
+ */
+const _inferRequiredSpeciesFromTalent = (talentEntry) => {
+  const name = normalizeRequirementString(talentEntry?.name);
+  if (name && SPECIES_TALENT_NAMES.has(name)) return name;
+  const img = String(talentEntry?.img ?? "").toLowerCase();
+  for (const species of SPECIES_TALENT_NAMES) {
+    if (
+      img.includes(`-${species}`) ||
+      img.includes(`/${species}`) ||
+      img.includes(`_${species}`)
+    )
+      return species;
+  }
+  return null;
+};
+
 const getLegacyHouse = (actor) => {
   const legacy = foundry.utils.getProperty(actor, "system.legacy");
   if (!legacy) return "";
@@ -1188,7 +1233,14 @@ export function doesActorMeetTalentRequirements(actor, talentEntry) {
   if (!actor) return true;
   const talenttype =
     talentEntry?.talenttype ?? talentEntry?.system?.talenttype ?? null;
-  if (!talenttype) return true;
+  if (!talenttype) {
+    // Even without talenttype, infer species requirement from name/image.
+    if (actor) {
+      const inferred = _inferRequiredSpeciesFromTalent(talentEntry);
+      if (inferred) return _actorHasSpecies(actor, inferred);
+    }
+    return true;
+  }
 
   const type = normalizeRequirementString(talenttype.typeenum);
   const description = normalizeRequirementString(talenttype.description);
@@ -1199,6 +1251,12 @@ export function doesActorMeetTalentRequirements(actor, talentEntry) {
   switch (type) {
     case "spell":
     case "general":
+      // If the talent is identifiable as a species talent by name or image,
+      // treat it as a species requirement even when typeenum is not "species".
+      if (actor) {
+        const inferred = _inferRequiredSpeciesFromTalent(talentEntry);
+        if (inferred) return _actorHasSpecies(actor, inferred);
+      }
       return true;
     case "system":
       return true;
@@ -1221,14 +1279,11 @@ export function doesActorMeetTalentRequirements(actor, talentEntry) {
       return value >= minimum;
     }
     case "species": {
-      if (!description) return true;
-      const required = description;
-      const traits = getTraitNames(actor);
-      if (traits.some((name) => name.includes(required))) return true;
-      const speciesDetail = normalizeRequirementString(
-        foundry.utils.getProperty(actor, "system.details.species"),
-      );
-      return speciesDetail.includes(required);
+      // Use the description if set; otherwise infer species from name/image.
+      const required =
+        description || _inferRequiredSpeciesFromTalent(talentEntry);
+      if (!required) return true;
+      return _actorHasSpecies(actor, required);
     }
     case "house": {
       if (!description) return true;
@@ -1236,6 +1291,11 @@ export function doesActorMeetTalentRequirements(actor, talentEntry) {
       return house.includes(description);
     }
     default:
+      // Last-resort species inference for talents with unrecognised requirement types.
+      if (actor) {
+        const inferred = _inferRequiredSpeciesFromTalent(talentEntry);
+        if (inferred) return _actorHasSpecies(actor, inferred);
+      }
       return true;
   }
 }

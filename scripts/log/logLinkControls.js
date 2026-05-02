@@ -494,6 +494,8 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     // Keep the current selection available so existing data isn't broken.
     // Keep the *saved* selection available so existing data isn't broken.
     if (tId !== String(_baselineFromLogId)) {
+      // Arc-completing logs cannot be new callback targets.
+      if (completedArcEndLogIds.has(tId)) return false;
       const usedTarget = actor.items.get(tId);
       if (usedTarget?.type === "log" && isLogUsed(usedTarget)) return false;
     }
@@ -527,11 +529,13 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       const disabled = eligible || isBaseline ? "" : " disabled";
       const suffix = eligible
         ? ""
-        : isLogUsed(l)
-          ? " (already used)"
-          : vId
-            ? " (different primary value)"
-            : "";
+        : completedArcEndLogIds.has(id)
+          ? " (arc completed)"
+          : isLogUsed(l)
+            ? " (already used)"
+            : vId
+              ? " (different primary value)"
+              : "";
 
       options.push(
         `<option value="${escapeHTML(id)}"${sel}${disabled}>${escapeHTML(

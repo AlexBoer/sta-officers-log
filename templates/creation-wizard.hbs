@@ -1,0 +1,352 @@
+<div class="cw-wizard">
+
+  {{!-- ── Step: Role ─────────────────────────────────────────────────────── --}}
+  <div class="cw-panel{{#if stepPanels.role}} active{{/if}}" data-panel="role">
+    <h3 class="cw-panel-title">Step 1 — Role &amp; Background</h3>
+
+    <div class="cw-field-row">
+      <label class="cw-label">Character Name <span class="cw-required">*</span></label>
+      <input class="cw-input" type="text" name="cw-name" value="{{name}}"
+        placeholder="Character Name" autofocus>
+    </div>
+
+    <div class="cw-field-row">
+      <label class="cw-label">Role <span class="cw-required">*</span></label>
+      <div class="cw-combobox" data-combobox="role">
+        <input class="cw-input" type="text" name="cw-role" value="{{role}}"
+          placeholder="Search or type a role…" autocomplete="off"
+          aria-expanded="false" aria-autocomplete="list">
+        <ul class="cw-combobox-dropdown" role="listbox">
+          {{#each roleOptions}}
+          <li class="cw-combobox-option" role="option" data-value="{{value}}">{{label}}</li>
+          {{/each}}
+        </ul>
+      </div>
+    </div>
+
+    <div class="cw-field-row">
+      <label class="cw-label">Division / Organization</label>
+      <div class="cw-combobox" data-combobox="division">
+        <input class="cw-input" type="text" name="cw-division" value="{{division}}"
+          placeholder="Search or enter division…" autocomplete="off"
+          aria-expanded="false" aria-autocomplete="list">
+        <ul class="cw-combobox-dropdown" role="listbox">
+          {{#each divisionOptions}}
+          <li class="cw-combobox-option" role="option" data-value="{{value}}">{{label}}</li>
+          {{/each}}
+        </ul>
+      </div>
+    </div>
+
+    <div class="cw-field-row">
+      <label class="cw-label">
+        Career Trait <span class="cw-hint">(e.g. "Starfleet Officer")</span>
+      </label>
+      <input class="cw-input" type="text" name="cw-career-trait" value="{{careerTrait}}"
+        placeholder="e.g. Starfleet Officer">
+    </div>
+
+    <div class="cw-equipment-section">
+      <div class="cw-equipment-section-label"><i class="fa-solid fa-backpack"></i> Starting Equipment</div>
+
+      <div class="cw-equipment-auto">
+        <span class="cw-equipment-auto-label">Always included:</span>
+        <span class="cw-auto-item"><i class="fa-solid fa-check"></i> Tricorder</span>
+        <span class="cw-auto-item"><i class="fa-solid fa-check"></i> Communicator</span>
+        <span class="cw-auto-item"><i class="fa-solid fa-check"></i> Uniform</span>
+      </div>
+
+      <div class="cw-field-row">
+        <label class="cw-label">Phaser</label>
+        <div class="cw-dept-split-radios">
+          <label class="cw-radio-label cw-phaser-label{{#if (eq phaserChoice 'none')}} active{{/if}}">
+            <input type="radio" name="cw-phaser" value="none" {{#if (eq phaserChoice 'none')}}checked{{/if}}> None
+          </label>
+          <label class="cw-radio-label cw-phaser-label{{#if (eq phaserChoice 'type1')}} active{{/if}}">
+            <input type="radio" name="cw-phaser" value="type1" {{#if (eq phaserChoice 'type1')}}checked{{/if}}> Type-1
+          </label>
+          <label class="cw-radio-label cw-phaser-label{{#if (eq phaserChoice 'type2')}} active{{/if}}">
+            <input type="radio" name="cw-phaser" value="type2" {{#if (eq phaserChoice 'type2')}}checked{{/if}}> Type-2
+          </label>
+        </div>
+      </div>
+
+      <div class="cw-equipment-options">
+        <label class="cw-checkbox-label">
+          <input type="checkbox" name="cw-engineering-kit" {{#if includeEngineeringKit}}checked{{/if}}>
+          Engineering Kit <span class="cw-hint">(for engineering roles)</span>
+        </label>
+        <label class="cw-checkbox-label">
+          <input type="checkbox" name="cw-med-kit" {{#if includeMedKit}}checked{{/if}}>
+          Medical Kit <span class="cw-hint">(for medical roles)</span>
+        </label>
+      </div>
+
+      <div class="cw-field-row">
+        <label class="cw-label">Additional Notes <span class="cw-hint">(optional)</span></label>
+        <textarea class="cw-input cw-textarea" name="cw-equipment-notes"
+          placeholder="e.g. Personal device, specialty tool…"
+          rows="2">{{equipmentNotes}}</textarea>
+      </div>
+    </div>
+  </div>
+
+  {{!-- ── Step: Attributes ────────────────────────────────────────────────── --}}
+  <div class="cw-panel{{#if stepPanels.attributes}} active{{/if}}" data-panel="attributes">
+    <h3 class="cw-panel-title">Step 2 — Assign Attributes</h3>
+    <p class="cw-hint">Drag numbers from the pool onto attribute rows. Drag a placed chip back to the pool to un-assign it.</p>
+
+    <div class="cw-chip-pool{{#if attrPoolEmpty}} done{{/if}}" id="cw-attr-pool">
+      {{#each availableAttrChips}}
+      <div class="cw-chip" draggable="true" data-value="{{this}}" data-source-key="">{{this}}</div>
+      {{/each}}
+      {{#if attrPoolEmpty}}<span class="cw-pool-done"><i class="fa-solid fa-check"></i> All assigned</span>{{/if}}
+    </div>
+
+    {{#if showBonusColumn}}
+    <p class="cw-hint cw-bonus-hint">
+      {{#if needsAttributeBonusSelection}}
+        Choose 3 attributes to receive <strong>+1</strong> (species bonus for {{effectiveSpecies}})
+      {{else}}
+        Attributes marked <strong>+1</strong> include your {{effectiveSpecies}} species bonus
+      {{/if}}
+    </p>
+    {{/if}}
+
+    <div class="cw-slot-grid{{#if showBonusColumn}} has-bonus-col{{/if}}">
+      {{#each attributeSlots}}
+      <div class="cw-slot-row">
+        <span class="cw-slot-label">{{label}}</span>
+        <div class="cw-drop-zone{{#unless value}} empty{{/unless}}" data-key="{{key}}">
+          {{#if value}}
+          <div class="cw-chip cw-chip--assigned" draggable="true"
+            data-value="{{value}}" data-source-key="{{key}}">{{value}}</div>
+          {{else}}
+          <span class="cw-slot-placeholder">—</span>
+          {{/if}}
+        </div>
+        {{#if ../showBonusColumn}}
+        <div class="cw-bonus-col">
+          {{#if fixedBonus}}
+          <span class="cw-bonus-fixed">+1</span>
+          {{else if choiceBonus}}
+          <input type="checkbox" class="cw-bonus-attr-cb" value="{{key}}"
+            {{#if choiceBonus.selected}}checked{{/if}}
+            {{#if choiceBonus.disabled}}disabled{{/if}}>
+          {{/if}}
+        </div>
+        {{/if}}
+      </div>
+      {{/each}}
+    </div>
+  </div>
+
+  {{!-- ── Step: Species ────────────────────────────────────────────────────── --}}
+  <div class="cw-panel{{#if stepPanels.species}} active{{/if}}" data-panel="species">
+    <h3 class="cw-panel-title">Step 3 — Choose Species</h3>
+    <p class="cw-hint">Select from the catalog or enter a custom species. Species becomes a trait and applies attribute bonuses.</p>
+
+    <div class="cw-field-row cw-species-combobox-wrap{{#if useCustomSpecies}} hidden{{/if}}">
+      <label class="cw-label">Species <span class="cw-required">*</span></label>
+      {{#if speciesFromCatalog}}
+      <div class="cw-combobox" data-combobox="species">
+        <input class="cw-input" type="text" name="cw-species" value="{{species}}"
+          placeholder="Search species…" autocomplete="off" role="combobox"
+          aria-expanded="false" aria-autocomplete="list">
+        <ul class="cw-combobox-dropdown" role="listbox">
+          {{#each speciesList}}
+          <li class="cw-combobox-option" role="option" data-value="{{name}}">{{name}}</li>
+          {{/each}}
+        </ul>
+      </div>
+      {{else}}
+      <input class="cw-input" type="text" name="cw-species" value="{{species}}"
+        placeholder="e.g. Vulcan">
+      {{/if}}
+    </div>
+
+    {{#if speciesHasInfo}}
+    <div class="cw-species-info-box">
+      {{#if speciesHasFixedBonuses}}
+      <div class="cw-species-bonus-display">
+        <span class="cw-species-info-label">Attribute Bonuses:</span>
+        <span class="cw-species-bonus-tags">
+          {{#each speciesFixedBonuses}}<span class="cw-species-bonus-tag">+{{bonus}} {{label}}</span>{{/each}}
+        </span>
+      </div>
+      {{/if}}
+      {{#if speciesAbilityName}}
+      <div class="cw-species-ability-display">
+        <span class="cw-species-info-label">Species Ability:</span>
+        <strong class="cw-species-ability-name">{{speciesAbilityName}}</strong>
+        {{#if speciesAbilityDesc}}<p class="cw-species-ability-desc">{{speciesAbilityDesc}}</p>{{/if}}
+      </div>
+      {{/if}}
+    </div>
+    {{/if}}
+
+    <div class="cw-field-row cw-species-custom-wrap{{#unless useCustomSpecies}} hidden{{/unless}}">
+      <label class="cw-label">Custom Species Name <span class="cw-required">*</span></label>
+      <input class="cw-input" type="text" name="cw-species-custom" value="{{speciesCustom}}"
+        placeholder="e.g. Ocampan Hybrid">
+      <p class="cw-hint" style="margin-top:0.35rem">Attribute bonuses will not be applied automatically for custom species. Adjust attributes manually after creation.</p>
+    </div>
+
+    <div class="cw-field-row cw-custom-species-toggle-row">
+      <label class="cw-label cw-checkbox-label">
+        <input type="checkbox" name="cw-species-custom-toggle" {{#if useCustomSpecies}}checked{{/if}}>
+        Use custom / unlisted species
+      </label>
+    </div>
+
+    {{#if needsAttributeBonusSelection}}
+    <div class="cw-field-row cw-bonus-selection-row">
+      <label class="cw-label">
+        Species Attribute Bonuses
+        <span class="cw-bonus-tally{{#if bonusSelectionComplete}} done{{/if}}">{{selectedAttrBonusCount}}/3</span>
+      </label>
+      <p class="cw-hint">
+        <strong>{{effectiveSpecies}}</strong> may freely assign their species bonuses.
+        Choose <strong>3 attributes</strong> to receive <strong>+1</strong>.
+      </p>
+      <div class="cw-slot-grid has-bonus-col">
+        {{#each attributeSlots}}
+        <div class="cw-slot-row">
+          <span class="cw-slot-label">{{label}}</span>
+          <div class="cw-drop-zone cw-drop-zone--static{{#if value}} active{{/if}}">
+            {{#if value}}
+            <div class="cw-chip cw-chip--static">{{value}}</div>
+            {{else}}
+            <span class="cw-slot-placeholder">—</span>
+            {{/if}}
+          </div>
+          <div class="cw-bonus-col">
+            <input type="checkbox" class="cw-bonus-attr-cb" value="{{key}}"
+              {{#if choiceBonus.selected}}checked{{/if}}
+              {{#if choiceBonus.disabled}}disabled{{/if}}>
+          </div>
+        </div>
+        {{/each}}
+      </div>
+    </div>
+    {{/if}}
+
+  </div>
+
+  {{!-- ── Step: Departments ───────────────────────────────────────────────── --}}
+  <div class="cw-panel{{#if stepPanels.departments}} active{{/if}}" data-panel="departments">
+    <h3 class="cw-panel-title">Step 4 — Primary Departments</h3>
+    <p class="cw-hint">Choose two departments and assign their starting ratings. The other four start at 0 and will be defined during play.</p>
+
+    <div class="cw-field-row">
+      <label class="cw-label">Department Split</label>
+      <div class="cw-radio-group">
+        <label class="cw-radio-label{{#if deptSplit53}} active{{/if}}">
+          <input type="radio" name="cw-dept-split" value="5-3" {{#if deptSplit53}}checked{{/if}}> 5 &amp; 3
+        </label>
+        <label class="cw-radio-label{{#if deptSplit44}} active{{/if}}">
+          <input type="radio" name="cw-dept-split" value="4-4" {{#if deptSplit44}}checked{{/if}}> 4 &amp; 4
+        </label>
+      </div>
+    </div>
+
+    <div class="cw-dept-row">
+      <div class="cw-field-row cw-dept-field">
+        <label class="cw-label">Primary Department <span class="cw-dept1-rating cw-rating-badge">{{dept1Rating}}</span></label>
+        <select class="cw-input" name="cw-dept1">
+          <option value="">— Choose —</option>
+          {{#each disciplineOptions}}
+          <option value="{{key}}" {{#if (eq key ../primaryDept1)}}selected{{/if}}>{{label}}</option>
+          {{/each}}
+        </select>
+      </div>
+      <div class="cw-field-row cw-dept-field">
+        <label class="cw-label">Secondary Department <span class="cw-dept2-rating cw-rating-badge">{{dept2Rating}}</span></label>
+        <select class="cw-input" name="cw-dept2">
+          <option value="">— Choose —</option>
+          {{#each disciplineOptions}}
+          <option value="{{key}}" {{#if (eq key ../primaryDept2)}}selected{{/if}}>{{label}}</option>
+          {{/each}}
+        </select>
+      </div>
+    </div>
+
+    <p class="cw-hint" style="margin-top:0.5rem">
+      If Starfleet, one department should match the character's division.
+      The remaining four departments (rated 3, 2, 2, 1) will be defined during play.
+    </p>
+  </div>
+
+  {{!-- ── Step: Value ─────────────────────────────────────────────────────── --}}
+  <div class="cw-panel{{#if stepPanels.value}} active{{/if}}" data-panel="value">
+    <h3 class="cw-panel-title">Step 5 — Starting Value</h3>
+    <p class="cw-hint">Choose a single value that reflects the basic concept of the character. The other three values will be defined during play.</p>
+
+    <div class="cw-field-row">
+      <label class="cw-label">Value <span class="cw-required">*</span></label>
+      <input class="cw-input" type="text" name="cw-value" value="{{value}}"
+        placeholder="e.g. Duty Above All Else" autofocus>
+    </div>
+
+    <div class="cw-value-hint-box">
+      <p><strong>Reminder:</strong> This value should reflect the basic concept for the character and be broadly applicable. The character's other values will be determined during play when the player declares they're defining a new value.</p>
+    </div>
+  </div>
+
+  {{!-- ── Step: Summary ───────────────────────────────────────────────────── --}}
+  <div class="cw-panel{{#if stepPanels.summary}} active{{/if}}" data-panel="summary">
+    <h3 class="cw-panel-title">Summary — Ready to Begin Play!</h3>
+
+    <div class="cw-summary-grid">
+      <div class="cw-summary-row"><span class="cw-summary-label">Name</span><span class="cw-summary-value">{{summaryName}}</span></div>
+      <div class="cw-summary-row"><span class="cw-summary-label">Role</span><span class="cw-summary-value">{{summaryRole}}</span></div>
+      <div class="cw-summary-row"><span class="cw-summary-label">Species</span><span class="cw-summary-value">{{summarySpecies}}</span></div>
+      {{#if summaryCareerTrait}}<div class="cw-summary-row"><span class="cw-summary-label">Career Trait</span><span class="cw-summary-value">{{summaryCareerTrait}}</span></div>{{/if}}
+      {{#if summaryDivision}}<div class="cw-summary-row"><span class="cw-summary-label">Division</span><span class="cw-summary-value">{{summaryDivision}}</span></div>{{/if}}
+      <div class="cw-summary-row"><span class="cw-summary-label">Dept. 1</span><span class="cw-summary-value">{{summaryDept1}}</span></div>
+      <div class="cw-summary-row"><span class="cw-summary-label">Dept. 2</span><span class="cw-summary-value">{{summaryDept2}}</span></div>
+      <div class="cw-summary-row"><span class="cw-summary-label">Starting Value</span><span class="cw-summary-value">{{summaryValue}}</span></div>
+    </div>
+
+    <div class="cw-summary-attrs">
+      <div class="cw-summary-section-label">Attributes (Total: {{summaryAttrTotal}})</div>
+      <div class="cw-summary-attr-grid">
+        {{#each summaryAttributeSlots}}
+        <div class="cw-summary-attr-cell">
+          <span class="cw-summary-attr-label">{{label}}</span>
+          <span class="cw-summary-attr-val">{{total}}</span>
+          {{#if bonus}}<span class="cw-summary-attr-bonus">+{{bonus}}</span>{{/if}}
+        </div>
+        {{/each}}
+      </div>
+    </div>
+
+    <div class="cw-summary-row"><span class="cw-summary-label">Equipment</span><span class="cw-summary-value">{{summaryEquipment}}</span></div>
+    {{#if summaryEquipmentNotes}}
+    <div class="cw-summary-row"><span class="cw-summary-label">Equip. Notes</span><span class="cw-summary-value">{{summaryEquipmentNotes}}</span></div>
+    {{/if}}
+
+    <div class="cw-summary-notice">
+      <i class="fa-solid fa-circle-info"></i>
+      After creation, open the character sheet. A <strong>Creation in Play</strong> tab will track which elements still need to be defined (Values, Departments, Focuses, Talents).
+    </div>
+  </div>
+
+  {{!-- ── Navigation ──────────────────────────────────────────────────────── --}}
+  <div class="cw-nav">
+    <button class="cw-btn cw-back" type="button" {{#if isFirstStep}}disabled{{/if}}>
+      <i class="fa-solid fa-arrow-left"></i> Back
+    </button>
+    <span class="cw-step-indicator">{{stepLabel}}</span>
+    {{#if isLastStep}}
+    <button class="cw-btn cw-btn--primary cw-create" type="button">
+      <i class="fa-solid fa-user-plus"></i> Create Character
+    </button>
+    {{else}}
+    <button class="cw-btn cw-btn--primary cw-next" type="button" {{#unless canProceed}}disabled{{/unless}}>
+      Next <i class="fa-solid fa-arrow-right"></i>
+    </button>
+    {{/if}}
+  </div>
+
+</div>

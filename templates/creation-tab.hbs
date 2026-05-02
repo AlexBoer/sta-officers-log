@@ -1,0 +1,188 @@
+<div class="cip-tab">
+
+  <div class="cip-header">
+    <div class="cip-header-icon"><i class="fa-solid fa-user-clock"></i></div>
+    <div class="cip-header-text">
+      <p class="cip-subtitle">This character is still being created. Define the remaining elements during play.</p>
+    </div>
+  </div>
+
+  {{#if audit.equipmentNotes}}
+  <div class="cip-equipment-notes">
+    <span class="cip-equipment-label"><i class="fa-solid fa-backpack"></i> Starting Equipment:</span>
+    <span>{{audit.equipmentNotes}}</span>
+  </div>
+  {{/if}}
+
+  {{!-- ── Progress rows ─────────────────────────────────────────────────────── --}}
+  <div class="cip-progress-section">
+
+    {{!-- Values --}}
+    <div class="cip-progress-row">
+      <div class="cip-progress-icon"><i class="fa-solid fa-star"></i></div>
+      <div class="cip-progress-body">
+        <div class="cip-progress-header">
+          <span class="cip-progress-label">Values</span>
+          <span class="cip-progress-count {{#if (eq audit.valuesNeeded 0)}}done{{/if}}">
+            {{audit.valueCount}} / {{audit.valueTarget}}
+          </span>
+        </div>
+        <div class="cip-dots">
+          {{#each audit.valueDots}}
+          <span class="cip-dot{{#if filled}} filled{{/if}}"></span>
+          {{/each}}
+        </div>
+        {{#if audit.valuesNeeded}}
+        <p class="cip-element-hint">When attempting a task, declare you're defining a value. Choose a value applicable to the task and gain 1 Determination immediately.</p>
+        {{/if}}
+      </div>
+      <div class="cip-progress-action">
+        {{#if audit.valuesNeeded}}
+        <button class="cip-define-btn" type="button" data-action="define-value"
+          title="Define a Value now">
+          <i class="fa-solid fa-plus"></i> Define
+        </button>
+        {{else}}
+        <span class="cip-done-badge"><i class="fa-solid fa-check"></i></span>
+        {{/if}}
+      </div>
+    </div>
+
+    {{!-- Departments --}}
+    <div class="cip-progress-row">
+      <div class="cip-progress-icon"><i class="fa-solid fa-sitemap"></i></div>
+      <div class="cip-progress-body">
+        <div class="cip-progress-header">
+          <span class="cip-progress-label">Departments</span>
+          <span class="cip-progress-count {{#if (eq audit.deptsNeeded 0)}}done{{/if}}">
+            {{audit.definedDeptCount}} / {{audit.deptTarget}}
+          </span>
+        </div>
+        <div class="cip-dots">
+          {{#each audit.deptDots}}
+          <span class="cip-dot{{#if filled}} filled{{/if}}"></span>
+          {{/each}}
+        </div>
+        {{#if audit.undefinedDepts.length}}
+        <p class="cip-element-hint">When called to use an undefined department, define it now. Remaining ratings: <strong>{{#each audit.remainingDeptRatings}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}</strong></p>
+        <div class="cip-undefined-depts">
+          {{#each audit.undefinedDepts}}
+          <span class="cip-undefined-badge">{{label}} (0)</span>
+          {{/each}}
+        </div>
+        {{/if}}
+      </div>
+      <div class="cip-progress-action">
+        {{#if audit.deptsNeeded}}
+        <button class="cip-define-btn" type="button" data-action="define-department"
+          title="Define a Department now">
+          <i class="fa-solid fa-plus"></i> Define
+        </button>
+        {{else}}
+        <span class="cip-done-badge"><i class="fa-solid fa-check"></i></span>
+        {{/if}}
+      </div>
+    </div>
+
+    {{!-- Focuses --}}
+    <div class="cip-progress-row">
+      <div class="cip-progress-icon"><i class="fa-solid fa-crosshairs"></i></div>
+      <div class="cip-progress-body">
+        <div class="cip-progress-header">
+          <span class="cip-progress-label">Focuses</span>
+          <span class="cip-progress-count {{#if (eq audit.focusesNeeded 0)}}done{{/if}}">
+            {{audit.focusCount}} / {{audit.focusTarget}}
+          </span>
+        </div>
+        <div class="cip-dots">
+          {{#each audit.focusDots}}
+          <span class="cip-dot{{#if filled}} filled{{/if}}"></span>
+          {{/each}}
+        </div>
+        {{#if audit.focusesNeeded}}
+        <p class="cip-element-hint">When attempting a task, declare you're defining a focus applicable to that task.</p>
+        {{/if}}
+      </div>
+      <div class="cip-progress-action">
+        {{#if audit.focusesNeeded}}
+        <button class="cip-define-btn" type="button" data-action="define-focus"
+          title="Define a Focus now">
+          <i class="fa-solid fa-plus"></i> Define
+        </button>
+        {{else}}
+        <span class="cip-done-badge"><i class="fa-solid fa-check"></i></span>
+        {{/if}}
+      </div>
+    </div>
+
+    {{!-- Talents --}}
+    <div class="cip-progress-row">
+      <div class="cip-progress-icon"><i class="fa-solid fa-wand-sparkles"></i></div>
+      <div class="cip-progress-body">
+        <div class="cip-progress-header">
+          <span class="cip-progress-label">Talents</span>
+          <span class="cip-progress-count {{#if (eq audit.talentsNeeded 0)}}done{{/if}}">
+            {{audit.talentCount}} / {{audit.talentTarget}}
+          </span>
+        </div>
+        <div class="cip-dots">
+          {{#each audit.talentDots}}
+          <span class="cip-dot{{#if filled}} filled{{/if}}"></span>
+          {{/each}}
+        </div>
+        {{#if audit.talentsNeeded}}
+        <p class="cip-element-hint">At any point during a session, declare you're choosing a talent. The character must meet any requirements.</p>
+        {{/if}}
+      </div>
+      <div class="cip-progress-action">
+        {{#if audit.talentsNeeded}}
+        <button class="cip-define-btn" type="button" data-action="define-talent"
+          title="Define a Talent now">
+          <i class="fa-solid fa-plus"></i> Define
+        </button>
+        {{else}}
+        <span class="cip-done-badge"><i class="fa-solid fa-check"></i></span>
+        {{/if}}
+      </div>
+    </div>
+
+    {{!-- Pastime (optional / informational) --}}
+    <div class="cip-progress-row cip-progress-row--optional">
+      <div class="cip-progress-icon"><i class="fa-solid fa-chess-pawn"></i></div>
+      <div class="cip-progress-body">
+        <div class="cip-progress-header">
+          <span class="cip-progress-label">Pastime <span class="cip-optional-badge">optional</span></span>
+        </div>
+        <p class="cip-element-hint">May be defined any time. Does not block completion.</p>
+      </div>
+      <div class="cip-progress-action">
+        <button class="cip-define-btn cip-define-btn--optional" type="button" data-action="define-pastime"
+          title="Define a Pastime">
+          <i class="fa-solid fa-plus"></i> Define
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  {{!-- ── Finish button ────────────────────────────────────────────────────── --}}
+  <div class="cip-finish-section">
+    {{#if audit.isComplete}}
+    <p class="cip-complete-msg"><i class="fa-solid fa-circle-check"></i> All elements have been defined. You can now finish character creation.</p>
+    {{else}}
+    <p class="cip-incomplete-msg">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      Still needed:
+      {{#if audit.valuesNeeded}}<span>{{audit.valuesNeeded}} value(s)</span>{{/if}}
+      {{#if audit.deptsNeeded}}<span>{{audit.deptsNeeded}} department(s)</span>{{/if}}
+      {{#if audit.focusesNeeded}}<span>{{audit.focusesNeeded}} focus(es)</span>{{/if}}
+      {{#if audit.talentsNeeded}}<span>{{audit.talentsNeeded}} talent(s)</span>{{/if}}
+    </p>
+    {{/if}}
+    <button class="cip-finish-btn" type="button" data-action="finish-creation"
+      {{#unless audit.isComplete}}disabled{{/unless}}>
+      <i class="fa-solid fa-flag-checkered"></i> Finish Character Creation
+    </button>
+  </div>
+
+</div>
