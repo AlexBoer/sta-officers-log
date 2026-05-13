@@ -27,18 +27,15 @@ function prepareLogMetaTemplateData(logItem) {
   const showTraumaCheckbox = areTraumaRulesEnabled();
 
   // Read the showMilestoneArcButton flag from the log item (default false)
-  let showMilestoneArcButton = false;
-  try {
-    const flag = logItem.getFlag?.(MODULE_ID, "showMilestoneArcButton");
-    if (typeof flag === "boolean") showMilestoneArcButton = flag;
-  } catch (_) {}
+  const showMilestoneArcButton =
+    logItem.system?.showMilestoneArcButton === true ||
+    logItem.getFlag?.(MODULE_ID, "showMilestoneArcButton") === true;
 
-  // Read the custom date flag (stored as ISO date string YYYY-MM-DD)
-  let customDate = "";
-  try {
-    const flag = logItem.getFlag?.(MODULE_ID, "customDate");
-    if (flag && typeof flag === "string") customDate = flag;
-  } catch (_) {}
+  // Read the custom date (stored as ISO date string YYYY-MM-DD)
+  const customDate =
+    logItem.system?.customDate ||
+    logItem.getFlag?.(MODULE_ID, "customDate") ||
+    "";
 
   return {
     isOpen,
@@ -93,7 +90,9 @@ function attachLogMetaEventListeners(details, itemSheet, logItem) {
 
         // Update the log's icon to match the trauma status (V# or T#)
         const primaryValueId =
-          logItem.getFlag?.(MODULE_ID, "primaryValueId") ?? "";
+          logItem.system?.primaryValueId ||
+          logItem.getFlag?.(MODULE_ID, "primaryValueId") ||
+          "";
         if (primaryValueId && actor) {
           const newIcon = getLogIconPathForValue(
             actor,
@@ -119,11 +118,9 @@ function attachLogMetaEventListeners(details, itemSheet, logItem) {
       ev?.preventDefault?.();
       ev?.stopPropagation?.();
       try {
-        await logItem.setFlag(
-          MODULE_ID,
-          "showMilestoneArcButton",
-          showMilestoneArcCheckbox.checked,
-        );
+        await logItem.update({
+          "system.showMilestoneArcButton": showMilestoneArcCheckbox.checked,
+        });
         // Re-render the parent character sheet to update the log list UI
         // Use force: false and focus: false to avoid stealing focus and unnecessary work
         const parentActor = logItem.parent ?? logItem.actor;
@@ -147,9 +144,9 @@ function attachLogMetaEventListeners(details, itemSheet, logItem) {
       try {
         const value = customDateInput.value?.trim() || "";
         if (value) {
-          await logItem.setFlag(MODULE_ID, "customDate", value);
+          await logItem.update({ "system.customDate": value });
         } else {
-          await logItem.unsetFlag(MODULE_ID, "customDate");
+          await logItem.update({ "system.customDate": null });
         }
       } catch (_) {
         // flag update can fail if permissions changed
@@ -166,7 +163,7 @@ function attachLogMetaEventListeners(details, itemSheet, logItem) {
       ev?.preventDefault?.();
       ev?.stopPropagation?.();
       try {
-        await logItem.unsetFlag(MODULE_ID, "customDate");
+        await logItem.update({ "system.customDate": null });
         if (customDateInput) customDateInput.value = "";
       } catch (_) {
         // flag update can fail if permissions changed

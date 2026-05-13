@@ -60,6 +60,15 @@ export function registerMissionSettings() {
     default: [],
   });
 
+  game.settings.register(MODULE_ID, "missionStartDate", {
+    name: "Current Mission Start Date",
+    hint: "ISO date (YYYY-MM-DD) of the current mission's in-game start date. Set automatically when a new mission begins if sta-utils is active.",
+    scope: "world",
+    config: false,
+    type: String,
+    default: "",
+  });
+
   // GM-configurable world setting: select a starship actor to represent the party's "Group Ship".
   game.settings.register(MODULE_ID, GROUP_SHIP_ACTOR_SETTING, {
     name: t("sta-officers-log.settings.groupShip.name"),
@@ -162,7 +171,10 @@ export function getCurrentMissionLogIdForUser(userId) {
   // This avoids selecting an arbitrary owned actor when a user owns multiple characters.
   const assignedActor = _getAssignedCharacterActorForUserId(userId);
   if (assignedActor) {
-    const flagValue = assignedActor.getFlag?.(MODULE_ID, "currentMissionLogId");
+    const flagValue =
+      assignedActor.system?.currentMissionLogId ??
+      assignedActor.getFlag?.(MODULE_ID, "currentMissionLogId") ??
+      null;
     if (flagValue) return String(flagValue);
   }
 
@@ -174,7 +186,10 @@ export function getCurrentMissionLogIdForUser(userId) {
   );
 
   if (ownedActor) {
-    const flagValue = ownedActor.getFlag?.(MODULE_ID, "currentMissionLogId");
+    const flagValue =
+      ownedActor.system?.currentMissionLogId ??
+      ownedActor.getFlag?.(MODULE_ID, "currentMissionLogId") ??
+      null;
     if (flagValue) return String(flagValue);
   }
 
@@ -199,14 +214,12 @@ export async function setMissionLogForUser(userId, logId) {
 
   if (actor && actor.type === "character") {
     try {
-      await actor.setFlag(
-        MODULE_ID,
-        "currentMissionLogId",
-        logId ? String(logId) : null,
-      );
+      await actor.update({
+        "system.currentMissionLogId": logId ? String(logId) : null,
+      });
     } catch (err) {
       console.warn(
-        `${MODULE_ID} | Failed to set currentMissionLogId flag on actor:`,
+        `${MODULE_ID} | Failed to set currentMissionLogId on actor:`,
         err,
       );
     }
@@ -224,14 +237,12 @@ export async function setCurrentMissionLogForActor(actor, logId) {
   }
 
   try {
-    await actor.setFlag(
-      MODULE_ID,
-      "currentMissionLogId",
-      logId ? String(logId) : null,
-    );
+    await actor.update({
+      "system.currentMissionLogId": logId ? String(logId) : null,
+    });
   } catch (err) {
     console.warn(
-      `${MODULE_ID} | Failed to set currentMissionLogId flag on actor:`,
+      `${MODULE_ID} | Failed to set currentMissionLogId on actor:`,
       err,
     );
   }
@@ -243,8 +254,11 @@ export async function setCurrentMissionLogForActor(actor, logId) {
  */
 export function getCurrentMissionLogForActor(actor) {
   if (!actor || actor.type !== "character") return null;
-  const flagValue = actor.getFlag?.(MODULE_ID, "currentMissionLogId");
-  return flagValue ? String(flagValue) : null;
+  const value =
+    actor.system?.currentMissionLogId ??
+    actor.getFlag?.(MODULE_ID, "currentMissionLogId") ??
+    null;
+  return value ? String(value) : null;
 }
 
 export function isLogUsed(item) {
@@ -290,10 +304,10 @@ export function hasUsedCallbackThisMission(userId) {
     null;
 
   if (actor) {
-    const flagValue = actor.getFlag?.(MODULE_ID, "usedCallbackThisMission");
-    if (typeof flagValue !== "undefined") {
-      return Boolean(flagValue);
-    }
+    return (
+      actor.system?.usedCallbackThisMission === true ||
+      actor.getFlag?.(MODULE_ID, "usedCallbackThisMission") === true
+    );
   }
 
   return false;
@@ -315,10 +329,10 @@ export async function setUsedCallbackThisMission(userId, used) {
 
   if (actor) {
     try {
-      await actor.setFlag(MODULE_ID, "usedCallbackThisMission", Boolean(used));
+      await actor.update({ "system.usedCallbackThisMission": Boolean(used) });
     } catch (err) {
       console.warn(
-        `${MODULE_ID} | Failed to set usedCallbackThisMission flag on actor:`,
+        `${MODULE_ID} | Failed to set usedCallbackThisMission on actor:`,
         err,
       );
     }
@@ -331,10 +345,12 @@ export async function resetMissionCallbacks({ notify = true } = {}) {
   for (const actor of game.actors ?? []) {
     if (actor.type !== "character") continue;
     try {
-      flagUpdates.push(actor.unsetFlag(MODULE_ID, "usedCallbackThisMission"));
+      flagUpdates.push(
+        actor.update({ "system.usedCallbackThisMission": false }),
+      );
     } catch (err) {
       console.warn(
-        `${MODULE_ID} | Failed to reset usedCallbackThisMission flag on actor:`,
+        `${MODULE_ID} | Failed to reset usedCallbackThisMission on actor:`,
         err,
       );
     }
@@ -431,10 +447,12 @@ export async function resetScarUsed({ notify = true } = {}) {
     const items = actor.items ?? [];
     for (const item of items) {
       if (item.type !== "trait") continue;
-      const isScar = item.getFlag?.(MODULE_ID, "isScar") ?? false;
+      const isScar =
+        item.system?.isScar === true ||
+        item.getFlag?.(MODULE_ID, "isScar") === true;
       if (!isScar) continue;
       try {
-        flagUpdates.push(item.unsetFlag(MODULE_ID, "isScarUsed"));
+        flagUpdates.push(item.update({ "system.isScarUsed": false }));
       } catch (err) {
         console.warn(
           `${MODULE_ID} | Failed to reset isScarUsed flag on trait item:`,
@@ -685,6 +703,46 @@ export async function ensureOpenGroupShipMacro() {
   }
 }
 
+/**
+ * Compute the ISO date (YYYY-MM-DD) for a new mission start.
+ * Uses today's real-world month and day, but substitutes the in-game year
+ * from Foundry's worldTime so the year stays consistent with the campaign era.
+ * Only runs if sta-utils is active (provides calendarDateToStardateTng).
+ * Returns null if sta-utils is not installed or worldTime is unavailable.
+ * @returns {string|null} ISO date string, e.g. "2385-05-12"
+ */
+async function _computeMissionStartIsoDate() {
+  try {
+    if (!game.modules.get("sta-utils")?.active) return null;
+
+    // Determine the in-game year from worldTime
+    const worldTimeSec = game.time?.worldTime ?? null;
+    if (worldTimeSec == null) return null;
+    const worldDate = new Date(worldTimeSec * 1000);
+    const inGameYear = worldDate.getFullYear();
+    if (!Number.isFinite(inGameYear) || inGameYear < 2100) return null;
+
+    // Combine in-game year with today's real-world month and day
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const isoDate = `${inGameYear}-${month}-${day}`;
+
+    // Advance worldTime to noon on the new date so the stardate display updates
+    const targetMs = new Date(`${isoDate}T12:00:00`).getTime();
+    const targetSec = Math.floor(targetMs / 1000);
+    const delta = targetSec - Math.floor(game.time.worldTime);
+    if (delta !== 0) {
+      await game.time.advance(delta);
+    }
+
+    return isoDate;
+  } catch (err) {
+    console.warn(`${MODULE_ID} | _computeMissionStartIsoDate failed:`, err);
+    return null;
+  }
+}
+
 function _uniqueItemName(actor, baseName) {
   const existing = new Set(actor.items.map((i) => i.name));
   if (!existing.has(baseName)) return baseName;
@@ -694,7 +752,11 @@ function _uniqueItemName(actor, baseName) {
   return `${baseName} (${n})`;
 }
 
-async function addMissionLogToUser(user, missionTitle) {
+async function addMissionLogToUser(
+  user,
+  missionTitle,
+  { customDate = null } = {},
+) {
   const actor = user?.character;
   if (!actor || actor.type !== "character") return null;
 
@@ -710,19 +772,22 @@ async function addMissionLogToUser(user, missionTitle) {
 
   const directivesSnapshot = getMissionDirectives();
 
-  const [created] = await actor.createEmbeddedDocuments("Item", [
-    {
-      name,
-      type: "log",
-      sort: maxSort + 1,
-      flags: {
-        [MODULE_ID]: {
-          directivesSnapshot,
-          directiveLabels: {},
-        },
+  const itemData = {
+    name,
+    type: "log",
+    sort: maxSort + 1,
+    flags: {
+      [MODULE_ID]: {
+        directivesSnapshot,
       },
     },
-  ]);
+  };
+
+  if (customDate) {
+    itemData.system = { customDate };
+  }
+
+  const [created] = await actor.createEmbeddedDocuments("Item", [itemData]);
 
   return created?.id ?? null;
 }
@@ -765,7 +830,8 @@ export async function addParticipantToCurrentMission(
 
   // 3) Optionally create a mission log and store mapping
   if (createLog) {
-    const logId = await addMissionLogToUser(user, missionTitle);
+    const customDate = await _computeMissionStartIsoDate();
+    const logId = await addMissionLogToUser(user, missionTitle, { customDate });
     if (logId) await setMissionLogForUser(userId, logId);
   }
 
@@ -938,10 +1004,10 @@ export async function endCurrentMission() {
       : null;
     let milestoneLabel = "";
     if (currentLog) {
-      const pending = currentLog.getFlag?.(
-        MODULE_ID,
-        "pendingMilestoneBenefit",
-      );
+      const pending =
+        currentLog.system?.pendingMilestoneBenefit ??
+        currentLog.getFlag?.(MODULE_ID, "pendingMilestoneBenefit") ??
+        null;
       if (isPlainObject(pending)) {
         const arc = pending.arc ?? null;
         if (arc?.isArc === true) {
@@ -1057,7 +1123,7 @@ export async function endCurrentMission() {
     const actor = user?.character ?? null;
     if (actor && actor.type === "character") {
       clearOps.push(
-        actor.unsetFlag(MODULE_ID, "currentMissionLogId").catch((err) => {
+        actor.update({ "system.currentMissionLogId": null }).catch((err) => {
           console.warn(
             `${MODULE_ID} | Failed to clear currentMissionLogId on ${actor.name}:`,
             err,
@@ -1071,6 +1137,7 @@ export async function endCurrentMission() {
   // Clear mission state
   await game.settings.set(MODULE_ID, "missionTitle", "");
   await game.settings.set(MODULE_ID, "missionParticipants", []);
+  await game.settings.set(MODULE_ID, "missionStartDate", "");
   await setMissionDirectives([]);
 
   ui.notifications.info(t("sta-officers-log.notifications.missionEnded"));
@@ -1211,10 +1278,14 @@ export async function promptNewMissionAndReset() {
 
   // Create a Log on each participating player's character
   if (createMissionLogs) {
+    const customDate = await _computeMissionStartIsoDate();
+    if (customDate) {
+      await game.settings.set(MODULE_ID, "missionStartDate", customDate);
+    }
     let createdCount = 0;
     for (const userId of selectedUserIds) {
       const u = game.users.get(userId);
-      const logId = await addMissionLogToUser(u, newTitle);
+      const logId = await addMissionLogToUser(u, newTitle, { customDate });
       if (logId) {
         await setMissionLogForUser(u.id, logId);
         createdCount++;

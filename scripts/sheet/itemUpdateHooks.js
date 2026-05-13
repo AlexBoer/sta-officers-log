@@ -21,10 +21,7 @@ import {
   getItemFromApp,
   rerenderOpenStaSheetsForActorId as refreshOpenSheet,
 } from "./sheetUtils.js";
-import {
-  refreshMissionLogSortingForActorId,
-  invalidateArcCollapseCache,
-} from "../log/logSorting.js";
+import { refreshMissionLogSortingForActorId } from "../log/logSorting.js";
 import {
   enforceUniqueFromLogIdTargets,
   syncCallbackTargetUsedFlags,
@@ -40,7 +37,6 @@ import { installLogMetaCollapsible } from "../log/logMetaCollapsible.js";
 
 let _staOfficersLogMilestoneUpdateHookInstalled = false;
 let _staOfficersLogItemSheetRenderHookInstalled = false;
-let _staOfficersLogActorUpdateHookInstalled = false;
 
 /**
  * Install hooks for keeping character sheets responsive when items are edited.
@@ -244,6 +240,10 @@ export function installItemUpdateHooks() {
             try {
               const base = `flags.${MODULE_ID}.`;
               return (
+                changes?.system?.callbackLink !== undefined ||
+                changes?.system?.primaryValueId !== undefined ||
+                changes?.system?.arcInfo !== undefined ||
+                changes?.system?.callbackLinkDisabled !== undefined ||
                 foundry.utils.getProperty(changes, `${base}callbackLink`) !==
                   undefined ||
                 foundry.utils.getProperty(
@@ -272,6 +272,8 @@ export function installItemUpdateHooks() {
             try {
               const base = `flags.${MODULE_ID}.`;
               return (
+                changes?.system?.callbackLink !== undefined ||
+                changes?.system?.callbackLinkDisabled !== undefined ||
                 foundry.utils.getProperty(changes, `${base}callbackLink`) !==
                   undefined ||
                 foundry.utils.getProperty(
@@ -339,10 +341,14 @@ export function installItemUpdateHooks() {
                   }
 
                   const primaryValueId = String(
-                    item.getFlag?.(MODULE_ID, "primaryValueId") ?? "",
+                    item.system?.primaryValueId ||
+                      item.getFlag?.(MODULE_ID, "primaryValueId") ||
+                      "",
                   );
                   const link =
-                    item.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+                    item.system?.callbackLink ??
+                    item.getFlag?.(MODULE_ID, "callbackLink") ??
+                    null;
                   const fromLogId = String(link?.fromLogId ?? "");
                   const linkValueId = String(link?.valueId ?? "");
 
@@ -352,6 +358,7 @@ export function installItemUpdateHooks() {
                     try {
                       const base = `flags.${MODULE_ID}.`;
                       return (
+                        changes?.system?.callbackLink !== undefined ||
                         foundry.utils.getProperty(
                           changes,
                           `${base}callbackLink`,
@@ -373,6 +380,7 @@ export function installItemUpdateHooks() {
                   const primaryValueTouched = (() => {
                     try {
                       return (
+                        changes?.system?.primaryValueId !== undefined ||
                         foundry.utils.getProperty(
                           changes,
                           `flags.${MODULE_ID}.primaryValueId`,
@@ -387,6 +395,7 @@ export function installItemUpdateHooks() {
                     try {
                       const base = `flags.${MODULE_ID}.`;
                       return (
+                        changes?.system?.arcInfo !== undefined ||
                         foundry.utils.getProperty(changes, `${base}arcInfo`) !==
                           undefined ||
                         foundry.utils.getProperty(
@@ -407,7 +416,10 @@ export function installItemUpdateHooks() {
                     }
                   })();
 
-                  const arcInfo = item.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+                  const arcInfo =
+                    item.system?.arcInfo ??
+                    item.getFlag?.(MODULE_ID, "arcInfo") ??
+                    null;
                   const isArc = arcInfo?.isArc === true;
                   const shouldNormalizeArc =
                     arcInfoTouched || (callbackLinkTouched && isArc);
@@ -418,15 +430,17 @@ export function installItemUpdateHooks() {
                     if (!fromLogId) {
                       // User selected "No link". Clear callbackLink and mark as explicitly disabled
                       // so milestone-derived links don't reassert it.
-                      update[`flags.${MODULE_ID}.callbackLink`] = null;
-                      update[`flags.${MODULE_ID}.callbackLinkDisabled`] = true;
+                      update["system.callbackLink"] = null;
+                      update["system.callbackLinkDisabled"] = true;
                     } else {
                       // User selected a real callback link.
-                      update[`flags.${MODULE_ID}.callbackLinkDisabled`] = null;
+                      update["system.callbackLinkDisabled"] = false;
                       // Keep callbackLink.valueId aligned with Primary Value.
                       if (primaryValueId && linkValueId !== primaryValueId) {
-                        update[`flags.${MODULE_ID}.callbackLink.valueId`] =
-                          primaryValueId;
+                        update["system.callbackLink"] = {
+                          ...link,
+                          valueId: primaryValueId,
+                        };
                       }
                     }
                   }
@@ -445,8 +459,7 @@ export function installItemUpdateHooks() {
                           // This flag persists so logs keep their V# or T# prefix even if the value's
                           // trauma status later changes.
                           const valueIsTrauma = isValueTrauma(valueItem);
-                          update[`flags.${MODULE_ID}.createdWithTrauma`] =
-                            valueIsTrauma;
+                          update["system.createdWithTrauma"] = valueIsTrauma;
 
                           // Compute icon using the new trauma status and value's current position
                           const desiredImg = getLogIconPathForValue(
@@ -501,7 +514,7 @@ export function installItemUpdateHooks() {
                     try {
                       if (!isArc) {
                         // If the sheet wrote an arcInfo object with isArc=false, clear it out.
-                        update[`flags.${MODULE_ID}.arcInfo`] = null;
+                        update["system.arcInfo"] = null;
                       } else {
                         const rawSteps = Number(arcInfo?.steps ?? 0);
                         const steps =
@@ -518,7 +531,7 @@ export function installItemUpdateHooks() {
 
                         if (!arcValueId) {
                           // Invalid arc state: drop arc completion.
-                          update[`flags.${MODULE_ID}.arcInfo`] = null;
+                          update["system.arcInfo"] = null;
                         } else {
                           const computeChainLogIdsByParentWalk = (
                             actorDoc,
@@ -548,8 +561,10 @@ export function installItemUpdateHooks() {
                                 result.push(id);
 
                                 const parentRaw =
-                                  curItem.getFlag?.(MODULE_ID, "callbackLink")
-                                    ?.fromLogId ?? "";
+                                  (
+                                    curItem.system?.callbackLink ??
+                                    curItem.getFlag?.(MODULE_ID, "callbackLink")
+                                  )?.fromLogId ?? "";
                                 const parentId = parentRaw
                                   ? String(parentRaw)
                                   : "";
@@ -580,7 +595,9 @@ export function installItemUpdateHooks() {
                               if (String(other.id) === String(item.id))
                                 continue;
                               const otherArc =
-                                other.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+                                other.system?.arcInfo ??
+                                other.getFlag?.(MODULE_ID, "arcInfo") ??
+                                null;
                               if (otherArc?.isArc !== true) continue;
                               const otherChain = Array.isArray(
                                 otherArc.chainLogIds,
@@ -640,7 +657,7 @@ export function installItemUpdateHooks() {
                             arcInfoTouched ||
                             !arraysEqual(arcInfo?.chainLogIds, chainLogIds)
                           ) {
-                            update[`flags.${MODULE_ID}.arcInfo`] = nextArcInfo;
+                            update["system.arcInfo"] = nextArcInfo;
                           }
                         }
                       }
@@ -688,28 +705,6 @@ export function installItemUpdateHooks() {
 
         // Avoid full character-sheet rerenders (they flash/steal focus). We only
         // need to refresh the log ordering/arc wrappers.
-        refreshMissionLogSortingForActorId(actor.id);
-      } catch (_) {
-        // ignore
-      }
-    });
-  }
-
-  // Sync arc collapse state across clients: when another user toggles an arc box,
-  // invalidate our local cache so the next render reads the updated flags.
-  if (!_staOfficersLogActorUpdateHookInstalled) {
-    _staOfficersLogActorUpdateHookInstalled = true;
-
-    Hooks.on("updateActor", (actor, changes, _options, userId) => {
-      try {
-        // Only react to updates from other users; our own updates are already
-        // reflected in the in-memory cache and we don't want to race with
-        // the async actor.update() that hasn't confirmed yet.
-        if (userId === game?.user?.id) return;
-        if (!changes?.flags?.[MODULE_ID]?.hasOwnProperty("collapsedArcIds"))
-          return;
-        if (!actor?.id) return;
-        invalidateArcCollapseCache(actor.id);
         refreshMissionLogSortingForActorId(actor.id);
       } catch (_) {
         // ignore

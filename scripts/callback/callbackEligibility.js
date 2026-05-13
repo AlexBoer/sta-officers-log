@@ -50,6 +50,52 @@ export function isCallbackTargetCompatibleWithValue({
   return targetPrimary === vId;
 }
 
+/**
+ * Returns true if this specific log is unconditionally ineligible as a callback
+ * target — regardless of which value is being used.
+ *
+ * Conditions:
+ *  1. The log completes an arc (arc-end logs are consumed and cannot be re-used).
+ *  2. The log is already marked "used" (native Foundry used flag).
+ *  3. The log is already pointed to by another log's callback link.
+ *
+ * Value-dependent incompatibility (primary value mismatch) is NOT checked here
+ * because that depends on context.
+ */
+export function isLogUnconditionallyIneligibleAsCallbackTarget(actor, log) {
+  try {
+    if (!actor || !log) return false;
+    const logId = String(log.id ?? "");
+    if (!logId) return false;
+
+    // 1. Arc-end logs.
+    const completedArcEndLogIds = getCompletedArcEndLogIds(actor);
+    if (completedArcEndLogIds.has(logId)) return true;
+
+    // 2. Native "used" flag.
+    if (isLogUsed(log)) return true;
+
+    // 3. Already a callback target (another log points to it).
+    for (const item of actor.items ?? []) {
+      if (item?.type !== "log") continue;
+      if (
+        item.system?.callbackLinkDisabled === true ||
+        item.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true
+      )
+        continue;
+      const link =
+        item.system?.callbackLink ??
+        item.getFlag?.(MODULE_ID, "callbackLink") ??
+        {};
+      if (String(link?.fromLogId ?? "") === logId) return true;
+    }
+
+    return false;
+  } catch (_) {
+    return false;
+  }
+}
+
 export function hasEligibleCallbackTargetForValueId(
   actor,
   currentMissionLogId,
@@ -70,8 +116,15 @@ export function hasEligibleCallbackTargetForValueId(
     const callbackTargetIds = new Set();
     for (const log of actor.items ?? []) {
       if (log?.type !== "log") continue;
-      if (log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true) continue;
-      const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
+      if (
+        log.system?.callbackLinkDisabled === true ||
+        log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true
+      )
+        continue;
+      const link =
+        log.system?.callbackLink ??
+        log.getFlag?.(MODULE_ID, "callbackLink") ??
+        {};
       const fromLogId = String(link?.fromLogId ?? "");
       if (fromLogId) callbackTargetIds.add(fromLogId);
     }

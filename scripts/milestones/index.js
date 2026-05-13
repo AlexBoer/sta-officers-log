@@ -10,7 +10,10 @@ export {
   formatChosenBenefitLabel,
 } from "./benefits.js";
 export { installChooseMilestoneBenefitButtons } from "./chooseMilestoneBenefit.js";
-export { openNewMilestoneArcDialog } from "./newMilestoneArcDialog.js";
+export {
+  openNewMilestoneArcDialog,
+  createStandaloneMilestoneItem,
+} from "./newMilestoneArcDialog.js";
 export {
   syncMilestoneImgFromLog,
   syncMilestoneImgFromLogId,

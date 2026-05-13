@@ -11,6 +11,8 @@ export const CLIENT_ENABLE_FLOWCHART_VIEW_SETTING = "enableFlowchartView";
 export const CLIENT_ENABLE_LCARS_MODE_SETTING = "enableLcarsMode";
 export const WORLD_ENABLE_TRAUMA_RULES_SETTING = "enableTraumaRules";
 export const WORLD_ENABLE_SCAR_RULES_SETTING = "enableScarRules";
+export const WORLD_ENABLE_MISSION_LOG_JOURNALS_SETTING =
+  "enableMissionLogJournals";
 
 export function registerClientSettings() {
   game.settings.register(MODULE_ID, CLIENT_SHEET_ENHANCEMENTS_SETTING, {
@@ -274,6 +276,25 @@ export function registerClientSettings() {
         }
       } catch (_) {
         // fail gracefully
+      }
+    },
+  });
+
+  // World setting: Auto-generate Mission Log journals from character log items
+  game.settings.register(MODULE_ID, WORLD_ENABLE_MISSION_LOG_JOURNALS_SETTING, {
+    name: t("sta-officers-log.settings.enableMissionLogJournals.name"),
+    hint: t("sta-officers-log.settings.enableMissionLogJournals.hint"),
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: false,
+    onChange: async (enabled) => {
+      if (!enabled) return; // turning off: leave journals as-is
+      try {
+        const { syncAllJournals } = await import("../journal/index.js");
+        syncAllJournals();
+      } catch (err) {
+        console.error(`${MODULE_ID} | syncAllJournals (onChange) failed`, err);
       }
     },
   });

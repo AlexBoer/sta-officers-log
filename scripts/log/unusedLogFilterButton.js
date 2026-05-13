@@ -16,14 +16,22 @@ import { rerenderOpenStaSheetsForActorId as refreshOpenSheet } from "../sheet/sh
 
 const _FLAG_KEY = "hideUnusedLogs";
 
+function _lsKey(actor) {
+  return `${MODULE_ID}:${actor?.id ?? ""}:${game?.user?.id ?? ""}:${_FLAG_KEY}`;
+}
+
 /**
- * Read the hide-unused-logs toggle state from the actor's flags.
+ * Read the hide-unused-logs toggle state from localStorage.
+ * Falls back to the actor flag once for migration of pre-existing data.
  *
  * @param {Actor} actor
  * @returns {boolean}
  */
 export function getHideUnusedLogsForActor(actor) {
   try {
+    const stored = localStorage.getItem(_lsKey(actor));
+    if (stored !== null) return stored === "true";
+    // Migration: seed from actor flag on first read; localStorage takes over going forward.
     return Boolean(actor?.getFlag?.(MODULE_ID, _FLAG_KEY));
   } catch (_) {
     return false;
@@ -31,25 +39,19 @@ export function getHideUnusedLogsForActor(actor) {
 }
 
 /**
- * Persist the hide-unused-logs toggle state on the actor.
+ * Persist the hide-unused-logs toggle state in localStorage (per user, per actor).
  *
  * @param {Actor} actor
  * @param {boolean} hidden
- * @returns {Promise<{ok:boolean, hidden:boolean}>}
+ * @returns {{ok:boolean, hidden:boolean}}
  */
-export async function setHideUnusedLogsForActor(actor, hidden) {
+export function setHideUnusedLogsForActor(actor, hidden) {
   const value = Boolean(hidden);
-  if (!actor?.update) return { ok: false, hidden: value };
-
   try {
-    const flagPath = `flags.${MODULE_ID}.${_FLAG_KEY}`;
-    await actor.update({ [flagPath]: value }, { render: false });
+    localStorage.setItem(_lsKey(actor), String(value));
     return { ok: true, hidden: value };
   } catch (err) {
-    console.warn(
-      `${MODULE_ID} | failed to persist hideUnusedLogs on actor`,
-      err,
-    );
+    console.warn(`${MODULE_ID} | failed to persist hideUnusedLogs`, err);
     return { ok: false, hidden: value };
   }
 }

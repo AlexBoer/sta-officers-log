@@ -61,9 +61,6 @@ new Dialog({
 
         // 3. Clear all actor-level module flags
         const flagKeys = [
-          "currentMissionLogId",
-          "usedCallbackThisMission",
-          "pendingShipBenefits",
           "missionLogSortMode",
           "challengedDirectives",
           "collapsedArcIds",
@@ -74,6 +71,17 @@ new Dialog({
           } catch {
             // flag may not exist on this actor — that's fine
           }
+        }
+
+        // 4. Clear system fields that were migrated from flags
+        try {
+          await actor.update({
+            "system.currentMissionLogId": null,
+            "system.usedCallbackThisMission": false,
+            "system.pendingShipBenefits": [],
+          });
+        } catch {
+          // not a character actor or fields not present — skip
         }
 
         ui.notifications.info(

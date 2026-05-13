@@ -17,7 +17,10 @@ const TRAIT_SCAR_FLAG = "isScar";
 export function isTraitScar(item) {
   if (!item || item.type !== "trait") return false;
   try {
-    return Boolean(item.getFlag?.(MODULE_ID, TRAIT_SCAR_FLAG));
+    return (
+      item.system?.isScar === true ||
+      item.getFlag?.(MODULE_ID, TRAIT_SCAR_FLAG) === true
+    );
   } catch (_) {
     return false;
   }
@@ -25,7 +28,7 @@ export function isTraitScar(item) {
 
 export async function setTraitScarFlag(item, value) {
   if (!item || item.type !== "trait") return;
-  await item.setFlag(MODULE_ID, TRAIT_SCAR_FLAG, Boolean(value));
+  await item.update({ "system.isScar": Boolean(value) });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,7 +73,9 @@ export function installTraitScarCheckbox(root, item) {
         ".sta-trait-used-switch",
       );
       if (usedSwitch instanceof HTMLInputElement) {
-        usedSwitch.checked = item.getFlag?.(MODULE_ID, "isScarUsed") ?? false;
+        usedSwitch.checked =
+          item.system?.isScarUsed === true ||
+          item.getFlag?.(MODULE_ID, "isScarUsed") === true;
       }
       return;
     }
@@ -103,7 +108,9 @@ export function installTraitScarCheckbox(root, item) {
     const usedSwitch = document.createElement("input");
     usedSwitch.type = "checkbox";
     usedSwitch.className = "sta-trait-used-switch";
-    usedSwitch.checked = item.getFlag?.(MODULE_ID, "isScarUsed") ?? false;
+    usedSwitch.checked =
+      item.system?.isScarUsed === true ||
+      item.getFlag?.(MODULE_ID, "isScarUsed") === true;
     usedSwitch.title = usedTooltipText;
 
     const usedLabelSpan = document.createElement("span");
@@ -130,10 +137,12 @@ export function installTraitScarCheckbox(root, item) {
     const onUsedChange = async () => {
       usedSwitch.disabled = true;
       try {
-        await item.setFlag(MODULE_ID, "isScarUsed", usedSwitch.checked);
+        await item.update({ "system.isScarUsed": usedSwitch.checked });
       } catch (err) {
         console.error(`${MODULE_ID} | trait used toggle failed`, err);
-        usedSwitch.checked = item.getFlag?.(MODULE_ID, "isScarUsed") ?? false;
+        usedSwitch.checked =
+          item.system?.isScarUsed === true ||
+          item.getFlag?.(MODULE_ID, "isScarUsed") === true;
       } finally {
         usedSwitch.disabled = false;
       }

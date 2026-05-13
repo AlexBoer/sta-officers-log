@@ -34,8 +34,15 @@ function _hasEligibleCallbackTargetWithAnyInvokedDirective(
     const callbackTargetIds = new Set();
     for (const log of actor.items ?? []) {
       if (log?.type !== "log") continue;
-      if (log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true) continue;
-      const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
+      if (
+        log.system?.callbackLinkDisabled === true ||
+        log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true
+      )
+        continue;
+      const link =
+        log.system?.callbackLink ??
+        log.getFlag?.(MODULE_ID, "callbackLink") ??
+        {};
       const fromLogId = String(link?.fromLogId ?? "");
       if (fromLogId) callbackTargetIds.add(fromLogId);
     }
@@ -483,12 +490,14 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
       // Store mapping for display
       try {
         const existing =
-          missionLog.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
+          missionLog.system?.directiveLabels ??
+          missionLog.getFlag?.(MODULE_ID, "directiveLabels") ??
+          {};
         const cloned = isPlainObject(existing)
           ? foundry.utils.deepClone(existing)
           : {};
         cloned[String(directiveKey)] = directiveText;
-        await missionLog.setFlag(MODULE_ID, "directiveLabels", cloned);
+        await missionLog.update({ "system.directiveLabels": cloned });
       } catch (_) {
         // ignore
       }

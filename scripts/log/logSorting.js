@@ -10,39 +10,50 @@ import { openNewMilestoneArcDialog } from "../milestones/newMilestoneArcDialog.j
 
 export { getCompletedArcEndLogIds, getPrimaryValueIdForLog };
 
-// Collapsed-arc state persisted as a flag on each actor.
-// Flag key: `sta-officers-log.collapsedArcIds` — stored as an array of arcId strings.
-// An in-memory cache avoids repeated flag reads within a single render cycle.
+// Collapsed-arc state stored in localStorage (per user, per actor).
+// An in-memory cache avoids repeated JSON.parse calls within a single render cycle.
 const _collapsedArcsByActorId = new Map(); // actorId -> Set<arcId>
 
 const _FLAG_KEY = "collapsedArcIds";
 
+function _lsKey(actor, key) {
+  return `${MODULE_ID}:${actor?.id ?? ""}:${game?.user?.id ?? ""}:${key}`;
+}
+
 /**
- * Hydrate the in-memory cache from the actor's flags (synchronous read).
- * Only runs once per actor per page-load; subsequent calls are no-ops so that
- * in-flight changes from _persistToActor are not overwritten by a re-render
- * that fires before the server confirms the actor.update().
+ * Hydrate the in-memory cache from localStorage.
+ * Only runs once per actor per page-load; subsequent calls are no-ops since
+ * every write goes through _persistToStorage which keeps both in sync.
+ * Falls back to the actor flag once for migration of pre-existing data.
  */
 function _hydrateFromActor(actor) {
   if (!actor?.id) return;
   const aId = String(actor.id);
   if (_collapsedArcsByActorId.has(aId)) return; // already hydrated this session
+  try {
+    const raw = localStorage.getItem(_lsKey(actor, _FLAG_KEY));
+    if (raw !== null) {
+      const arr = JSON.parse(raw);
+      _collapsedArcsByActorId.set(aId, new Set(Array.isArray(arr) ? arr : []));
+      return;
+    }
+  } catch (_) {}
+  // Migration: seed from actor flag on first read; localStorage takes over going forward.
   const arr = actor.getFlag?.(MODULE_ID, _FLAG_KEY) ?? [];
   _collapsedArcsByActorId.set(aId, new Set(Array.isArray(arr) ? arr : []));
 }
 
 /**
- * Persist the in-memory collapsed set back to the actor's flags.
- * Async, but we fire-and-forget so the UI stays responsive.
+ * Persist the in-memory collapsed set to localStorage.
  */
-function _persistToActor(actor) {
+function _persistToStorage(actor) {
   if (!actor?.id) return;
   const aId = String(actor.id);
   const set = _collapsedArcsByActorId.get(aId);
   const arr = set?.size ? [...set] : [];
-  // setFlag triggers a re-render which would loop; use update with render:false.
-  const flagPath = `flags.${MODULE_ID}.${_FLAG_KEY}`;
-  actor.update({ [flagPath]: arr }, { render: false }).catch(() => {});
+  try {
+    localStorage.setItem(_lsKey(actor, _FLAG_KEY), JSON.stringify(arr));
+  } catch (_) {}
 }
 
 function _isArcCollapsed(actorId, arcId) {
@@ -64,17 +75,11 @@ function _setArcCollapsed(actorId, arcId, collapsed, actor) {
   }
   if (collapsed) set.add(gId);
   else set.delete(gId);
-  if (actor) _persistToActor(actor);
+  if (actor) _persistToStorage(actor);
 }
 
-/**
- * Remove the in-memory cache entry for an actor so the next render re-hydrates
- * from the actor's flags. Called when another client updates the collapsedArcIds flag.
- */
-export function invalidateArcCollapseCache(actorId) {
-  if (!actorId) return;
-  _collapsedArcsByActorId.delete(String(actorId));
-}
+/** @deprecated No-op: arc collapse state is now stored in localStorage per user. */
+export function invalidateArcCollapseCache(_actorId) {}
 
 function _unwrapArcGroups(containerEl) {
   const container = containerEl;
@@ -115,23 +120,23 @@ export function normalizeMissionLogSortMode(mode) {
 }
 
 export function getMissionLogSortModeForActor(actor) {
+  try {
+    const stored = localStorage.getItem(_lsKey(actor, "missionLogSortMode"));
+    if (stored !== null) return normalizeMissionLogSortMode(stored);
+  } catch (_) {}
+  // Migration: fall back to actor flag on first read.
   return normalizeMissionLogSortMode(
     actor?.getFlag?.(MODULE_ID, "missionLogSortMode"),
   );
 }
 
-export async function setMissionLogSortModeForActor(actor, mode) {
+export function setMissionLogSortModeForActor(actor, mode) {
   const normalized = normalizeMissionLogSortMode(mode);
-  if (!actor?.setFlag) return { ok: false, mode: normalized };
-
   try {
-    await actor.setFlag(MODULE_ID, "missionLogSortMode", normalized);
+    localStorage.setItem(_lsKey(actor, "missionLogSortMode"), normalized);
     return { ok: true, mode: normalized };
   } catch (err) {
-    console.warn(
-      `${MODULE_ID} | failed to persist missionLogSortMode on actor`,
-      err,
-    );
+    console.warn(`${MODULE_ID} | failed to persist missionLogSortMode`, err);
     return { ok: false, mode: normalized };
   }
 }
@@ -146,7 +151,9 @@ function _buildCallbackLinkContext(actor, logItems) {
 
   const callbackLinkDisabledToLogIds = new Set();
   for (const log of logItems) {
-    const disabled = log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true;
+    const disabled =
+      log.system?.callbackLinkDisabled === true ||
+      log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true;
     if (disabled) callbackLinkDisabledToLogIds.add(String(log.id));
   }
 
@@ -237,7 +244,8 @@ function _getLogChainComponents(actor, logItems) {
 
   // Undirected edges between logs that are linked via callbackLink.
   for (const log of logItems) {
-    const link = log.getFlag?.(MODULE_ID, "callbackLink");
+    const link =
+      log.system?.callbackLink ?? log.getFlag?.(MODULE_ID, "callbackLink");
     const parentLog = byId.get(link?.fromLogId);
 
     if (!_isValidCallbackLink(log, parentLog, link, context)) continue;
@@ -281,7 +289,8 @@ function _getValidCallbackParentMap(actor, logItems) {
   const parentByChildId = new Map();
 
   for (const log of logItems) {
-    const link = log.getFlag?.(MODULE_ID, "callbackLink");
+    const link =
+      log.system?.callbackLink ?? log.getFlag?.(MODULE_ID, "callbackLink");
     const parentLog = context.byId.get(link?.fromLogId);
 
     if (!_isValidCallbackLink(log, parentLog, link, context)) continue;
@@ -566,7 +575,8 @@ export function applyMissionLogSorting(root, actor, mode) {
   const getCreatedTimeKey = (item) => {
     // Check for custom date first (stored as YYYY-MM-DD string in flags)
     try {
-      const customDate = item?.flags?.[MODULE_ID]?.customDate;
+      const customDate =
+        item?.system?.customDate || item?.flags?.[MODULE_ID]?.customDate;
       if (customDate && typeof customDate === "string") {
         // Parse YYYY-MM-DD to timestamp (midnight UTC)
         const parsed = Date.parse(customDate + "T00:00:00Z");
@@ -653,7 +663,10 @@ export function applyMissionLogSorting(root, actor, mode) {
           result.push(id);
 
           const parentRaw =
-            curItem.getFlag?.(MODULE_ID, "callbackLink")?.fromLogId ?? "";
+            (
+              curItem.system?.callbackLink ??
+              curItem.getFlag?.(MODULE_ID, "callbackLink")
+            )?.fromLogId ?? "";
           const parentId = parentRaw ? String(parentRaw) : "";
           if (!parentId) break;
 
@@ -720,12 +733,14 @@ export function applyMissionLogSorting(root, actor, mode) {
     const usedArcIds = new Set();
 
     const arcEndLogs = logItems.filter((log) => {
-      const arcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+      const arcInfo =
+        log.system?.arcInfo ?? log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
       return arcInfo?.isArc === true;
     });
 
     for (const log of arcEndLogs) {
-      const arcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+      const arcInfo =
+        log.system?.arcInfo ?? log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
       if (!arcInfo?.isArc) continue;
 
       const arcValueId = arcInfo?.valueId
@@ -764,7 +779,9 @@ export function applyMissionLogSorting(root, actor, mode) {
           : [];
 
         // If the stored chain is obviously stale, force fallback parent-walk.
-        const parentIdRaw = log.getFlag?.(MODULE_ID, "callbackLink")?.fromLogId;
+        const parentIdRaw = (
+          log.system?.callbackLink ?? log.getFlag?.(MODULE_ID, "callbackLink")
+        )?.fromLogId;
         const parentId = parentIdRaw ? String(parentIdRaw) : "";
         if (
           chainIds.length &&
@@ -1099,7 +1116,10 @@ export function applyMissionLogSorting(root, actor, mode) {
             const arcEndLog = actor?.items?.get?.(String(arcId)) ?? null;
             if (!arcEndLog || arcEndLog.type !== "log") return;
             if (arcEndLog.isOwner !== true && game?.user?.isGM !== true) return;
-            const arcInfo = arcEndLog.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+            const arcInfo =
+              arcEndLog.system?.arcInfo ??
+              arcEndLog.getFlag?.(MODULE_ID, "arcInfo") ??
+              null;
             if (arcInfo?.isArc !== true) return;
 
             const current = String(arcInfo?.arcLabel ?? "");
@@ -1130,7 +1150,11 @@ export function applyMissionLogSorting(root, actor, mode) {
 
             const update = {};
             // Use empty string as a deliberate "no title" sentinel.
-            update[`flags.${MODULE_ID}.arcInfo.arcLabel`] = next;
+            const currentArcInfo =
+              arcEndLog.system?.arcInfo ??
+              arcEndLog.getFlag?.(MODULE_ID, "arcInfo") ??
+              {};
+            update["system.arcInfo"] = { ...currentArcInfo, arcLabel: next };
             await arcEndLog.update(update, {
               render: false,
               renderSheet: false,

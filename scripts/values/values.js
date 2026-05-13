@@ -230,7 +230,9 @@ export async function labelValuesOnActor(actor) {
 
   for (const log of logs) {
     const primaryValueId = String(
-      log.getFlag?.(MODULE_ID, "primaryValueId") ?? "",
+      log.system?.primaryValueId ||
+        log.getFlag?.(MODULE_ID, "primaryValueId") ||
+        "",
     );
 
     if (primaryValueId && isDirectiveValueId(primaryValueId)) {

@@ -634,6 +634,23 @@
 
 /* Acclaim Survey Dialog */
 
+.sta-unlinked-token-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff3cd;
+  background: rgba(180, 120, 0, 0.45);
+  border-bottom: 1px solid rgba(255, 193, 7, 0.5);
+}
+
+.sta-unlinked-token-banner i {
+  color: #ffc107;
+  flex-shrink: 0;
+}
+
 .sta-acclaim-character-banner {
   text-align: center;
   padding: 0.3rem 0.5rem;
@@ -1092,29 +1109,6 @@
   font-size: 0.85rem;
 }
 
-.sta-use-value-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 0.25rem;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.sta-choose-milestone-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 0.25rem;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.sta-choose-milestone-btn:hover,
-.sta-choose-milestone-btn:focus-visible {
-  border-color: rgba(250, 223, 71, 0.7);
-} 
-
 /* =============================================================================
  * ACTOR SHEET (Values / Milestones injections)
  * ============================================================================= */
@@ -1187,8 +1181,12 @@ div.section.character-log li.row.entry a.value-used.control.toggle {
 }
 
 /* Icon-only control: show the source log that calls back to this log */
-div.section.milestones li.row.entry[data-item-type="log"] a.value-used.control.toggle .sta-show-source-btn,
-div.section.character-log li.row.entry[data-item-type="log"] a.value-used.control.toggle .sta-show-source-btn {
+.sta-show-source-btn {
+  /* reset <button> defaults */
+  background: none;
+  border: none;
+  box-shadow: none;
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1196,15 +1194,24 @@ div.section.character-log li.row.entry[data-item-type="log"] a.value-used.contro
   height: 22px;
   opacity: 0.75;
   cursor: pointer;
+  color: #e0e0e0;
 }
 
-div.section.milestones li.row.entry[data-item-type="log"] a.value-used.control.toggle .sta-show-source-btn:hover,
-div.section.character-log li.row.entry[data-item-type="log"] a.value-used.control.toggle .sta-show-source-btn:hover {
+.theme-light .sta-show-source-btn {
+  color: #333333;
+}
+
+.sta-show-source-btn:hover {
   opacity: 1;
 }
 
 /* Icon-only control: show associated logs from milestone rows */
 div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milestone-logs-btn {
+  /* reset <button> defaults */
+  background: none;
+  border: none;
+  box-shadow: none;
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1212,6 +1219,11 @@ div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milest
   height: 22px;
   opacity: 0.75;
   cursor: pointer;
+  color: #e0e0e0;
+}
+
+.theme-light div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milestone-logs-btn {
+  color: #333333;
 }
 
 div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milestone-logs-btn:hover {
@@ -1248,6 +1260,13 @@ div.section.character-log li.row.entry.sta-current-mission-log {
   outline-offset: -2px;
 }
 
+/* Logs ineligible as callback targets — show them struck through */
+div.section.milestones li.row.entry.sta-callback-ineligible-log input[name="name"],
+div.section.character-log li.row.entry.sta-callback-ineligible-log input[name="name"] {
+  text-decoration: line-through;
+  opacity: 0.65;
+}
+
 div.section.milestones li.row.entry .sta-current-mission-indicator,
 div.section.character-log li.row.entry .sta-current-mission-indicator {
     color: #fff;
@@ -1257,6 +1276,22 @@ div.section.character-log li.row.entry .sta-current-mission-indicator {
     padding: 0.5rem;
 }
 
+/* Write Log / pencil button injected on character-sheet log rows */
+.sta-write-log-btn {
+  /* reset <button> defaults */
+  background: none;
+  box-shadow: none;
+}
+.sta-write-log-btn--current {
+  border-color: rgba(255,255,255,0.6);
+  color: rgba(255,255,255,0.9);
+  font-weight: 600;
+}
+.theme-light .sta-write-log-btn--current {
+  border-color: rgba(0,0,0,0.55);
+  color: rgba(0,0,0,0.85);
+}
+
 .sta-log-inline-actions {
     display: flex;
     flex-direction: row;
@@ -1264,14 +1299,34 @@ div.section.character-log li.row.entry .sta-current-mission-indicator {
     align-items: center;
 }
 
+/* Button order within .sta-log-inline-actions: Choose Arc → Write Log → Camera → Show Links */
+.sta-choose-milestone-btn { order: 1; }
+.sta-write-log-btn        { order: 2; }
+.sta-current-mission-indicator { order: 3; }
+.sta-show-source-btn      { order: 4; }
+
 .sta-inline-sheet-btn {
+    /* reset <button> defaults */
+    background: none;
+    box-shadow: none;
+
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.1rem 0.45rem;
-    border: thin solid white;
-    border-radius: 10px;
+    gap: 0.3em;
+    padding: 0.1rem 0.4rem;
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 8px;
     white-space: nowrap;
+    font-size: 0.78em;
+    line-height: 1.4;
+    color: rgba(255,255,255,0.65);
+    cursor: pointer;
+}
+
+.theme-light .sta-inline-sheet-btn {
+    border-color: rgba(0,0,0,0.3);
+    color: rgba(0,0,0,0.55);
 }
 
 .sta-inline-sheet-btn.is-disabled {
@@ -1280,13 +1335,12 @@ div.section.character-log li.row.entry .sta-current-mission-indicator {
 }
 
 .sta-choose-milestone-btn.sta-choose-btn-disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
-  border-style: dotted;
 }
 
 .sta-inline-sheet-btn:hover {
-    border-color:goldenrod;
+    border-color: goldenrod;
     color: goldenrod;
 }
 
@@ -3640,6 +3694,661 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
     display: block;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   OfficersLogSheet  (.officers-log-sheet)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.application.sta-officers-log {
+  min-width: 380px;
+  min-height: 300px;
+}
+
+.officers-log-sheet {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 380px;
+  overflow-y: auto;
+  color: var(--color-text-primary, #c9cdd3);
+  font-size: 13px;
+
+  /* Constrain the prose-mirror editor to a sane height */
+  prose-mirror {
+    display: block;
+    overflow: hidden;
+    resize: vertical;
+    min-height: 5rem;
+    max-height: 50vh;
+    font-size: 13px;
+    /* Override Foundry's position:relative so the toggle button is positioned
+       relative to .ol-description-wrapper instead of prose-mirror */
+    position: static !important;
+  }
+
+  /* Wrapper: label row + prose-mirror stacked; button anchors to wrapper top-right */
+  .ol-description-wrapper {
+    position: relative;
+  }
+  .ol-description-header {
+    display: flex;
+    align-items: center;
+    padding-right: 5.5em;
+  }
+  prose-mirror button.toggle {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    line-height: 1.4 !important;
+    padding: 0.1rem 0.4rem !important;
+    border: 1px solid rgba(255,255,255,0.35) !important;
+    border-radius: 8px !important;
+    background: none !important;
+    color: rgba(255,255,255,0.65) !important;
+    font-size: 0.78em !important;
+    /* Reset from Foundry's .icon font-family so ::after text renders correctly */
+    font-family: var(--font-primary, "Signika", serif) !important;
+    font-weight: normal !important;
+    margin: 0 !important;
+    margin-top: -5px !important;
+    display: none;
+  }
+  .ol-description-wrapper:hover prose-mirror button.toggle:enabled {
+    display: flex !important;
+    align-items: center;
+    gap: 0.3em;
+  }
+  prose-mirror button.toggle:hover {
+    border-color: goldenrod !important;
+    color: goldenrod !important;
+  }
+  &.theme-light prose-mirror button.toggle {
+    border-color: rgba(0,0,0,0.3) !important;
+    color: rgba(0,0,0,0.55) !important;
+  }
+  /* Hide FA icon; inject "Edit Log" text via ::after */
+  prose-mirror button.toggle i { display: none; }
+  prose-mirror button.toggle::after {
+    content: "Edit Log";
+    font-family: var(--font-primary, "Signika", serif);
+    font-style: normal;
+  }
+  prose-mirror .editor-content {
+    position: unset;
+    overflow-y: auto;
+    height: 100%;
+    font-size: 13px;
+  }
+  prose-mirror .editor-content p:first-child {
+    margin-top: 0;
+  }
+  /* Placeholder when editor is empty (edit mode) */
+  prose-mirror .editor-content > p:only-child:has(> br.ProseMirror-trailingBreak:only-child)::before {
+    content: "Write your personal mission log here\2026";
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    pointer-events: none;
+    float: left;
+    height: 0;
+  }
+  /* Placeholder shown in view mode when description is empty */
+  prose-mirror p.ol-description-placeholder {
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    pointer-events: none;
+    margin-top: 0;
+  }
+  prose-mirror .editor-container {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100%;
+    font-size: 13px;
+  }
+  prose-mirror .editor {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    font-size: 13px;
+  }
+  /* Allow toolbar to wrap and grow instead of clipping; scale it down ~20% */
+  prose-mirror .menu-container {
+    flex: 0 0 auto;
+    height: auto;
+    position: relative;
+    font-size: 0.8em;
+  }
+  prose-mirror menu {
+    position: relative;
+    inset: unset;
+    flex-wrap: wrap;
+    height: auto;
+    padding: 4px 6px;
+    gap: 2px;
+  }
+  prose-mirror menu button {
+    --button-size: 1.4em;
+    padding: 2px;
+  }
+}
+
+/* ── Context banner ─────────────────────────────────────────────────────────── */
+
+.ol-context-banner {
+  background: rgba(0, 0, 0, 0.35);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+.ol-banner-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0;
+  color: #8a9aac;
+
+  &.ol-banner-row--inbound {
+    color: #7a9a8a;
+  }
+
+  i {
+    width: 1em;
+    text-align: center;
+    opacity: 0.6;
+  }
+}
+
+.ol-banner-label {
+  font-style: italic;
+}
+
+.ol-banner-link {
+  color: inherit;
+  text-decoration: underline dotted;
+  cursor: pointer;
+
+  &:hover {
+    color: #bcd0e8;
+  }
+}
+
+/* ── Body ───────────────────────────────────────────────────────────────────── */
+
+.ol-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 8px 6px;
+}
+
+/* ── Section chrome ─────────────────────────────────────────────────────────── */
+
+.ol-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ol-section-header {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8a9aac;
+  border-left: 3px solid rgba(100, 140, 180, 0.4);
+  padding-left: 5px;
+  line-height: 1.4;
+}
+
+.ol-section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ol-section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Header row (image + name + stardate) ───────────────────────────────────── */
+
+.ol-header-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.ol-log-img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.ol-header-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  input[type="text"] {
+    width: 100%;
+    font-size: 14px;
+    font-weight: 600;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    color: inherit;
+    padding: 1px 0;
+    height: auto;
+    line-height: 1.3;
+
+    &:focus {
+      outline: none;
+      border-bottom-color: rgba(100, 160, 220, 0.6);
+    }
+  }
+}
+
+.ol-stardate {
+  font-size: 11px;
+  color: #6a7a8a;
+  font-style: italic;
+  line-height: 1.2;
+
+  .ol-stardate-label {
+    opacity: 0.7;
+  }
+
+  .ol-stardate-value {
+    user-select: text;
+    cursor: text;
+  }
+}
+
+.ol-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6a7a8a;
+  margin-bottom: 3px;
+}
+
+/* ── Log options button ─────────────────────────────────────────────────────── */
+
+.ol-log-options-btn {
+  font-size: 11px;
+  padding: 0px 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: #8a9aac;
+  cursor: pointer;
+  height: 18px;
+  line-height: 16px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #bcd0e8;
+  }
+}
+
+/* ── Values table ───────────────────────────────────────────────────────────── */
+
+.ol-values-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  font-size: 12px;
+
+  thead tr {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  th {
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6a7a8a;
+    padding: 1px 2px;
+    text-align: center;
+  }
+
+  td {
+    padding: 1px 2px;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  /* Suppress Foundry's default row banding */
+  tbody tr:nth-child(even),
+  tbody tr:nth-child(odd) {
+    background: none;
+  }
+
+  tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    cursor: pointer;
+    accent-color: var(--sta-gold, #c8a020);
+  }
+}
+
+.ol-star-col {
+  width: 2rem;
+  text-align: center !important;
+  position: relative;
+
+  &::before {
+    content: '\2606'; /* ☆ */
+    font-size: 14px;
+    line-height: 1;
+    color: #6a7a8a;
+    pointer-events: none;
+  }
+
+  &:has(.ol-primary-radio:checked)::before {
+    content: '\2605'; /* ★ */
+    color: #f0b429;
+  }
+
+  &:has(.ol-primary-radio:hover)::before {
+    color: #c0a060;
+  }
+}
+
+/* Hide the native radio, keep it clickable over the star */
+.ol-primary-radio {
+  opacity: 0;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.ol-name-col {
+  text-align: left !important;
+}
+
+.ol-state-col {
+  width: 38px;
+}
+
+/* Directive rows */
+.ol-directive-row {
+  td {
+    color: #8a9aac;
+  }
+
+  .ol-name-col {
+    font-style: italic;
+  }
+}
+
+.ol-directive-name {
+  /* td stays as a table cell — flex is on the inner span */
+}
+
+.ol-directive-name-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ol-remove-directive {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #7a4a4a;
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0 0.2rem;
+  opacity: 0.6;
+
+  &:hover {
+    opacity: 1;
+    color: #c85050;
+  }
+}
+
+/* Add directive button */
+.ol-add-directive-btn {
+  font-size: 11px;
+  padding: 0px 7px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  color: #8a9aac;
+  cursor: pointer;
+  height: 18px;
+  line-height: 16px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #bcd0e8;
+  }
+}
+
+/* ── Chain & Arc section ────────────────────────────────────────────────────── */
+
+.ol-chain-section {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ol-chain-summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  background: rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8a9aac;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+
+.ol-chain-summary-label {
+  flex: 1;
+}
+
+/* Badge pills on summary */
+.ol-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 10px;
+  background: rgba(100, 140, 180, 0.25);
+  color: #8ab8d8;
+  border: 1px solid rgba(100, 140, 180, 0.3);
+  white-space: nowrap;
+
+  &.ol-badge--arc {
+    background: rgba(140, 100, 180, 0.25);
+    color: #c8a8d8;
+    border-color: rgba(140, 100, 180, 0.3);
+  }
+
+  &.ol-badge--milestone {
+    background: rgba(180, 150, 50, 0.2);
+    color: #d8b850;
+    border-color: rgba(180, 150, 50, 0.3);
+  }
+}
+
+.ol-chain-content {
+  padding: 5px 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ol-chain-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: nowrap;
+}
+
+.ol-chain-field {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+
+  &:first-child {
+    padding-left: 0;
+    border-left: none;
+  }
+
+  &:last-child {
+    padding-right: 0;
+  }
+
+  /* Field label to the left of the control */
+  > label:not(.checkbox) {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    color: #667788;
+    font-weight: normal;
+    line-height: 1.3;
+  }
+
+  /* Inline checkbox label (Arc complete) — matches other field labels */
+  > label.checkbox {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: normal;
+    font-size: 0.75rem;
+    color: #667788;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  select {
+    flex: 1 1 0;
+    min-width: 0;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+    color: inherit;
+    padding: 1px 4px;
+    font-size: 12px;
+    height: auto;
+    line-height: 1.4;
+
+    &:focus {
+      outline: none;
+      border-color: rgba(100, 160, 220, 0.5);
+    }
+  }
+
+  &.ol-chain-field--callback {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  &.ol-chain-field--arc {
+    flex: 0 0 auto;
+  }
+
+  &.ol-chain-field--chain-value {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  &.ol-chain-field--arc-steps {
+    flex: 0 0 auto;
+
+    .ol-arc-steps-input {
+      width: 4em;
+      text-align: center;
+    }
+  }
+
+  &.ol-chain-field--milestone {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+.ol-milestone-actions {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 0.1rem;
+}
+
+.ol-milestone-btn {
+  font-size: 11px;
+  padding: 2px 7px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: #8a9aac;
+  cursor: pointer;
+  white-space: nowrap;
+  height: auto;
+  line-height: 1.5;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #bcd0e8;
+  }
+
+  &.ol-milestone-btn--choose {
+    color: #d8b850;
+    border-color: rgba(180, 150, 50, 0.3);
+    background: rgba(180, 150, 50, 0.08);
+
+    &:hover {
+      background: rgba(180, 150, 50, 0.15);
+    }
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
 
 .cw-combobox-option {
   padding: 0.35rem 0.7rem;

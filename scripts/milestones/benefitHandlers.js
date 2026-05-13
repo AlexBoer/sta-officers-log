@@ -680,7 +680,10 @@ export async function handleShipPermissionFallback({
 }) {
   // Queue the pending ship benefit for GM to apply later
   try {
-    const pending = actor.getFlag?.(MODULE_ID, "pendingShipBenefits") ?? [];
+    const pending =
+      actor.system?.pendingShipBenefits ??
+      actor.getFlag?.(MODULE_ID, "pendingShipBenefits") ??
+      [];
     const id = foundry.utils.randomID();
     const newBenefit = {
       id,
@@ -694,10 +697,9 @@ export async function handleShipPermissionFallback({
       ...extraPayload,
     };
 
-    await actor.setFlag(MODULE_ID, "pendingShipBenefits", [
-      ...pending,
-      newBenefit,
-    ]);
+    await actor.update({
+      "system.pendingShipBenefits": [...pending, newBenefit],
+    });
 
     ui.notifications.info(
       `Ship benefit queued for GM to apply: ${label}. The GM will be notified when they log in.`,

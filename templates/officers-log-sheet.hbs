@@ -1,0 +1,272 @@
+{{!-- officers-log-sheet.hbs — OfficersLogSheet template --}}
+<div class="officers-log-sheet">
+
+  {{!-- ── Context banner (callback links) ──────────────────────────────────── --}}
+  {{#if (or hasCallbackLink calledBackByLog)}}
+  <div class="ol-context-banner">
+    {{#if hasCallbackLink}}
+    <div class="ol-banner-row">
+      <i class="fa fa-arrow-turn-up"></i>
+      <span class="ol-banner-label">{{localize "sta-officers-log.logSheet.callsBackTo"}}</span>
+      <a class="ol-banner-link" data-action="onOpenLinkedLog" data-log-id="{{selectedCallbackLogId}}">{{callsBackToName}}</a>
+    </div>
+    {{/if}}
+    {{#if calledBackByLog}}
+    <div class="ol-banner-row ol-banner-row--inbound">
+      <i class="fa fa-arrow-turn-down" style="transform:scaleX(-1)"></i>
+      <span class="ol-banner-label">{{localize "sta-officers-log.logSheet.calledBackBy"}}</span>
+      <a class="ol-banner-link" data-action="onOpenLinkedLog" data-log-id="{{calledBackByLog.id}}">{{calledBackByLog.name}}</a>
+    </div>
+    {{/if}}
+  </div>
+  {{/if}}
+
+  <div class="ol-body">
+
+    {{!-- ── Section 1: What happened? ──────────────────────────────────────── --}}
+    <section class="ol-section">
+      <div class="ol-header-row">
+        <img class="ol-log-img profile-img"
+             src="{{item.img}}"
+             data-edit="img"
+             data-action="editImage"
+             title="{{item.name}}" />
+        <div class="ol-header-fields">
+          <input name="name" type="text" value="{{item.name}}"
+                 placeholder="{{localize "sta-officers-log.logSheet.logNamePlaceholder"}}" />
+          <small class="ol-stardate"><span class="ol-stardate-label">{{localize "sta-officers-log.logSheet.stardate"}}</span> <span class="ol-stardate-value">{{stardate}}</span></small>
+        </div>
+      </div>
+
+      <div class="ol-description-wrapper">
+        <div class="ol-description-header">
+          <div class="ol-field-label">{{localize "sta-officers-log.logSheet.whatHappened"}}</div>
+        </div>
+        <prose-mirror name="system.description"
+                      data-document-u-u-i-d="{{item.uuid}}"
+                      value="{{item.system.description}}"
+                      collaborate="true"
+                      toggled="true">
+          {{#if enrichedNotes}}{{{enrichedNotes}}}{{else}}<p class="ol-description-placeholder">{{localize "sta-officers-log.logSheet.descriptionPlaceholder"}}</p>{{/if}}
+        </prose-mirror>
+      </div>
+    </section>
+
+    {{!-- ── Section 2: Values used ──────────────────────────────────────────── --}}
+    <section class="ol-section">
+      <div class="ol-section-header-row">
+        <div class="ol-section-header">{{localize "sta-officers-log.logSheet.valuesUsed"}}</div>
+        <div class="ol-section-header-actions">
+          <button type="button" class="ol-add-directive-btn" data-action="onAddDirective">
+            ＋ {{localize "sta-officers-log.logSheet.addDirective"}}
+          </button>
+          <button type="button" class="ol-log-options-btn" data-action="onLogOptions">
+            {{localize "sta-officers-log.logSheet.logOptions"}}
+          </button>
+        </div>
+      </div>
+
+      <table class="ol-values-table">
+        <thead>
+          <tr>
+            <th class="ol-star-col" title="{{localize "sta-officers-log.logSheet.primaryValue"}}"></th>
+            <th class="ol-name-col">{{localize "sta-officers-log.logSheet.value"}}</th>
+            <th class="ol-state-col">{{localize "sta-officers-log.logSheet.unused"}}</th>
+            <th class="ol-state-col">{{localize "sta-officers-log.logSheet.positive"}}</th>
+            <th class="ol-state-col">{{localize "sta-officers-log.logSheet.negative"}}</th>
+            <th class="ol-state-col">{{localize "sta-officers-log.logSheet.challenged"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{!-- Actor value rows --}}
+          {{#each actorValues as |v|}}
+          <tr>
+            <td class="ol-star-col">
+              <input type="radio"
+                     class="ol-primary-radio"
+                     name="ol-primary-value"
+                     data-value-id="{{v.id}}"
+                     {{checked v.isPrimary}} />
+            </td>
+            <td class="ol-name-col">{{v.name}}</td>
+            <td class="ol-state-col"><label>
+              <input type="checkbox"
+                     class="ol-value-state-cb"
+                     data-value-id="{{v.id}}"
+                     data-state="unused"
+                     {{checked v.isUnused}} />
+            </label></td>
+            <td class="ol-state-col"><label>
+              <input type="checkbox"
+                     class="ol-value-state-cb"
+                     data-value-id="{{v.id}}"
+                     data-state="positive"
+                     {{checked v.isPositive}} />
+            </label></td>
+            <td class="ol-state-col"><label>
+              <input type="checkbox"
+                     class="ol-value-state-cb"
+                     data-value-id="{{v.id}}"
+                     data-state="negative"
+                     {{checked v.isNegative}} />
+            </label></td>
+            <td class="ol-state-col"><label>
+              <input type="checkbox"
+                     class="ol-value-state-cb"
+                     data-value-id="{{v.id}}"
+                     data-state="challenged"
+                     {{checked v.isChallenged}} />
+            </label></td>
+          </tr>
+          {{/each}}
+
+          {{!-- Directive rows --}}
+          {{#each directiveRows as |d|}}
+          <tr class="ol-directive-row">
+            <td class="ol-star-col">
+              <input type="radio"
+                     class="ol-primary-radio"
+                     name="ol-primary-value"
+                     data-value-id="{{d.valueId}}"
+                     {{checked d.isPrimary}} />
+            </td>
+            <td class="ol-name-col ol-directive-name">
+              <span class="ol-directive-name-inner">
+                <em>{{d.text}}</em>
+                <button type="button"
+                        class="ol-remove-directive"
+                        data-action="onRemoveDirective"
+                        data-value-id="{{d.valueId}}"
+                        title="{{localize "sta-officers-log.logSheet.removeDirective"}}">✕</button>
+              </span>
+            </td>
+            <td class="ol-state-col"><label>
+              <input type="checkbox"
+                     class="ol-value-state-cb"
+                     data-value-id="{{d.valueId}}"
+                     data-state="unused"
+                     {{checked d.isUnused}} />
+            </label></td>
+            <td class="ol-state-col"><label>
+              <input type="checkbox"
+                     class="ol-value-state-cb"
+                     data-value-id="{{d.valueId}}"
+                     data-state="positive"
+                     {{checked d.isPositive}} />
+            </label></td>
+            <td class="ol-state-col"><label>
+              <input type="checkbox"
+                     class="ol-value-state-cb"
+                     data-value-id="{{d.valueId}}"
+                     data-state="negative"
+                     {{checked d.isNegative}} />
+            </label></td>
+            <td class="ol-state-col"><label>
+              <input type="checkbox"
+                     class="ol-value-state-cb"
+                     data-value-id="{{d.valueId}}"
+                     data-state="challenged"
+                     {{checked d.isChallenged}} />
+            </label></td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+
+    </section>
+
+    {{!-- ── Section 3: Chain & Arc ──────────────────────────────────────────── --}}
+    <details class="ol-chain-section">
+      <summary class="ol-chain-summary">
+        <span class="ol-chain-summary-label">{{localize "sta-officers-log.logSheet.chainAndArc"}}</span>
+        {{#if hasCallbackLink}}
+        <span class="ol-badge">{{localize "sta-officers-log.logSheet.badgeCallbackLinked"}}</span>
+        {{/if}}
+        {{#if arcIsComplete}}
+        <span class="ol-badge ol-badge--arc">{{localize "sta-officers-log.logSheet.badgeArcComplete"}}</span>
+        {{/if}}
+        {{#if milestoneIsSet}}
+        <span class="ol-badge ol-badge--milestone">{{localize "sta-officers-log.logSheet.badgeMilestoneChosen"}}</span>
+        {{/if}}
+      </summary>
+
+      <div class="ol-chain-content">
+
+        {{!-- Row 1: Calls back to + Arc complete (same row, matching mockup) --}}
+        <div class="ol-chain-row">
+          <div class="ol-chain-field ol-chain-field--callback">
+            <label>{{localize "sta-officers-log.logSheet.callsBackToLabel"}}</label>
+            <select name="ol-callback-from">
+              <option value="">— {{localize "sta-officers-log.logSheet.none"}} —</option>
+              {{#each callbackLogOptions as |l|}}
+              <option value="{{l.id}}" {{#if l.selected}}selected{{/if}}>{{l.name}}</option>
+              {{/each}}
+            </select>
+          </div>
+          <div class="ol-chain-field ol-chain-field--arc">
+            <label class="checkbox">
+              {{localize "sta-officers-log.logSheet.arcComplete"}}
+              <input type="checkbox"
+                     name="ol-arc-complete"
+                     {{checked arcIsComplete}} />
+            </label>
+          </div>
+          {{#if arcIsComplete}}
+          <div class="ol-chain-field ol-chain-field--arc-steps">
+            <label>{{localize "sta-officers-log.logSheet.arcSteps"}}</label>
+            <input type="number"
+                   name="ol-arc-steps"
+                   class="ol-arc-steps-input"
+                   value="{{arcSteps}}"
+                   min="1"
+                   step="1" />
+          </div>
+          {{/if}}
+        </div>
+
+        {{!-- Row 2: Chain value --}}
+        <div class="ol-chain-row">
+          <div class="ol-chain-field ol-chain-field--chain-value">
+            <label>{{localize "sta-officers-log.logSheet.chainValue"}}</label>
+            <select name="ol-chain-value">
+              <option value="">— {{localize "sta-officers-log.logSheet.none"}} —</option>
+              {{#each chainValueOptions as |v|}}
+              <option value="{{v.id}}" {{#if v.selected}}selected{{/if}}>{{#if v.isDirective}}[D] {{/if}}{{v.name}}</option>
+              {{/each}}
+            </select>
+          </div>
+        </div>
+
+        {{!-- Row 3: Milestone --}}
+        {{#if hasCallbackLink}}
+        <div class="ol-chain-row ol-chain-row--milestone">
+          <div class="ol-chain-field ol-chain-field--milestone">
+            <label>{{localize "sta-officers-log.logSheet.milestone"}}</label>
+            <select name="ol-milestone">
+              <option value="">— {{localize "sta-officers-log.logSheet.none"}} —</option>
+              {{#each milestoneOptions as |m|}}
+              <option value="{{m.id}}" {{#if m.selected}}selected{{/if}}>{{m.name}}</option>
+              {{/each}}
+            </select>
+          </div>
+
+          <div class="ol-milestone-actions">
+            {{#if milestoneIsSet}}
+            <button type="button" class="ol-milestone-btn" data-action="onOpenMilestone"
+                    title="{{localize "sta-officers-log.logSheet.openMilestone"}}">
+              ↗ {{localize "sta-officers-log.logSheet.open"}}
+            </button>
+            {{else if showMilestoneArcButton}}
+            <button type="button" class="ol-milestone-btn ol-milestone-btn--choose" data-action="onChooseMilestone">
+              {{localize "sta-officers-log.logSheet.chooseMilestone"}}
+            </button>
+            {{/if}}
+          </div>
+        </div>
+        {{/if}}
+
+      </div>
+    </details>
+
+  </div>{{!-- /ol-body --}}
+</div>{{!-- /officers-log-sheet --}}

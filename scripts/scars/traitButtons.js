@@ -63,7 +63,9 @@ export function installUseScarButtons(root, actor, app) {
     useBtn.tabIndex = 0;
 
     // Check if scar has already been used
-    const scarUsed = traitItem.getFlag?.(MODULE_ID, "isScarUsed");
+    const scarUsed =
+      traitItem.system?.isScarUsed === true ||
+      traitItem.getFlag?.(MODULE_ID, "isScarUsed") === true;
     if (scarUsed) {
       useBtn.classList.add("is-disabled");
       useBtn.setAttribute("aria-disabled", "true");
@@ -103,7 +105,7 @@ export function installUseScarButtons(root, actor, app) {
             t("sta-officers-log.dialog.useValue.approved"),
           );
           // Mark scar as used
-          await traitItem.setFlag(MODULE_ID, "isScarUsed", true);
+          await traitItem.update({ "system.isScarUsed": true });
           useBtn.classList.add("is-disabled");
           useBtn.setAttribute("aria-disabled", "true");
           useBtn.disabled = true;

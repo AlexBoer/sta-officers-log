@@ -23,7 +23,8 @@ export function getCompletedArcEndLogIds(actor, logItemsById = null) {
           );
 
     for (const log of maybeById.values()) {
-      const arcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+      const arcInfo =
+        log.system?.arcInfo ?? log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
       if (arcInfo?.isArc === true) ends.add(String(log.id));
     }
   } catch (_) {
@@ -39,16 +40,24 @@ export function getPrimaryValueIdForLog(actor, log, valueItems = null) {
     if (!log || log.type !== "log") return "";
 
     // 1) Explicit primary selection on the log sheet.
-    const explicit = String(log.getFlag?.(MODULE_ID, "primaryValueId") ?? "");
+    const explicit = String(
+      log.system?.primaryValueId ||
+        log.getFlag?.(MODULE_ID, "primaryValueId") ||
+        "",
+    );
     if (explicit) return explicit;
 
     // 2) Value used for the callback link (strong signal of chain value).
-    const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+    const link =
+      log.system?.callbackLink ??
+      log.getFlag?.(MODULE_ID, "callbackLink") ??
+      null;
     const linkVal = link?.valueId ? String(link.valueId) : "";
     if (linkVal) return linkVal;
 
     // 3) Arc completion info (only present on the arc-ending log).
-    const arcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+    const arcInfo =
+      log.system?.arcInfo ?? log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
     const arcVal = arcInfo?.valueId ? String(arcInfo.valueId) : "";
     if (arcVal) return arcVal;
 

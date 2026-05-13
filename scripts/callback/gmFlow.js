@@ -212,9 +212,15 @@ async function applyCallbackUpdates(
     const chosenId = String(chosenLog?.id ?? "");
     const incomingChildren = actorDoc.items.filter((it) => {
       if (it?.type !== "log") return false;
-      if (it.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true)
+      if (
+        it.system?.callbackLinkDisabled === true ||
+        it.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true
+      )
         return false;
-      const link = it.getFlag?.(MODULE_ID, "callbackLink") ?? {};
+      const link =
+        it.system?.callbackLink ??
+        it.getFlag?.(MODULE_ID, "callbackLink") ??
+        {};
       return String(link?.fromLogId ?? "") === chosenId;
     });
 
@@ -308,11 +314,13 @@ async function applyCallbackUpdates(
 
   // Set primary value if not already set
   const existingPrimary = String(
-    chosenLog.getFlag?.(MODULE_ID, "primaryValueId") ?? "",
+    chosenLog.system?.primaryValueId ||
+      chosenLog.getFlag?.(MODULE_ID, "primaryValueId") ||
+      "",
   );
   if (!existingPrimary) {
     chosenLogUpdates.push(
-      chosenLog.setFlag(MODULE_ID, "primaryValueId", valueId),
+      chosenLog.update({ "system.primaryValueId": valueId }),
     );
     // Record whether this log was created with a trauma as its primary value.
     // This flag persists so logs keep their V# or T# prefix even if the value's
@@ -325,7 +333,10 @@ async function applyCallbackUpdates(
 
   // Update image if needed (avoid overwriting arc-end logs)
   if (valueImg) {
-    const arcInfo = chosenLog.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+    const arcInfo =
+      chosenLog.system?.arcInfo ??
+      chosenLog.getFlag?.(MODULE_ID, "arcInfo") ??
+      null;
     const isArcEnd = arcInfo?.isArc === true;
     if (!isArcEnd) {
       chosenLogUpdates.push(chosenLog.update({ img: valueImg }));
@@ -350,9 +361,11 @@ async function applyCallbackUpdates(
     // so if we compute eligibility before writing the link, arcs will fail to detect.
     {
       const results = await Promise.allSettled([
-        currentLog.setFlag(MODULE_ID, "callbackLink", {
-          fromLogId: chosenLog.id,
-          valueId,
+        currentLog.update({
+          "system.callbackLink": {
+            fromLogId: chosenLog.id,
+            valueId,
+          },
         }),
       ]);
       const failed = results.filter((r) => r.status === "rejected");
@@ -393,7 +406,7 @@ async function applyCallbackUpdates(
 
     // Set primary value flag
     currentLogUpdates.push(
-      currentLog.setFlag(MODULE_ID, "primaryValueId", valueId),
+      currentLog.update({ "system.primaryValueId": valueId }),
     );
 
     // Record whether this log was created with a trauma as its primary value.
@@ -408,23 +421,25 @@ async function applyCallbackUpdates(
 
     // Set arc info if applicable
     if (arcInfo) {
-      currentLogUpdates.push(currentLog.setFlag(MODULE_ID, "arcInfo", arcInfo));
+      currentLogUpdates.push(currentLog.update({ "system.arcInfo": arcInfo }));
     }
 
     // Set pending milestone benefit (includes arc payload for milestone creation)
     currentLogUpdates.push(
-      currentLog.setFlag(MODULE_ID, "pendingMilestoneBenefit", {
-        milestoneId: null,
-        chosenLogId: chosenLog.id,
-        valueId,
-        valueImg,
-        arc: arcInfo,
+      currentLog.update({
+        "system.pendingMilestoneBenefit": {
+          milestoneId: null,
+          chosenLogId: chosenLog.id,
+          valueId,
+          valueImg,
+          arc: arcInfo,
+        },
       }),
     );
 
-    // Also set the showMilestoneArcButton flag so the checkbox reflects the pending state
+    // Also set showMilestoneArcButton so the checkbox reflects the pending state
     currentLogUpdates.push(
-      currentLog.setFlag(MODULE_ID, "showMilestoneArcButton", true),
+      currentLog.update({ "system.showMilestoneArcButton": true }),
     );
 
     // Update image if needed
@@ -525,9 +540,16 @@ async function orchestrateCallbackPrompt({
   try {
     for (const log of actor.items ?? []) {
       if (log?.type !== "log") continue;
-      if (log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true) continue;
+      if (
+        log.system?.callbackLinkDisabled === true ||
+        log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true
+      )
+        continue;
 
-      const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
+      const link =
+        log.system?.callbackLink ??
+        log.getFlag?.(MODULE_ID, "callbackLink") ??
+        {};
       const fromLogId = String(link?.fromLogId ?? "");
       if (fromLogId) callbackTargetIds.add(fromLogId);
     }
@@ -633,6 +655,9 @@ async function orchestrateCallbackPrompt({
       return logPrimaryValueId === dvi;
     });
   }
+
+  // If there are no eligible logs after filtering, silently skip the prompt.
+  if (!filteredLogsPayload.length) return;
 
   const valuesPayload = buildValuesPayload(
     actor,

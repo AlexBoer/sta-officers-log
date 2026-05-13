@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Log Sheet Mockup — STA Officers Log</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;600;700&display=swap');
+
+    /* ── Reset / page chrome ─────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #111215;
+      font-family: 'Roboto Condensed', sans-serif;
+      color: #d4d4d4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      gap: 40px;
+      min-height: 100vh;
+    }
+
+    h1 { color: #9ab; font-size: 1rem; letter-spacing: .08em; text-transform: uppercase; }
+
+    .side-by-side {
+      display: flex;
+      gap: 32px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .label-above {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .label-above span {
+      font-size: 0.78rem;
+      color: #778;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    /* ── Foundry window shell ────────────────────────────── */
+    .window-shell {
+      width: 700px;
+      background: #191813;
+      border: 1px solid #334;
+      border-radius: 5px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.7);
+      overflow: hidden;
+    }
+
+    .window-header {
+      background: #1e2030;
+      border-bottom: 1px solid #334;
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #aab;
+    }
+    .window-header i { color: #6699ff; }
+    .window-header .spacer { flex: 1; }
+    .window-header .win-btn {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: #444; border: 1px solid #555;
+      cursor: pointer;
+    }
+    .window-header .win-btn:hover { background: #c04040; }
+
+    .window-content {
+      padding: 0;
+    }
+
+    /* ── CURRENT SHEET ───────────────────────────────────── */
+    .current-sheet {
+      padding: 10px;
+    }
+
+    .current-header-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .current-img {
+      width: 52px; height: 52px;
+      border: 1px solid #334;
+      border-radius: 3px;
+      object-fit: cover;
+      background: #222;
+      display: flex; align-items: center; justify-content: center;
+      color: #555; font-size: 1.4rem; flex-shrink: 0;
+    }
+    .current-name-col { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .current-label { font-size: 0.72rem; color: #778; }
+    .current-name-input {
+      background: transparent; border: none; border-bottom: 1px solid #336;
+      color: #ccc; font-family: inherit; font-size: 1rem; width: 100%;
+      padding: 2px 0;
+    }
+
+    .current-section-title {
+      background: #003399;
+      border-radius: 0 100px 100px 0;
+      padding: 2px 12px 2px 6px;
+      font-weight: 700;
+      font-size: 0.8rem;
+      display: inline-block;
+      margin: 6px 0 4px;
+      color: #fff;
+    }
+
+    .current-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .current-table th {
+      background: #1e2030; color: #88a; font-weight: 600;
+      padding: 3px 6px; text-align: center; border-bottom: 1px solid #334;
+    }
+    .current-table th.name-col { text-align: left; }
+    .current-table td { padding: 3px 6px; text-align: center; border-bottom: 1px solid #282830; }
+    .current-table td.name-col { text-align: left; color: #bbb; }
+    .current-table tr:hover td { background: rgba(255,255,255,.03); }
+    .current-table input[type=checkbox] { cursor: pointer; accent-color: #F2CC0D; }
+
+    .current-desc-area {
+      border: 1px solid #336; border-radius: 3px;
+      background: #1a1c20; padding: 8px; min-height: 80px;
+      font-size: 0.82rem; color: #888; margin-top: 6px;
+    }
+
+    /* injected meta section */
+    .injected-meta {
+      margin-top: 6px; border: 1px dashed #446; border-radius: 3px; padding: 6px;
+    }
+    .injected-meta summary { cursor: pointer; font-size: 0.78rem; color: #668; font-weight: 600; }
+    .injected-fields { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    .injected-field { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: #888; }
+
+    /* injected chain section */
+    .injected-chain {
+      margin-top: 6px; border: 1px dashed #446; border-radius: 3px; padding: 6px;
+    }
+    .injected-chain-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .injected-chain-label { font-size: 0.72rem; color: #668; flex: 0 0 90px; }
+    .injected-chain select, .injected-chain input[type=text] {
+      flex: 1; background: #1a1c20; border: 1px solid #336;
+      color: #aaa; font-family: inherit; font-size: 0.78rem; padding: 2px 4px; border-radius: 2px;
+    }
+
+    /* ── NEW SHEET ───────────────────────────────────────── */
+    .new-sheet {
+      padding: 0;
+    }
+
+    /* — Context Banner (Idea C) — */
+    .context-banner {
+      background: #12131a;
+      border-bottom: 1px solid #2a2a3a;
+      padding: 5px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 0.75rem;
+      color: #778;
+    }
+    .context-banner-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .context-banner-row i { flex-shrink: 0; opacity: .6; width: 14px; text-align: center; }
+    .context-banner-row strong { color: #99a; }
+    .context-banner-row a { color: #99a; text-decoration: none; cursor: pointer; }
+    .context-banner-row a:hover { text-decoration: underline; }
+    .context-banner-row .cb-label { opacity: .6; min-width: 90px; }
+    .context-banner .cb-arc {
+      margin-left: auto;
+      background: rgba(100,90,40,.2);
+      border: 1px solid rgba(140,130,60,.3);
+      border-radius: 3px;
+      padding: 1px 7px;
+      color: #aa9;
+      font-size: 0.7rem;
+    }
+
+    /* — Sheet body — */
+    .new-body { padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+
+    /* — Section A: What happened? — */
+    .section-header {
+      border-left: 2px solid #445;
+      padding: 1px 0 1px 8px;
+      font-weight: 600;
+      font-size: 0.78rem;
+      display: block;
+      color: #99a;
+      margin-bottom: 6px;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+
+    .header-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .log-img {
+      width: 52px; height: 52px;
+      border: 1px solid #334; border-radius: 3px;
+      background: #222;
+      display: flex; align-items: center; justify-content: center;
+      color: #6699ff; font-size: 1.6rem; flex-shrink: 0;
+      cursor: pointer; position: relative; overflow: hidden;
+    }
+    .log-img::after {
+      content: "✏"; position: absolute; bottom: 2px; right: 3px;
+      font-size: 0.6rem; color: rgba(255,255,255,.4);
+    }
+    .header-fields { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+    .field-row { display: flex; flex-direction: column; gap: 2px; }
+    .field-label { font-size: 0.7rem; color: #668; letter-spacing: .04em; text-transform: uppercase; }
+    .field-input {
+      background: transparent; border: none; border-bottom: 1px solid #336;
+      color: #ddd; font-family: inherit; font-size: 1rem; padding: 2px 0;
+      width: 100%;
+    }
+    .field-input::placeholder { color: #445; }
+    .field-input:focus { outline: none; border-bottom-color: #6699ff; }
+
+    .date-row { display: flex; gap: 10px; }
+    .date-row .field-row { flex: 1; }
+    .date-input {
+      background: #1a1c20; border: 1px solid #336; border-radius: 3px;
+      color: #aaa; font-family: inherit; font-size: 0.82rem;
+      padding: 3px 6px; width: 100%;
+    }
+
+    /* — Star radio (primary value) — */
+    .star-radio { display:none; }
+    .star-radio + label {
+      cursor: pointer;
+      font-size: 0.95rem;
+      color: #444;
+      user-select: none;
+      line-height: 1;
+    }
+    .star-radio:checked + label { color: #F2CC0D; }
+    .star-radio + label:hover { color: #888; }
+    .star-radio:checked + label:hover { color: #F2CC0D; }
+
+    /* — Section B: Values used — */
+    .values-list { display: flex; flex-direction: column; gap: 2px; }
+
+    .value-row {
+      display: flex;
+      align-items: center;
+      padding: 2px 6px;
+      border-radius: 3px;
+      gap: 6px;
+      border: 1px solid transparent;
+      transition: background .12s;
+    }
+    .value-row:hover { background: rgba(255,255,255,.04); border-color: #2a2a3a; }
+
+    .value-name {
+      flex: 1;
+      font-size: 0.85rem;
+      color: #c8c8d8;
+    }
+    .value-name.is-primary {
+      font-weight: 700;
+      color: #d4e8ff;
+    }
+    .primary-star {
+      color: #F2CC0D;
+      font-size: 0.75rem;
+      margin-left: 2px;
+    }
+
+    .badges {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      border-radius: 3px;
+      padding: 0px 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: .02em;
+      white-space: nowrap;
+      cursor: default;
+      user-select: none;
+    }
+    .badge-unused  { background: rgba(120,120,140,.18); color: #778; border: 1px solid rgba(120,120,140,.3); }
+    .badge-positive{ background: rgba(40,160,80,.22); color: #5dda7e; border: 1px solid rgba(40,180,80,.35); }
+    .badge-negative{ background: rgba(180,40,40,.22); color: #e06060; border: 1px solid rgba(200,50,50,.35); }
+    .badge-challenged { background: rgba(200,140,0,.22); color: #F2CC0D; border: 1px solid rgba(220,160,0,.35); }
+    .badge i { font-size: 0.65rem; }
+
+    /* — toggle all checkboxes in table (tooltip hint) — */
+    .badge-add-btn {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: transparent;
+      border: 1px dashed #446;
+      color: #558;
+      font-size: 0.8rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all .15s;
+      flex-shrink: 0;
+    }
+    .badge-add-btn:hover { border-color: #6699ff; color: #88aaff; background: rgba(100,150,255,.08); }
+
+    /* — Description area — */
+    .desc-area {
+      border: 1px solid #2a2a40; border-radius: 3px;
+      background: #1a1c22; padding: 8px 10px;
+      min-height: 80px; font-size: 0.82rem; color: #888;
+      line-height: 1.5;
+    }
+
+    /* — Section C: Chain & Arc (collapsed) — */
+    .chain-section {
+      border: 1px solid #2a2a40;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .chain-summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 10px;
+      background: #1e2030;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #88a;
+      user-select: none;
+      list-style: none;
+    }
+    .chain-summary:hover { background: #222438; }
+    .chain-summary .caret { font-size: 0.6rem; transition: transform .15s; }
+    details.chain-details[open] .chain-summary .caret { transform: rotate(90deg); }
+    .chain-summary .chain-badge-pill {
+      margin-left: auto;
+      background: rgba(80,80,110,.25);
+      border: 1px solid rgba(120,120,160,.3);
+      border-radius: 3px;
+      padding: 1px 7px;
+      font-size: 0.7rem;
+      color: #889;
+    }
+    .chain-summary .chain-badge-pill.arc {
+      background: rgba(100,90,40,.25);
+      border-color: rgba(160,140,60,.3);
+      color: #aa9;
+    }
+
+    .chain-content {
+      padding: 6px 10px;
+      display: flex; flex-direction: column; gap: 4px;
+      background: #191820;
+    }
+    .chain-field-row {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .chain-field-label {
+      flex: 0 0 100px; font-size: 0.75rem; color: #668;
+    }
+    .chain-select {
+      flex: 1; background: #1a1c22; border: 1px solid #336;
+      color: #aaa; font-family: inherit; font-size: 0.78rem;
+      padding: 1px 4px; border-radius: 3px;
+    }
+    .chain-edit-btn {
+      background: transparent; border: 1px solid #446; border-radius: 3px;
+      color: #778; font-family: inherit; font-size: 0.75rem;
+      padding: 2px 8px; cursor: pointer; white-space: nowrap;
+    }
+    .chain-edit-btn:hover { border-color: #6699ff; color: #88aaff; }
+
+    .arc-status-row {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 8px;
+      background: rgba(200,140,0,.1);
+      border: 1px solid rgba(200,140,0,.25);
+      border-radius: 3px;
+    }
+    .arc-star { color: #F2CC0D; }
+    .arc-label { font-size: 0.8rem; color: #d0a820; }
+    .arc-steps { font-size: 0.75rem; color: #997; margin-left: auto; }
+
+    /* — Footer — */
+    .sheet-footer {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 10px 8px;
+      border-top: 1px solid #222230;
+    }
+    .footer-meta-btn {
+      background: transparent; border: 1px solid #334;
+      border-radius: 3px; color: #668; font-family: inherit;
+      font-size: 0.75rem; padding: 2px 8px; cursor: pointer;
+    }
+    .footer-meta-btn:hover { border-color: #556; color: #99a; }
+    .footer-spacer { flex: 1; }
+    .footer-hint { font-size: 0.7rem; color: #445; font-style: italic; }
+
+    /* ── Note callouts ───────────────────────────────────── */
+    .notes { max-width: 700px; width: 100%; }
+    .note {
+      background: rgba(0,40,100,.25); border-left: 3px solid rgba(100,160,255,.5);
+      border-radius: 0 4px 4px 0; padding: 8px 12px;
+      font-size: 0.8rem; color: #9ab; margin-bottom: 8px; line-height: 1.5;
+    }
+    .note strong { color: #b8d8ff; }
+
+    /* ── Font Awesome fallbacks ──────────────────────────── */
+    .fa-journal-whills::before { content: "📋"; font-style: normal; }
+    .fa-arrow-turn-up::before { content: "↩ "; }
+    .fa-star::before { content: "★"; }
+    .fa-check-circle::before { content: "✓"; }
+    .fa-times-circle::before { content: "✕"; }
+    .fa-bolt::before { content: "⚡"; }
+    .fa-minus::before { content: "—"; }
+    .fa-caret-right::before { content: "▶"; }
+    .fa-link::before { content: "🔗 "; }
+    .fa-gear::before { content: "⚙"; }
+    .fa-close::before { content: "✕"; }
+    .fa-pen-to-square::before { content: "✏"; }
+  </style>
+</head>
+<body>
+
+<h1>Log Item Sheet — Redesign Mockup</h1>
+
+<div class="notes">
+  <div class="note">
+    <strong>Before:</strong> The existing system sheet — raw checkbox table for value states, injected chain controls, and a collapsible "Edit Log Data" section appended at the bottom.
+  </div>
+  <div class="note">
+    <strong>After:</strong> Redesigned sheet registered as an alternative type. Same underlying data, no model changes. Three sections: <strong>What happened?</strong> / <strong>Values used</strong> / <strong>Chain &amp; Arc</strong>. Value badges show all active states simultaneously. Context banner shows chain relationship (calls back <em>to</em> an earlier log) at a glance. Directive is added via a button, not a dropdown. Custom date is in ⚙ Log Options.
+  </div>
+</div>
+
+<div class="side-by-side">
+
+  <!-- ═══════════════════════ CURRENT SHEET ════════════════════════ -->
+  <div class="label-above">
+    <span>Current sheet (system default + injections)</span>
+    <div class="window-shell">
+      <div class="window-header">
+        <i class="fa fa-journal-whills"></i>
+        Kobayashi Maru Run
+        <span class="spacer"></span>
+        <div class="win-btn"></div>
+      </div>
+      <div class="window-content">
+        <div class="current-sheet">
+
+          <div class="current-header-row">
+            <div class="current-img">📋</div>
+            <div class="current-name-col">
+              <span class="current-label">Name</span>
+              <input class="current-name-input" type="text" value="Kobayashi Maru Run" />
+            </div>
+          </div>
+
+          <div class="current-section-title">Value Name</div>
+          <table class="current-table">
+            <thead>
+              <tr>
+                <th class="name-col">Value</th>
+                <th>Unused</th>
+                <th>Positive</th>
+                <th>Negative</th>
+                <th>Challenged</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="name-col">Duty to My Crew</td>
+                <td><label><input type="checkbox"></label></td>
+                <td><label><input type="checkbox" checked></label></td>
+                <td><label><input type="checkbox"></label></td>
+                <td><label><input type="checkbox" checked></label></td>
+              </tr>
+              <tr>
+                <td class="name-col">There's No Refuge</td>
+                <td><label><input type="checkbox" checked></label></td>
+                <td><label><input type="checkbox"></label></td>
+                <td><label><input type="checkbox"></label></td>
+                <td><label><input type="checkbox"></label></td>
+              </tr>
+              <tr>
+                <td class="name-col">Command Presence</td>
+                <td><label><input type="checkbox"></label></td>
+                <td><label><input type="checkbox"></label></td>
+                <td><label><input type="checkbox" checked></label></td>
+                <td><label><input type="checkbox"></label></td>
+              </tr>
+              <tr>
+                <td class="name-col">Honour &amp; Glory</td>
+                <td><label><input type="checkbox" checked></label></td>
+                <td><label><input type="checkbox"></label></td>
+                <td><label><input type="checkbox"></label></td>
+                <td><label><input type="checkbox"></label></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="current-section-title">Description</div>
+          <div class="current-desc-area">
+            Commanded the crew through the no-win scenario. Challenged my core values but ultimately held together under pressure…
+          </div>
+
+          <!-- Injected: chain controls -->
+          <div class="injected-chain" style="margin-top:8px;">
+            <div style="font-size:0.72rem; color:#668; font-weight:600; margin-bottom:6px; border-bottom:1px dashed #335; padding-bottom:3px;">
+              ⚙ Injected: Chain &amp; Arc Controls
+            </div>
+            <div class="injected-chain-row">
+              <span class="injected-chain-label">Callback from</span>
+              <select style="flex:1; background:#1a1c20; border:1px solid #336; color:#aaa; font-family:inherit; font-size:0.78rem; padding:2px 4px; border-radius:2px;">
+                <option>- (No link)</option>
+                <option selected>First Contact Briefing</option>
+              </select>
+            </div>
+            <div class="injected-chain-row">
+              <span class="injected-chain-label">Value</span>
+              <select style="flex:1; background:#1a1c20; border:1px solid #336; color:#aaa; font-family:inherit; font-size:0.78rem; padding:2px 4px; border-radius:2px;">
+                <option>-</option>
+                <option selected>Duty to My Crew</option>
+              </select>
+            </div>
+            <div class="injected-chain-row">
+              <span class="injected-chain-label">Primary Value</span>
+              <select style="flex:1; background:#1a1c20; border:1px solid #336; color:#aaa; font-family:inherit; font-size:0.78rem; padding:2px 4px; border-radius:2px;">
+                <option>-</option>
+                <option selected>Duty to My Crew</option>
+              </select>
+            </div>
+            <div class="injected-chain-row">
+              <span class="injected-chain-label">Arc Label</span>
+              <input type="text" value="" placeholder="e.g. Command Trials Arc" style="flex:1; background:#1a1c20; border:1px solid #336; color:#aaa; font-family:inherit; font-size:0.78rem; padding:2px 4px; border-radius:2px;">
+            </div>
+            <div class="injected-chain-row">
+              <span class="injected-chain-label">Directive</span>
+              <select style="flex:1; background:#1a1c20; border:1px solid #336; color:#aaa; font-family:inherit; font-size:0.78rem; padding:2px 4px; border-radius:2px;">
+                <option>- (None)</option>
+                <option selected>Survive the no-win scenario</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Injected: meta collapsible -->
+          <details class="injected-meta">
+            <summary>Edit Log Data</summary>
+            <div class="injected-fields">
+              <div class="injected-field">
+                <input type="checkbox"> <label>Created with trauma</label>
+              </div>
+              <div class="injected-field">
+                <input type="checkbox" checked> <label>Show milestone/arc button</label>
+              </div>
+              <div class="injected-field">
+                <label>Custom Date</label>
+                <input type="date" value="2401-03-15" style="background:#1a1c20; border:1px solid #336; color:#aaa; font-size:0.75rem; padding:1px 4px; border-radius:2px;">
+              </div>
+            </div>
+          </details>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ NEW SHEET ════════════════════════════ -->
+  <div class="label-above">
+    <span>Proposed redesign (new sheet type)</span>
+    <div class="window-shell">
+      <div class="window-header">
+        <i class="fa fa-journal-whills"></i>
+        Kobayashi Maru Run
+        <span class="spacer"></span>
+        <div class="win-btn"></div>
+      </div>
+      <div class="window-content">
+        <div class="new-sheet">
+
+          <!-- ── Banner ── -->
+          <div class="context-banner">
+            <div class="context-banner-row">
+              <i class="fa fa-arrow-turn-up" title="Calls back to"></i>
+              <span class="cb-label">Calls back to</span>
+              <a title="Open First Contact Briefing">First Contact Briefing</a>
+              <span style="opacity:.4;">·</span>
+              Duty to My Crew
+              <span class="cb-arc">★ Arc complete</span>
+            </div>
+            <div class="context-banner-row">
+              <i class="fa fa-arrow-turn-down" title="Called back by" style="transform:scaleX(-1);"></i>
+              <span class="cb-label">Called back by</span>
+              <a title="Open Survival Assessment">Survival Assessment</a>
+            </div>
+          </div>
+
+          <div class="new-body">
+
+            <!-- ── Section 1: What happened? ── -->
+            <div>
+              <div class="section-header">What happened?</div>
+              <div class="header-row">
+                <div class="log-img" title="Click to change image"><i class="fa fa-scroll"></i></div>
+                <div class="header-fields">
+                  <div class="field-row">
+                    <span class="field-label">Mission Log Name</span>
+                    <input class="field-input" type="text" value="Kobayashi Maru Run" />
+                    <span style="font-size:0.7rem; color:#446; margin-top:2px;">Stardate 2401.72</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-top: 8px;">
+                <span class="field-label" style="display:block; margin-bottom:4px;">Description</span>
+                <textarea class="desc-area" style="resize:vertical; min-height:60px; width:100%; box-sizing:border-box;">Commanded the crew through the no-win scenario. Challenged my core values but ultimately held together under pressure…</textarea>
+              </div>
+            </div>
+
+            <!-- ── Section 2: Values used ── -->
+            <div>
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                <div class="section-header" style="margin-bottom:0;">Values used</div>
+                <button class="chain-edit-btn" title="Trauma flag, show arc/milestone button, custom date">Log options</button>
+              </div>
+
+              <table class="current-table" style="width:100%;">
+                <thead>
+                  <tr>
+                    <th style="width:20px;" title="Primary value">★</th>
+                    <th class="name-col">Value</th>
+                    <th>Unused</th>
+                    <th>Positive</th>
+                    <th>Negative</th>
+                    <th>Challenged</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><input type="radio" name="primary-value" id="pv1" class="star-radio"><label for="pv1" title="Set as primary value">★</label></td>
+                    <td class="name-col">Duty to My Crew</td>
+                    <td><label><input type="checkbox"></label></td>
+                    <td><label><input type="checkbox" checked></label></td>
+                    <td><label><input type="checkbox"></label></td>
+                    <td><label><input type="checkbox" checked></label></td>
+                  </tr>
+                  <tr>
+                    <td><input type="radio" name="primary-value" id="pv2" class="star-radio"><label for="pv2" title="Set as primary value">★</label></td>
+                    <td class="name-col">There's No Refuge</td>
+                    <td><label><input type="checkbox" checked></label></td>
+                    <td><label><input type="checkbox"></label></td>
+                    <td><label><input type="checkbox"></label></td>
+                    <td><label><input type="checkbox"></label></td>
+                  </tr>
+                  <tr>
+                    <td><input type="radio" name="primary-value" id="pv3" class="star-radio" checked><label for="pv3" title="Set as primary value">★</label></td>
+                    <td class="name-col">Command Presence</td>
+                    <td><label><input type="checkbox"></label></td>
+                    <td><label><input type="checkbox"></label></td>
+                    <td><label><input type="checkbox" checked></label></td>
+                    <td><label><input type="checkbox"></label></td>
+                  </tr>
+                  <tr>
+                    <td><input type="radio" name="primary-value" id="pv4" class="star-radio"><label for="pv4" title="Set as primary value">★</label></td>
+                    <td class="name-col">Honour &amp; Glory</td>
+                    <td><label><input type="checkbox" checked></label></td>
+                    <td><label><input type="checkbox"></label></td>
+                    <td><label><input type="checkbox"></label></td>
+                    <td><label><input type="checkbox"></label></td>
+                  </tr>
+                  <!-- Directive row -->
+                  <tr>
+                    <td><input type="radio" name="primary-value" id="pv5" class="star-radio"><label for="pv5" title="Set as primary value">★</label></td>
+                    <td class="name-col" style="font-style:italic; color:#889;">
+                      Survive the no-win scenario
+                      <button style="background:none; border:none; color:#c66; cursor:pointer; padding:0 3px; font-size:0.7rem; line-height:1; vertical-align:middle;" title="Remove directive">✕</button>
+                    </td>
+                    <td><label><input type="checkbox"></label></td>
+                    <td><label><input type="checkbox" checked></label></td>
+                    <td><label><input type="checkbox"></label></td>
+                    <td><label><input type="checkbox"></label></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div style="padding:3px 2px 0;">
+                <button class="chain-edit-btn" title="Add the current mission directive to this log">＋ Add Directive</button>
+              </div>
+
+            </div>
+
+            <!-- ── Section 3: Chain & Arc (Idea B collapsible) ── -->
+            <details class="chain-details chain-section" open>
+              <summary class="chain-summary">
+                <span class="caret fa fa-caret-right"></span>
+                Chain &amp; Arc
+                <span class="chain-badge-pill">Callback linked</span>
+                <span class="chain-badge-pill arc" style="margin-left:6px;">Arc complete</span>
+                <span class="chain-badge-pill" style="margin-left:6px;">Milestone chosen</span>
+              </summary>
+              <div class="chain-content">
+
+                <!-- Calls back to -->
+                <div class="chain-field-row">
+                  <span class="chain-field-label">Calls back to</span>
+                  <select class="chain-select">
+                    <option>- (No link)</option>
+                    <option selected>First Contact Briefing</option>
+                    <option>Starfleet Academy Graduation</option>
+                  </select>
+                  <label style="display:flex; align-items:center; gap:5px; font-size:0.78rem; color:#99a; cursor:pointer; white-space:nowrap; margin-left:4px;">
+                    <input type="checkbox"> Arc complete
+                  </label>
+                </div>
+
+                <!-- Value (for chain) -->
+                <div class="chain-field-row">
+                  <span class="chain-field-label">Chain value</span>
+                  <select class="chain-select">
+                    <option>-</option>
+                    <option selected>Duty to My Crew</option>
+                    <option>Command Presence</option>
+                  </select>
+                </div>
+
+                <!-- Milestone link -->
+                <!-- When callback linked + milestone not set: show "Choose milestone" button -->
+                <!-- When milestone is set: show "↗ Open" button -->
+                <div class="chain-field-row">
+                  <span class="chain-field-label">Milestone</span>
+                  <select class="chain-select">
+                    <option>- (None)</option>
+                    <option selected>Command Trials Milestone</option>
+                    <option>Facing the No-Win</option>
+                  </select>
+                  <!-- Shown when milestone IS set: -->
+                  <button class="chain-edit-btn" title="Open milestone sheet">↗ Open</button>
+                </div>
+                <!-- Shown when callback IS linked but milestone NOT set (replaces Open button): -->
+                <div class="chain-field-row" style="opacity:0.5;">
+                  <span class="chain-field-label"></span>
+                  <button class="chain-edit-btn" style="border-color:#6699ff; color:#88aaff;" title="Create or pick a milestone for this chain">Choose milestone…</button>
+                  <span style="font-size:0.7rem; color:#556; font-style:italic;">← shown instead of Open when no milestone set</span>
+                </div>
+
+
+              </div>
+            </details>
+
+          </div><!-- /new-body -->
+
+          <!-- Footer -->
+
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /side-by-side -->
+
+<!-- ── Extra: badge states reference ── -->
+<div class="notes" style="margin-top: 12px;">
+  <div class="note">
+    <strong>Badge states</strong> — A value row shows one badge per active state.
+    Multiple badges can coexist (e.g. Positive + Challenged simultaneously, as in the rules).
+    "Unused" collapses to a single grey pill. Clicking a badge removes that state; the <strong>+</strong> button adds one.
+    The ★ star marks the log's primary value (used for chain-indent logic).
+  </div>
+  <div class="note">
+    <strong>Context banner</strong> — Only shown when a callback link exists. Clicking it opens the source log. The arc pill on the right only appears when <code>arcInfo.isArc === true</code>.
+  </div>
+  <div class="note">
+    <strong>Log options button</strong> — Moves the rarely-changed fields (trauma flag, show-milestone-arc toggle) out of a cryptically-named "Edit Log Data" collapsible into a small popover, reducing visual noise on the main sheet.
+  </div>
+</div>
+
+</body>
+</html>

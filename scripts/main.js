@@ -45,6 +45,22 @@ import { registerCustomSpendOptionsSettings } from "./acclaim/customSpendOptions
 import { useValue } from "./values/useValue.js";
 import { CreationWizardApp } from "./creation/creation-wizard-app.mjs";
 import { preloadCreationTabTemplate } from "./creation/creation-tab.mjs";
+import { registerOfficersLogDataModel } from "./data/logDataModel.js";
+import { registerOfficersTraitDataModel } from "./data/traitDataModel.js";
+import { registerOfficersCharacterDataModel } from "./data/characterDataModel.js";
+import { OfficersLogSheet } from "./sheet/OfficersLogSheet.mjs";
+import {
+  registerMigrationSetting,
+  runLogFlagMigration,
+} from "./data/migration.js";
+import {
+  isMissionLogJournalsEnabled,
+  syncAllJournals,
+  syncPageForLogItem,
+  deletePageForLogItem,
+  syncJournalMetadataForActor,
+  syncMissionJournalsDebounced,
+} from "./journal/index.js";
 
 function registerApi() {
   // Public API (available on all clients; methods may GM-guard internally)
@@ -107,6 +123,67 @@ function safeInstallUiHooks() {
   }
 }
 
+function safeInstallMissionLogJournalHooks() {
+  try {
+    // createItem / updateItem / deleteItem — surgically sync only the page for
+    // the log item that was added, changed, or removed.
+    Hooks.on("createItem", (item) => {
+      try {
+        if (!game.user?.isGM || !isMissionLogJournalsEnabled()) return;
+        if (item?.type === "log" && item?.parent?.type === "character") {
+          syncPageForLogItem(item.parent, item);
+          syncMissionJournalsDebounced();
+        }
+      } catch (err) {
+        console.error(`${MODULE_ID} | createItem journal hook failed`, err);
+      }
+    });
+
+    Hooks.on("updateItem", (item) => {
+      try {
+        if (!game.user?.isGM || !isMissionLogJournalsEnabled()) return;
+        if (item?.type === "log" && item?.parent?.type === "character") {
+          syncPageForLogItem(item.parent, item);
+          syncMissionJournalsDebounced();
+        }
+      } catch (err) {
+        console.error(`${MODULE_ID} | updateItem journal hook failed`, err);
+      }
+    });
+
+    Hooks.on("deleteItem", (item) => {
+      try {
+        if (!game.user?.isGM || !isMissionLogJournalsEnabled()) return;
+        if (item?.type === "log" && item?.parent?.type === "character") {
+          deletePageForLogItem(item.parent, item.id);
+          syncMissionJournalsDebounced();
+        }
+      } catch (err) {
+        console.error(`${MODULE_ID} | deleteItem journal hook failed`, err);
+      }
+    });
+
+    // updateActor — keep journal name and ownership in sync when the actor is
+    // renamed or its permissions change.  Page content is NOT touched.
+    Hooks.on("updateActor", (actor, changes) => {
+      try {
+        if (!game.user?.isGM || !isMissionLogJournalsEnabled()) return;
+        if (actor?.type !== "character") return;
+        if ("name" in changes || "ownership" in changes) {
+          syncJournalMetadataForActor(actor);
+        }
+      } catch (err) {
+        console.error(`${MODULE_ID} | updateActor journal hook failed`, err);
+      }
+    });
+  } catch (err) {
+    console.error(
+      `${MODULE_ID} | failed to install mission log journal hooks`,
+      err,
+    );
+  }
+}
+
 function safeInstallChatHooks() {
   try {
     installCreateChatMessageHook();
@@ -129,6 +206,12 @@ function safeRegisterSettings() {
     registerMissionSettings();
   } catch (err) {
     console.error(`${MODULE_ID} | failed to register settings`, err);
+  }
+
+  try {
+    registerMigrationSetting();
+  } catch (err) {
+    console.error(`${MODULE_ID} | failed to register migration setting`, err);
   }
 
   try {
@@ -218,7 +301,9 @@ async function checkPendingShipBenefits() {
     for (const actor of game.actors) {
       if (actor.type !== "character") continue;
 
-      const pending = actor.getFlag(MODULE_ID, "pendingShipBenefits");
+      const pending =
+        actor.system?.pendingShipBenefits ??
+        actor.getFlag(MODULE_ID, "pendingShipBenefits");
       if (pending && Array.isArray(pending) && pending.length > 0) {
         totalPending += pending.length;
       }
@@ -257,6 +342,32 @@ try {
 }
 
 Hooks.once("init", () => {
+  // Register data models before any settings so system.* fields are available.
+  try {
+    registerOfficersLogDataModel();
+    registerOfficersTraitDataModel();
+    registerOfficersCharacterDataModel();
+  } catch (err) {
+    console.error(`${MODULE_ID} | failed to register data model`, err);
+  }
+
+  // Register opt-in log sheet (makeDefault:false — existing users unaffected).
+  try {
+    foundry.applications.apps.DocumentSheetConfig.registerSheet(
+      Item,
+      MODULE_ID,
+      OfficersLogSheet,
+      {
+        types: ["log"],
+        label: "Log (Officers Log)",
+        makeDefault: false,
+      },
+    );
+    loadTemplates([`modules/${MODULE_ID}/templates/officers-log-sheet.hbs`]);
+  } catch (err) {
+    console.error(`${MODULE_ID} | failed to register OfficersLogSheet`, err);
+  }
+
   safeRegisterClientSettings();
   safeRegisterSettings();
 
@@ -270,6 +381,7 @@ Hooks.once("init", () => {
 
   // Hooks moved out of main.js
   safeInstallUiHooks();
+  safeInstallMissionLogJournalHooks();
 });
 
 Hooks.once("ready", () => {
@@ -278,6 +390,17 @@ Hooks.once("ready", () => {
   );
 
   safeInitSocket();
+
+  // Migrate flag data → system fields (GM only, runs once per world).
+  try {
+    if (game.user.isGM) {
+      runLogFlagMigration().catch((err) => {
+        console.error(`${MODULE_ID} | data migration failed`, err);
+      });
+    }
+  } catch (err) {
+    console.error(`${MODULE_ID} | data migration startup failed`, err);
+  }
 
   try {
     if (game.user.isGM) ensureNewSceneMacro();
@@ -301,6 +424,17 @@ Hooks.once("ready", () => {
 
   // Hooks moved out of main.js
   safeInstallChatHooks();
+
+  // Sync mission log journals on load (GM only, when setting is enabled).
+  try {
+    if (game.user.isGM && isMissionLogJournalsEnabled()) {
+      syncAllJournals().catch((err) => {
+        console.error(`${MODULE_ID} | syncAllJournals (ready) failed`, err);
+      });
+    }
+  } catch (err) {
+    console.error(`${MODULE_ID} | syncAllJournals startup failed`, err);
+  }
 });
 
 // When a player connects mid-session, check whether they need to be added to the mission.

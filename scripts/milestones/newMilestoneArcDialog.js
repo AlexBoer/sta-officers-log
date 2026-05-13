@@ -172,53 +172,7 @@ class NewMilestoneArcApp extends Base {
   }
 
   async _createStandaloneMilestone({ name, applied, isArc }) {
-    if (!this._actor) return null;
-    const safeName = String(name ?? "").trim();
-    if (!safeName) return null;
-
-    const action = applied?.action ? String(applied.action) : "";
-    const createdItemId = applied?.createdItemId
-      ? String(applied.createdItemId)
-      : "";
-
-    const isCustomAction =
-      action === "customMilestone" || action === "customArc";
-    const syncPolicy = action === "arcValue" ? "once" : "always";
-
-    const milestoneBenefit = isCustomAction
-      ? null
-      : {
-          action,
-          syncPolicy,
-          syncedOnce: false,
-          ...(createdItemId ? { createdItemId } : {}),
-        };
-
-    const itemData = {
-      name: safeName,
-      type: "milestone",
-      flags: {
-        [MODULE_ID]: {
-          ...(milestoneBenefit ? { milestoneBenefit } : {}),
-        },
-      },
-      system: {
-        description: "",
-        ...(isArc
-          ? {
-              arc: {
-                isArc: true,
-                steps: Number(applied?.steps ?? 0),
-              },
-            }
-          : {}),
-      },
-    };
-
-    const [created] = await this._actor.createEmbeddedDocuments("Item", [
-      itemData,
-    ]);
-    return created ?? null;
+    return createStandaloneMilestoneItem(this._actor, { name, applied, isArc });
   }
 
   _attachPartListeners(partId, htmlElement, _options) {
@@ -375,6 +329,56 @@ class NewMilestoneArcApp extends Base {
       }
     });
   }
+}
+
+export async function createStandaloneMilestoneItem(
+  actor,
+  { name, applied, isArc },
+) {
+  if (!actor) return null;
+  const safeName = String(name ?? "").trim();
+  if (!safeName) return null;
+
+  const action = applied?.action ? String(applied.action) : "";
+  const createdItemId = applied?.createdItemId
+    ? String(applied.createdItemId)
+    : "";
+
+  const isCustomAction = action === "customMilestone" || action === "customArc";
+  const syncPolicy = action === "arcValue" ? "once" : "always";
+
+  const milestoneBenefit = isCustomAction
+    ? null
+    : {
+        action,
+        syncPolicy,
+        syncedOnce: false,
+        ...(createdItemId ? { createdItemId } : {}),
+      };
+
+  const itemData = {
+    name: safeName,
+    type: "milestone",
+    flags: {
+      [MODULE_ID]: {
+        ...(milestoneBenefit ? { milestoneBenefit } : {}),
+      },
+    },
+    system: {
+      description: "",
+      ...(isArc
+        ? {
+            arc: {
+              isArc: true,
+              steps: Number(applied?.steps ?? 0),
+            },
+          }
+        : {}),
+    },
+  };
+
+  const [created] = await actor.createEmbeddedDocuments("Item", [itemData]);
+  return created ?? null;
 }
 
 export function openNewMilestoneArcDialog(

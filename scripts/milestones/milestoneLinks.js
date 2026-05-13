@@ -333,10 +333,14 @@ export async function syncCallbackLinksFromMilestone(actor, milestone) {
 
       // Respect user's explicit "no link" override - don't re-assert callback links
       const isDisabled =
+        log.system?.callbackLinkDisabled === true ||
         log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true;
       if (isDisabled) return;
 
-      const existing = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
+      const existing =
+        log.system?.callbackLink ??
+        log.getFlag?.(MODULE_ID, "callbackLink") ??
+        {};
       const exFrom = String(existing?.fromLogId ?? "");
       const exVal = String(existing?.valueId ?? "");
       const nextFrom = String(fromLogId ?? "");
@@ -347,9 +351,11 @@ export async function syncCallbackLinksFromMilestone(actor, milestone) {
       const nextVal = milestoneVal || exVal;
 
       if (exFrom === nextFrom && exVal === nextVal) return;
-      await log.setFlag(MODULE_ID, "callbackLink", {
-        fromLogId: nextFrom,
-        valueId: nextVal,
+      await log.update({
+        "system.callbackLink": {
+          fromLogId: nextFrom,
+          valueId: nextVal,
+        },
       });
     };
 

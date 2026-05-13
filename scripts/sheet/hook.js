@@ -39,6 +39,8 @@ import { installItemUpdateHooks } from "./itemUpdateHooks.js";
 import { installFlowchartButton } from "../flowchart/flowchartButton.js";
 import { installAcclaimButtonOverride } from "../acclaim/acclaimButton.js";
 import { installCreationInPlayTab } from "../creation/creation-tab.mjs";
+import { isUnlinkedTokenActor } from "../core/utils.js";
+import { t } from "../core/i18n.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Handler: STA Tracker
@@ -121,6 +123,25 @@ function handleCharacterSheetRender(app, root) {
 
   const actor = app.actor;
   if (!actor || actor.type !== "character") return;
+
+  // Show a persistent warning banner if this sheet belongs to an unlinked token (GM only).
+  try {
+    if (game.user?.isGM && isUnlinkedTokenActor(actor)) {
+      const existingBanner = root.querySelector(".sta-unlinked-token-banner");
+      if (!existingBanner) {
+        const banner = document.createElement("div");
+        banner.className = "sta-unlinked-token-banner";
+        banner.title = t("sta-officers-log.unlinkedToken.warningTitle") ?? "Unlinked Token Warning";
+        banner.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${
+          t("sta-officers-log.unlinkedToken.warningMessage") ??
+          "This token is not linked to its world actor. Changes (including log entries) will not persist."
+        }`;
+        root.prepend(banner);
+      }
+    }
+  } catch (_) {
+    // non-critical
+  }
 
   // Add flowchart button to Character Logs section (if enabled)
   try {

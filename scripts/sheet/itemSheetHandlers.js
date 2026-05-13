@@ -40,6 +40,9 @@ export async function handleItemSheetRender(app, root) {
         hideAssociatedLogDropdowns(root, actor, item);
       }
     } else if (item?.type === "log") {
+      // Skip injection for OfficersLogSheet — it handles everything natively.
+      if (app?.constructor?.name === "OfficersLogSheet") return;
+
       const actor = getActorFromAppOrItem(app, item);
       if (actor?.type === "character") {
         installInlineLogChainLinkControls(root, actor, item);

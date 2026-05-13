@@ -58,15 +58,18 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
     if (!logItem) continue;
 
     // Check for pending milestone data (used for arc detection and benefit tracking)
-    const pendingMilestone = logItem.getFlag?.(
-      MODULE_ID,
-      "pendingMilestoneBenefit",
-    );
+    const pendingMilestone =
+      logItem.system?.pendingMilestoneBenefit ??
+      logItem.getFlag?.(MODULE_ID, "pendingMilestoneBenefit") ??
+      null;
 
     const pendingObj = isPlainObject(pendingMilestone)
       ? pendingMilestone
       : null;
-    const arcFromLogForLabel = logItem.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+    const arcFromLogForLabel =
+      logItem.system?.arcInfo ??
+      logItem.getFlag?.(MODULE_ID, "arcInfo") ??
+      null;
     const arcForLabel = pendingObj?.arc ?? arcFromLogForLabel ?? null;
     const isArcBenefit = arcForLabel?.isArc === true;
 
@@ -77,11 +80,9 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
 
     // Check manual override checkbox (default false)
     // The checkbox is the master control for button visibility
-    let showMilestoneArcButton = false;
-    try {
-      const flag = logItem.getFlag?.(MODULE_ID, "showMilestoneArcButton");
-      if (typeof flag === "boolean") showMilestoneArcButton = flag;
-    } catch (_) {}
+    const showMilestoneArcButton =
+      logItem.system?.showMilestoneArcButton === true ||
+      logItem.getFlag?.(MODULE_ID, "showMilestoneArcButton") === true;
 
     // Only show button if the checkbox is checked
     if (!showMilestoneArcButton) continue;
@@ -143,13 +144,16 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
           ? String(pending.milestoneId)
           : "";
         if (milestoneId) {
-          const existing = logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+          const existing =
+            logItem.system?.callbackLink ??
+            logItem.getFlag?.(MODULE_ID, "callbackLink") ??
+            null;
           const next = {
             ...(isPlainObject(existing) ? existing : {}),
             milestoneId,
           };
           await logItem.update(
-            { [`flags.${MODULE_ID}.callbackLink`]: next },
+            { "system.callbackLink": next },
             { renderSheet: false },
           );
         }
@@ -157,7 +161,10 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
         // ignore
       }
 
-      const arcFromLog = logItem.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+      const arcFromLog =
+        logItem.system?.arcInfo ??
+        logItem.getFlag?.(MODULE_ID, "arcInfo") ??
+        null;
       const arc = pending?.arc ?? arcFromLog ?? null;
 
       const initialTab = isArcBenefit ? "arc" : "milestone";
@@ -189,7 +196,9 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
             }
 
             const primaryValueId = String(
-              log.getFlag?.(MODULE_ID, "primaryValueId") ?? "",
+              log.system?.primaryValueId ||
+                log.getFlag?.(MODULE_ID, "primaryValueId") ||
+                "",
             );
             if (!primaryValueId) {
               allTrauma = false;
@@ -250,7 +259,9 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
 
           // If pending data is missing, try to reconstruct from callbackLink
           const callbackLink =
-            logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+            logItem.system?.callbackLink ??
+            logItem.getFlag?.(MODULE_ID, "callbackLink") ??
+            null;
           if (!chosenLogId && callbackLink?.fromLogId) {
             chosenLogId = String(callbackLink.fromLogId);
           }
@@ -279,7 +290,10 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
           if (!chosenLog && resolvedChosenLogId) {
             // The pending data may refer to a log that was deleted/edited.
             // If possible, fall back to the callbackLink on the CURRENT log.
-            const link = logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+            const link =
+              logItem.system?.callbackLink ??
+              logItem.getFlag?.(MODULE_ID, "callbackLink") ??
+              null;
             const fallbackId = link?.fromLogId ? String(link.fromLogId) : "";
             const fallbackLog = fallbackId
               ? (actor.items.get(fallbackId) ?? null)
@@ -289,11 +303,13 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
               resolvedChosenLogId = fallbackId;
               chosenLog = fallbackLog;
 
-              // Heal the flag so future clicks work without special-casing.
+              // Heal so future clicks work without special-casing.
               try {
-                await logItem.setFlag(MODULE_ID, "pendingMilestoneBenefit", {
-                  ...pending,
-                  chosenLogId: resolvedChosenLogId,
+                await logItem.update({
+                  "system.pendingMilestoneBenefit": {
+                    ...pending,
+                    chosenLogId: resolvedChosenLogId,
+                  },
                 });
               } catch (_) {
                 // ignore
@@ -306,9 +322,9 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
             ui.notifications?.warn(
               "This callback references a Log that no longer exists. Please choose a different Log and try again.",
             );
-            // Still clear the button flag so the button goes away
+            // Still clear the button so the button goes away
             try {
-              await logItem.setFlag(MODULE_ID, "showMilestoneArcButton", false);
+              await logItem.update({ "system.showMilestoneArcButton": false });
             } catch (_) {}
             return;
           }
@@ -379,27 +395,31 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
             await milestone.update({ name: desiredName });
           }
 
-          await logItem.setFlag(MODULE_ID, "pendingMilestoneBenefit", {
-            ...pending,
-            milestoneId: milestone.id,
-            benefitChosen: true,
+          await logItem.update({
+            "system.pendingMilestoneBenefit": {
+              ...pending,
+              milestoneId: milestone.id,
+              benefitChosen: true,
+            },
           });
 
-          // Auto-uncheck the showMilestoneArcButton flag after benefit is chosen
+          // Auto-uncheck showMilestoneArcButton after benefit is chosen
           try {
-            await logItem.setFlag(MODULE_ID, "showMilestoneArcButton", false);
+            await logItem.update({ "system.showMilestoneArcButton": false });
           } catch (_) {
             // ignore
           }
 
           try {
             const currentLink =
-              logItem.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+              logItem.system?.callbackLink ??
+              logItem.getFlag?.(MODULE_ID, "callbackLink") ??
+              null;
             const updatedLink = isPlainObject(currentLink)
               ? { ...currentLink }
               : {};
             updatedLink.milestoneId = milestone.id;
-            await logItem.setFlag(MODULE_ID, "callbackLink", updatedLink);
+            await logItem.update({ "system.callbackLink": updatedLink });
           } catch (_) {
             // ignore
           }

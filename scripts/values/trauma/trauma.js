@@ -109,6 +109,7 @@ const LOG_CREATED_WITH_TRAUMA_FLAG = "createdWithTrauma";
 export function wasLogCreatedWithTrauma(log) {
   if (!log || log.type !== "log") return false;
   try {
+    if (log.system?.createdWithTrauma === true) return true;
     return Boolean(log.getFlag?.(MODULE_ID, LOG_CREATED_WITH_TRAUMA_FLAG));
   } catch (_) {
     return false;
@@ -117,5 +118,5 @@ export function wasLogCreatedWithTrauma(log) {
 
 export async function setLogCreatedWithTraumaFlag(log, value) {
   if (!log || log.type !== "log") return;
-  await log.setFlag(MODULE_ID, LOG_CREATED_WITH_TRAUMA_FLAG, Boolean(value));
+  await log.update({ "system.createdWithTrauma": Boolean(value) });
 }

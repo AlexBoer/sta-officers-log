@@ -72,8 +72,15 @@ function _hasEligibleCallbackTargetWithAnyInvokedDirective(
     const callbackTargetIds = new Set();
     for (const log of actor.items ?? []) {
       if (log?.type !== "log") continue;
-      if (log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true) continue;
-      const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
+      if (
+        log.system?.callbackLinkDisabled === true ||
+        log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true
+      )
+        continue;
+      const link =
+        log.system?.callbackLink ??
+        log.getFlag?.(MODULE_ID, "callbackLink") ??
+        {};
       const fromLogId = String(link?.fromLogId ?? "");
       if (fromLogId) callbackTargetIds.add(fromLogId);
     }
@@ -313,12 +320,15 @@ export async function promptUseDirective(actor) {
 
     // Store a mapping so later UI can display the directive name.
     try {
-      const existing = logDoc.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
+      const existing =
+        logDoc.system?.directiveLabels ??
+        logDoc.getFlag?.(MODULE_ID, "directiveLabels") ??
+        {};
       const cloned = isPlainObject(existing)
         ? foundry.utils.deepClone(existing)
         : {};
       cloned[String(directiveKey)] = chosenText;
-      await logDoc.setFlag(MODULE_ID, "directiveLabels", cloned);
+      await logDoc.update({ "system.directiveLabels": cloned });
     } catch (_) {
       // ignore
     }

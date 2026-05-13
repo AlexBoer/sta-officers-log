@@ -113,6 +113,10 @@
         "name": "Enable Scar Rules",
         "hint": "Enable the Scar rules from the 23rd Century Campaign Guide. When disabled, the 'Scar' checkbox on Traits will be hidden."
       },
+      "enableMissionLogJournals": {
+        "name": "Enable Mission Log Journals",
+        "hint": "Automatically creates a journal entry for each character with log items, with one page per log. Players have owner access to their own journal so they can take notes offline. Everyone else can view but not edit. Note: to let players create additional journals of their own, grant them the 'Journal Create' role in User Management."
+      },
       "enableLcarsMode": {
         "name": "LCARS Mode",
         "hint": "Apply LCARS-inspired styling (black & orange theme) to all Officer's Log dialogs and popups. Matches the visual style used by STA Utils."
@@ -139,6 +143,12 @@
       "save": "Save",
       "directivesPlaceholder": "Enter one directive per line...",
       "directivesCharLimit": "Each directive has a 200 character limit."
+    },
+    "directives": {
+      "addDirectiveTitle": "Add Directive",
+      "pickDirective": "Choose a directive:",
+      "selectOne": "Select",
+      "addDirective": "Add"
     },
     "traits": {
       "scarLabel": "Scar",
@@ -314,10 +324,46 @@
     },
     "logSheet": {
       "arcComplete": "Arc Complete",
+      "arcCompleteNeedsChain": "A chain value (primary value) must be set before marking an arc as complete.",
       "createdWithTraumaLabel": "Created With Trauma",
       "createdWithTraumaTooltip": "If checked, this log's icon will use the Trauma prefix (T#) instead of the Value prefix (V#) when values are relabeled.",
       "noValueUsed": "No Value Used",
-      "noValueUsedGroupTitle": "Logs with no value used"
+      "noValueUsedGroupTitle": "Logs with no value used",
+      "stardate": "Stardate",
+      "whatHappened": "What happened?",
+      "descriptionPlaceholder": "Write your personal mission log here…",
+      "description": "Description",
+      "valuesUsed": "Values used",
+      "chainAndArc": "Chain & Arc (advanced)",
+      "arcSteps": "Arc Steps",
+      "logOptions": "Log options",
+      "logNamePlaceholder": "Log name",
+      "value": "Value",
+      "unused": "Unused",
+      "positive": "Positive",
+      "negative": "Negative",
+      "challenged": "Challenged",
+      "primaryValue": "Primary value",
+      "addDirective": "Add Directive",
+      "removeDirective": "Remove directive",
+      "callsBackTo": "Calls back to",
+      "callsBackToLabel": "Calls back to",
+      "calledBackBy": "Called back by",
+      "unknownLog": "unknown log",
+      "badgeCallbackLinked": "Callback linked",
+      "badgeArcComplete": "Arc complete",
+      "badgeMilestoneChosen": "Milestone chosen",
+      "chainValue": "Chain value",
+      "milestone": "Milestone",
+      "none": "None",
+      "chooseMilestone": "Choose milestone…",
+      "openMilestone": "Open milestone sheet",
+      "open": "Open",
+      "choose": "Choose",
+      "save": "Save",
+      "showMilestoneArcButton": "Show Milestone/Arc Button",
+      "customDate": "In-Game Date",
+      "customIrlDate": "Custom IRL Date"
     },
     "logs": {
       "currentMissionIndicator": "Current mission log",
@@ -779,6 +825,22 @@
       "deptSecurity": "Security",
       "deptScience": "Science",
       "deptMedicine": "Medicine"
+    },
+    "journal": {
+      "personalLogsFolderName": "Personal Logs",
+      "missionLogsFolderName": "Mission Logs",
+      "personalLogsSuffix": "Personal Logs",
+      "noDescription": "No entry recorded.",
+      "valuesUsedHeader": "Values Used",
+      "callbacksHeader": "Callbacks",
+      "callbackOutgoingLabel": "Called back to",
+      "callbackIncomingLabel": "Called back from",
+      "chainPosition": "{position} in chain",
+      "milestonesHeader": "Milestones Earned",
+      "arcMilestoneLabel": "Arc Milestone",
+      "statePositive": "Positive",
+      "stateNegative": "Negative",
+      "stateChallenged": "Challenged"
     }
   }
 }

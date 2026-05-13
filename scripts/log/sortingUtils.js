@@ -16,7 +16,8 @@ export function getCreatedKey(log) {
   // Check for custom date first (stored as YYYY-MM-DD string)
   let createdKey = Number.MAX_SAFE_INTEGER;
   try {
-    const customDate = log?.flags?.[MODULE_ID]?.customDate;
+    const customDate =
+      log?.system?.customDate || log?.flags?.[MODULE_ID]?.customDate;
     if (customDate && typeof customDate === "string") {
       // Parse YYYY-MM-DD to timestamp (midnight UTC)
       const parsed = Date.parse(customDate + "T00:00:00Z");

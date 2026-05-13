@@ -29,7 +29,9 @@ export async function openPendingShipBenefitsDialog() {
   for (const actor of game.actors) {
     if (actor.type !== "character") continue;
 
-    const benefits = actor.getFlag?.(MODULE_ID, "pendingShipBenefits");
+    const benefits =
+      actor.system?.pendingShipBenefits ??
+      actor.getFlag?.(MODULE_ID, "pendingShipBenefits");
     if (!benefits || !Array.isArray(benefits) || benefits.length === 0)
       continue;
 
@@ -349,16 +351,19 @@ async function applyShipBenefit(benefit, characterActor) {
  */
 async function removePendingBenefit(actor, benefitIdToRemove) {
   try {
-    const benefits = actor.getFlag?.(MODULE_ID, "pendingShipBenefits") || [];
+    const benefits =
+      actor.system?.pendingShipBenefits ??
+      actor.getFlag?.(MODULE_ID, "pendingShipBenefits") ??
+      [];
     const idToRemove = String(benefitIdToRemove ?? "");
     const updated = benefits.filter(
       (b) => String(_getBenefitIdentifier(b) ?? "") !== idToRemove,
     );
 
     if (updated.length === 0) {
-      await actor.unsetFlag(MODULE_ID, "pendingShipBenefits");
+      await actor.update({ "system.pendingShipBenefits": [] });
     } else {
-      await actor.setFlag(MODULE_ID, "pendingShipBenefits", updated);
+      await actor.update({ "system.pendingShipBenefits": updated });
     }
   } catch (err) {
     console.error(`${MODULE_ID} | Failed to remove pending benefit:`, err);

@@ -217,7 +217,8 @@ export async function promptLinkLogToChain({ actor, log }) {
   const logs = actor.items.filter((i) => i?.type === "log");
   const values = actor.items.filter((i) => i?.type === "value");
 
-  const existing = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
+  const existing =
+    log.system?.callbackLink ?? log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
   const existingFrom = String(existing?.fromLogId ?? "");
   const existingValue = String(existing?.valueId ?? "");
 
@@ -307,11 +308,17 @@ export async function promptLinkLogToChain({ actor, log }) {
   }
 
   if (!fromLogId) {
-    await unsetFlagWithoutRender(log, "callbackLink");
+    await log.update(
+      { "system.callbackLink": null },
+      { render: false, renderSheet: false },
+    );
 
     // Mark an explicit override so milestone-derived edges don't keep it in a chain.
     try {
-      await setFlagWithoutRender(log, "callbackLinkDisabled", true);
+      await log.update(
+        { "system.callbackLinkDisabled": true },
+        { render: false, renderSheet: false },
+      );
     } catch (_) {
       // ignore
     }
@@ -321,12 +328,18 @@ export async function promptLinkLogToChain({ actor, log }) {
   } else {
     // Clear explicit override when setting a link.
     try {
-      await unsetFlagWithoutRender(log, "callbackLinkDisabled");
+      await log.update(
+        { "system.callbackLinkDisabled": false },
+        { render: false, renderSheet: false },
+      );
     } catch (_) {
       // ignore
     }
 
-    await setFlagWithoutRender(log, "callbackLink", { fromLogId, valueId });
+    await log.update(
+      { "system.callbackLink": { fromLogId, valueId } },
+      { render: false, renderSheet: false },
+    );
 
     // Align the log's icon to the selected value (or restore STA default).
     await _syncLogImgToValue(actor, log, valueId);
@@ -398,14 +411,19 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       );
     });
 
-  const existing = log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
+  const existing =
+    log.system?.callbackLink ?? log.getFlag?.(MODULE_ID, "callbackLink") ?? {};
   const existingFrom = String(existing?.fromLogId ?? "");
   const existingValue = String(existing?.valueId ?? "");
   const existingMilestoneId = String(existing?.milestoneId ?? "");
-  const isDisabled = log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true;
+  const isDisabled =
+    log.system?.callbackLinkDisabled === true ||
+    log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true;
 
   const persistedPrimary = String(
-    log.getFlag?.(MODULE_ID, "primaryValueId") ?? "",
+    log.system?.primaryValueId ||
+      log.getFlag?.(MODULE_ID, "primaryValueId") ||
+      "",
   );
 
   const directivesSnapshot = (() => {
@@ -424,7 +442,10 @@ export function installInlineLogChainLinkControls(root, actor, log) {
   // Also include any directives already present on this log, so they can be
   // selected as Primary even if they are not in the current mission list.
   try {
-    const existingLabels = log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
+    const existingLabels =
+      log.system?.directiveLabels ??
+      log.getFlag?.(MODULE_ID, "directiveLabels") ??
+      {};
     if (isPlainObject(existingLabels)) {
       for (const [k, v] of Object.entries(existingLabels)) {
         const key = String(k ?? "");
@@ -454,7 +475,8 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     // ignore
   }
 
-  const existingArcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+  const existingArcInfo =
+    log.system?.arcInfo ?? log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
   const isArcEnd = existingArcInfo?.isArc === true;
   const existingArcValueId = String(existingArcInfo?.valueId ?? "");
   const existingArcStepsRaw = Number(existingArcInfo?.steps ?? 0);
@@ -893,18 +915,21 @@ export function installInlineLogChainLinkControls(root, actor, log) {
     const update = {};
 
     // Primary Value
-    update[`flags.${MODULE_ID}.primaryValueId`] = valueId ? valueId : null;
+    update["system.primaryValueId"] = valueId ? valueId : null;
 
     // Directive metadata for editing/display
     if (valueId && isDirectiveValueId(valueId)) {
       const key = getDirectiveKeyFromValueId(valueId);
-      update[`flags.${MODULE_ID}.primaryDirectiveKey`] = key ? key : null;
+      update["system.primaryDirectiveKey"] = key ? key : "";
 
       // Keep directiveLabels updated from the directives list (or existing map).
       // Do not allow editing directive text from this Primary Value UI.
       if (key) {
         try {
-          const existing = log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
+          const existing =
+            log.system?.directiveLabels ??
+            log.getFlag?.(MODULE_ID, "directiveLabels") ??
+            {};
           const cloned = isPlainObject(existing)
             ? foundry.utils.deepClone(existing)
             : {};
@@ -918,20 +943,22 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
           if (desired && String(cloned[String(key)] ?? "") !== desired) {
             cloned[String(key)] = desired;
-            update[`flags.${MODULE_ID}.directiveLabels`] = cloned;
+            update["system.directiveLabels"] = cloned;
           }
         } catch (_) {
           // ignore
         }
       }
     } else {
-      update[`flags.${MODULE_ID}.primaryDirectiveKey`] = null;
+      update["system.primaryDirectiveKey"] = "";
     }
 
     // Calls-back-to link
     // Preserve existing milestoneId when updating callbackLink
     const existingCallbackLink =
-      log.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+      log.system?.callbackLink ??
+      log.getFlag?.(MODULE_ID, "callbackLink") ??
+      null;
     const existingMilestoneId = isPlainObject(existingCallbackLink)
       ? existingCallbackLink.milestoneId
       : undefined;
@@ -940,17 +967,17 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       // When clearing the callback link, preserve milestoneId if it exists
       // but explicitly clear fromLogId and valueId to avoid stale references
       if (existingMilestoneId) {
-        update[`flags.${MODULE_ID}.callbackLink`] = {
+        update["system.callbackLink"] = {
           milestoneId: existingMilestoneId,
           fromLogId: null,
           valueId: null,
         };
       } else {
-        update[`flags.${MODULE_ID}.callbackLink`] = null;
+        update["system.callbackLink"] = null;
       }
-      update[`flags.${MODULE_ID}.callbackLinkDisabled`] = true;
+      update["system.callbackLinkDisabled"] = true;
     } else {
-      update[`flags.${MODULE_ID}.callbackLinkDisabled`] = null;
+      update["system.callbackLinkDisabled"] = false;
       const newCallbackLink = {
         fromLogId: String(fromLogId),
         valueId: String(valueId),
@@ -958,18 +985,19 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       if (existingMilestoneId) {
         newCallbackLink.milestoneId = existingMilestoneId;
       }
-      update[`flags.${MODULE_ID}.callbackLink`] = newCallbackLink;
+      update["system.callbackLink"] = newCallbackLink;
     }
 
     // Arc info
     if (!wantsArcEnd) {
-      update[`flags.${MODULE_ID}.arcInfo`] = null;
+      update["system.arcInfo"] = null;
     } else {
       // Preserve existing arc title. The title is edited via the Arc title-bar
       // edit button (character sheet), so don't overwrite it from the Log sheet.
       let arcLabel = "";
       try {
-        const curArcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+        const curArcInfo =
+          log.system?.arcInfo ?? log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
         arcLabel = String(curArcInfo?.arcLabel ?? "");
       } catch (_) {
         arcLabel = "";
@@ -998,7 +1026,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         valueId: String(arcValueId),
       };
       arcInfo.arcLabel = String(arcLabel ?? "");
-      update[`flags.${MODULE_ID}.arcInfo`] = arcInfo;
+      update["system.arcInfo"] = arcInfo;
     }
 
     // Sync icon to Primary Value (or default)
@@ -1105,7 +1133,10 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
     const selectedMilestoneId = String(milestoneSelect.value ?? "");
     try {
-      const current = log.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+      const current =
+        log.system?.callbackLink ??
+        log.getFlag?.(MODULE_ID, "callbackLink") ??
+        null;
       const next = {
         ...(isPlainObject(current) ? current : {}),
       };
@@ -1114,7 +1145,7 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       else delete next.milestoneId;
 
       await log.update(
-        { [`flags.${MODULE_ID}.callbackLink`]: next },
+        { "system.callbackLink": next },
         { render: false, renderSheet: false },
       );
     } catch (_) {
@@ -1253,12 +1284,15 @@ export function installInlineLogChainLinkControls(root, actor, log) {
       }
 
       try {
-        const existing = log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
+        const existing =
+          log.system?.directiveLabels ??
+          log.getFlag?.(MODULE_ID, "directiveLabels") ??
+          {};
         const cloned = isPlainObject(existing)
           ? foundry.utils.deepClone(existing)
           : {};
         cloned[String(key)] = cleaned;
-        update[`flags.${MODULE_ID}.directiveLabels`] = cloned;
+        update["system.directiveLabels"] = cloned;
       } catch (_) {
         // ignore
       }
@@ -1518,29 +1552,36 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
           try {
             const curPrimary = String(
-              log.getFlag?.(MODULE_ID, "primaryValueId") ?? "",
+              log.system?.primaryValueId ||
+                log.getFlag?.(MODULE_ID, "primaryValueId") ||
+                "",
             );
-            if (curPrimary === oldId)
-              update[`flags.${MODULE_ID}.primaryValueId`] = newId;
+            if (curPrimary === oldId) update["system.primaryValueId"] = newId;
           } catch (_) {
             // ignore
           }
 
           try {
-            const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+            const link =
+              log.system?.callbackLink ??
+              log.getFlag?.(MODULE_ID, "callbackLink") ??
+              null;
             const linkVal = String(link?.valueId ?? "");
-            if (linkVal === oldId) {
-              update[`flags.${MODULE_ID}.callbackLink.valueId`] = newId;
+            if (linkVal === oldId && link) {
+              update["system.callbackLink"] = { ...link, valueId: newId };
             }
           } catch (_) {
             // ignore
           }
 
           try {
-            const arcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+            const arcInfo =
+              log.system?.arcInfo ??
+              log.getFlag?.(MODULE_ID, "arcInfo") ??
+              null;
             const arcVal = String(arcInfo?.valueId ?? "");
-            if (arcVal === oldId) {
-              update[`flags.${MODULE_ID}.arcInfo.valueId`] = newId;
+            if (arcVal === oldId && arcInfo) {
+              update["system.arcInfo"] = { ...arcInfo, valueId: newId };
             }
           } catch (_) {
             // ignore
@@ -1549,13 +1590,15 @@ export function installInlineLogChainLinkControls(root, actor, log) {
 
         try {
           const existingLabels =
-            log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
+            log.system?.directiveLabels ??
+            log.getFlag?.(MODULE_ID, "directiveLabels") ??
+            {};
           const cloned = isPlainObject(existingLabels)
             ? foundry.utils.deepClone(existingLabels)
             : {};
           if (oldKey) delete cloned[String(oldKey)];
           if (newKey) cloned[String(newKey)] = newText;
-          update[`flags.${MODULE_ID}.directiveLabels`] = cloned;
+          update["system.directiveLabels"] = cloned;
         } catch (_) {
           // ignore
         }
@@ -1663,18 +1706,20 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         // If this directive is referenced by log metadata, clear it.
         try {
           const curPrimary = String(
-            log.getFlag?.(MODULE_ID, "primaryValueId") ?? "",
+            log.system?.primaryValueId ||
+              log.getFlag?.(MODULE_ID, "primaryValueId") ||
+              "",
           );
           if (curPrimary === oldId) {
-            update[`flags.${MODULE_ID}.primaryValueId`] = null;
-            update[`flags.${MODULE_ID}.primaryDirectiveKey`] = null;
+            update["system.primaryValueId"] = null;
+            update["system.primaryDirectiveKey"] = "";
 
             // Clear callback link (cannot keep a link without a valueId).
-            update[`flags.${MODULE_ID}.callbackLink`] = null;
-            update[`flags.${MODULE_ID}.callbackLinkDisabled`] = true;
+            update["system.callbackLink"] = null;
+            update["system.callbackLinkDisabled"] = true;
 
             // Clear arc info if it depended on this directive.
-            update[`flags.${MODULE_ID}.arcInfo`] = null;
+            update["system.arcInfo"] = null;
 
             // Restore default icon.
             update.img = getStaDefaultIcon?.() || STA_DEFAULT_ICON;
@@ -1684,21 +1729,25 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         }
 
         try {
-          const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+          const link =
+            log.system?.callbackLink ??
+            log.getFlag?.(MODULE_ID, "callbackLink") ??
+            null;
           const linkVal = String(link?.valueId ?? "");
           if (linkVal === oldId) {
-            update[`flags.${MODULE_ID}.callbackLink`] = null;
-            update[`flags.${MODULE_ID}.callbackLinkDisabled`] = true;
+            update["system.callbackLink"] = null;
+            update["system.callbackLinkDisabled"] = true;
           }
         } catch (_) {
           // ignore
         }
 
         try {
-          const arcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+          const arcInfo =
+            log.system?.arcInfo ?? log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
           const arcVal = String(arcInfo?.valueId ?? "");
           if (arcVal === oldId) {
-            update[`flags.${MODULE_ID}.arcInfo`] = null;
+            update["system.arcInfo"] = null;
           }
         } catch (_) {
           // ignore
@@ -1708,13 +1757,15 @@ export function installInlineLogChainLinkControls(root, actor, log) {
         try {
           if (oldKey) {
             const existingLabels =
-              log.getFlag?.(MODULE_ID, "directiveLabels") ?? {};
+              log.system?.directiveLabels ??
+              log.getFlag?.(MODULE_ID, "directiveLabels") ??
+              {};
             const cloned = isPlainObject(existingLabels)
               ? foundry.utils.deepClone(existingLabels)
               : {};
             if (String(oldKey) in cloned) {
               delete cloned[String(oldKey)];
-              update[`flags.${MODULE_ID}.directiveLabels`] = cloned;
+              update["system.directiveLabels"] = cloned;
             }
           }
         } catch (_) {

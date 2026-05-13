@@ -6,7 +6,8 @@ export function getArcsEarnedOnActor(actor) {
   const logs = actor.items.filter((i) => i.type === "log");
   let count = 0;
   for (const log of logs) {
-    const arcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+    const arcInfo =
+      log.system?.arcInfo ?? log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
     if (arcInfo?.isArc === true) count += 1;
   }
   return count;
@@ -19,7 +20,8 @@ export function getConsumedArcLogIds(actor) {
 
   const logs = actor.items.filter((i) => i.type === "log");
   for (const log of logs) {
-    const arcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+    const arcInfo =
+      log.system?.arcInfo ?? log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
     if (arcInfo?.isArc !== true) continue;
     const chain = Array.isArray(arcInfo.chainLogIds) ? arcInfo.chainLogIds : [];
     for (const id of chain) {
@@ -36,7 +38,10 @@ export function getCallbackLogEdgesForValue(actor, valueId) {
 
   const logs = actor.items.filter((i) => i.type === "log");
   for (const log of logs) {
-    const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+    const link =
+      log.system?.callbackLink ??
+      log.getFlag?.(MODULE_ID, "callbackLink") ??
+      null;
     if (!link || link.valueId !== valueId) continue;
 
     const from = link.fromLogId;

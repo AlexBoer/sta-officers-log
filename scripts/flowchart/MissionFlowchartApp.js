@@ -180,7 +180,8 @@ export class MissionFlowchartApp extends Base {
     const arcEndLogs = new Map(); // logId -> arcInfo
     const arcLogSets = new Map(); // arcEndId -> Set of logIds in arc
     for (const log of logs) {
-      const arcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+      const arcInfo =
+        log.system?.arcInfo ?? log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
       if (arcInfo?.isArc === true) {
         arcEndLogs.set(log.id, arcInfo);
         const chainIds = Array.isArray(arcInfo.chainLogIds)
@@ -215,7 +216,10 @@ export class MissionFlowchartApp extends Base {
       }
 
       // Load saved position if available
-      const savedPos = log.getFlag?.(MODULE_ID, "flowchartPosition") ?? null;
+      const savedPos =
+        log.system?.flowchartPosition ??
+        log.getFlag?.(MODULE_ID, "flowchartPosition") ??
+        null;
 
       nodes.push({
         id: log.id,
@@ -276,7 +280,10 @@ export class MissionFlowchartApp extends Base {
     }
 
     for (const log of logs) {
-      const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+      const link =
+        log.system?.callbackLink ??
+        log.getFlag?.(MODULE_ID, "callbackLink") ??
+        null;
       if (!link?.fromLogId) continue;
 
       // Look up milestone info for this callback
@@ -2300,13 +2307,15 @@ export class MissionFlowchartApp extends Base {
       }
 
       // Set the source log's primary value to match
-      await sourceLog.setFlag(MODULE_ID, "primaryValueId", valueId);
+      await sourceLog.update({ "system.primaryValueId": valueId });
     }
 
     // Update the source log with the callback link to the target
-    await sourceLog.setFlag(MODULE_ID, "callbackLink", {
-      fromLogId: targetNodeId,
-      valueId: valueId,
+    await sourceLog.update({
+      "system.callbackLink": {
+        fromLogId: targetNodeId,
+        valueId: valueId,
+      },
     });
 
     // Sync used flags on affected logs
@@ -2450,10 +2459,13 @@ export class MissionFlowchartApp extends Base {
 
     // Current primary value
     const currentPrimaryValueId =
-      log.getFlag?.(MODULE_ID, "primaryValueId") ?? "";
+      log.system?.primaryValueId ||
+      log.getFlag?.(MODULE_ID, "primaryValueId") ||
+      "";
 
     // Current arc info
-    const arcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
+    const arcInfo =
+      log.system?.arcInfo ?? log.getFlag?.(MODULE_ID, "arcInfo") ?? null;
     const isArcEnd = arcInfo?.isArc === true;
     // Arc steps minimum is 3 + completed arc count
     const completedArcCount = this._arcs?.length ?? 0;
@@ -2494,7 +2506,10 @@ export class MissionFlowchartApp extends Base {
     }
 
     // Check for callback link
-    const callbackLink = log?.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+    const callbackLink =
+      log?.system?.callbackLink ??
+      log?.getFlag?.(MODULE_ID, "callbackLink") ??
+      null;
     const hasCallback = Boolean(callbackLink?.fromLogId);
     const callbackTargetLog = hasCallback
       ? this.actor?.items.get(callbackLink.fromLogId)
@@ -2666,7 +2681,10 @@ export class MissionFlowchartApp extends Base {
     }
 
     // 2. Callback links
-    const callbackLink = log.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+    const callbackLink =
+      log.system?.callbackLink ??
+      log.getFlag?.(MODULE_ID, "callbackLink") ??
+      null;
     const hasCallback = Boolean(callbackLink?.fromLogId);
     const incomingCallbacks = this._edges.filter((e) => e.fromLogId === nodeId);
 
@@ -2888,9 +2906,9 @@ export class MissionFlowchartApp extends Base {
     if (!log) return;
 
     if (valueId) {
-      await log.setFlag(MODULE_ID, "primaryValueId", valueId);
+      await log.update({ "system.primaryValueId": valueId });
     } else {
-      await log.unsetFlag(MODULE_ID, "primaryValueId");
+      await log.update({ "system.primaryValueId": "" });
     }
     ui.notifications.info(
       t("sta-officers-log.flowchart.primaryValueUpdated") ??
@@ -2907,8 +2925,12 @@ export class MissionFlowchartApp extends Base {
 
     if (isComplete) {
       // Get the primary value to use for the arc
-      const primaryValueId = log.getFlag?.(MODULE_ID, "primaryValueId") ?? "";
-      const existingArcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? {};
+      const primaryValueId =
+        log.system?.primaryValueId ||
+        log.getFlag?.(MODULE_ID, "primaryValueId") ||
+        "";
+      const existingArcInfo =
+        log.system?.arcInfo ?? log.getFlag?.(MODULE_ID, "arcInfo") ?? {};
 
       // Default arc steps is 3 + number of completed arcs
       const completedArcCount = this._arcs?.length ?? 0;
@@ -2920,9 +2942,9 @@ export class MissionFlowchartApp extends Base {
         valueId: primaryValueId || existingArcInfo.valueId || "",
         arcLabel: existingArcInfo.arcLabel || "",
       };
-      await log.setFlag(MODULE_ID, "arcInfo", arcInfo);
+      await log.update({ "system.arcInfo": arcInfo });
     } else {
-      await log.unsetFlag(MODULE_ID, "arcInfo");
+      await log.update({ "system.arcInfo": null });
     }
     ui.notifications.info(
       t("sta-officers-log.flowchart.arcStatusUpdated") ?? "Arc status updated",
@@ -2936,7 +2958,8 @@ export class MissionFlowchartApp extends Base {
     const log = this.actor?.items.get(logId);
     if (!log) return;
 
-    const existingArcInfo = log.getFlag?.(MODULE_ID, "arcInfo") ?? {};
+    const existingArcInfo =
+      log.system?.arcInfo ?? log.getFlag?.(MODULE_ID, "arcInfo") ?? {};
     if (!existingArcInfo.isArc) return;
 
     // Minimum arc steps is 3 + number of completed arcs
@@ -2947,7 +2970,7 @@ export class MissionFlowchartApp extends Base {
       ...existingArcInfo,
       steps: Math.max(minSteps, Math.min(15, steps)),
     };
-    await log.setFlag(MODULE_ID, "arcInfo", arcInfo);
+    await log.update({ "system.arcInfo": arcInfo });
     ui.notifications.info(
       t("sta-officers-log.flowchart.arcStepsUpdated") ?? "Arc steps updated",
     );
@@ -2994,7 +3017,7 @@ export class MissionFlowchartApp extends Base {
     const log = this.actor?.items.get(logId);
     if (!log) return;
 
-    await log.unsetFlag(MODULE_ID, "callbackLink");
+    await log.update({ "system.callbackLink": null });
 
     // Sync used flags on affected logs
     const { syncCallbackTargetUsedFlags } =
@@ -3030,15 +3053,22 @@ export class MissionFlowchartApp extends Base {
       const allLogs = this.actor.items.filter((i) => i.type === "log");
       for (const otherLog of allLogs) {
         if (otherLog.id === logId) continue;
-        const link = otherLog.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+        const link =
+          otherLog.system?.callbackLink ??
+          otherLog.getFlag?.(MODULE_ID, "callbackLink") ??
+          null;
         if (link?.fromLogId === logId) {
-          await otherLog.unsetFlag(MODULE_ID, "callbackLink");
+          await otherLog.update({ "system.callbackLink": null });
         }
       }
 
       // Clear the deleted log's own callback link (so its target gets unmarked)
-      if (log.getFlag?.(MODULE_ID, "callbackLink")) {
-        await log.unsetFlag(MODULE_ID, "callbackLink");
+      const ownLink =
+        log.system?.callbackLink ??
+        log.getFlag?.(MODULE_ID, "callbackLink") ??
+        null;
+      if (ownLink) {
+        await log.update({ "system.callbackLink": null });
       }
 
       // Delete the log
@@ -3296,11 +3326,10 @@ export class MissionFlowchartApp extends Base {
       const log = this.actor.items.get(node.id);
       if (!log) continue;
 
-      // Save position as a flag
+      // Save position
       updates.push(
-        log.setFlag(MODULE_ID, "flowchartPosition", {
-          x: node.x,
-          y: node.y,
+        log.update({
+          "system.flowchartPosition": { x: node.x, y: node.y },
         }),
       );
     }

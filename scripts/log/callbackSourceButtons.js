@@ -8,12 +8,15 @@ import {
 } from "../missions/mission.js";
 import { getMilestoneChildLogIds } from "./logMetadata.js";
 import { getCreatedKey, compareKeys } from "./sortingUtils.js";
-import { rerenderOpenStaSheetsForActorId as refreshOpenSheet } from "../sheet/sheetUtils.js";
+import {
+  rerenderOpenStaSheetsForActorId as refreshOpenSheet,
+  ensureInlineActionsContainer,
+} from "../sheet/sheetUtils.js";
 import {
   closeStaOfficersLogContextMenu,
   setupMissionLogContextMenu,
 } from "../sheet/contextMenu.js";
-import { ensureInlineActionsContainer } from "../sheet/sheetUtils.js";
+import { isLogUnconditionallyIneligibleAsCallbackTarget } from "../callback/callbackEligibility.js";
 
 /**
  * Install callback source buttons on log rows in the character sheet.
@@ -106,8 +109,15 @@ export function installCallbackSourceButtons(root, actor) {
       const children = [];
       for (const it of actor.items ?? []) {
         if (it?.type !== "log") continue;
-        if (it.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true) continue;
-        const link = it.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+        if (
+          it.system?.callbackLinkDisabled === true ||
+          it.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true
+        )
+          continue;
+        const link =
+          it.system?.callbackLink ??
+          it.getFlag?.(MODULE_ID, "callbackLink") ??
+          null;
         const fromLogId = String(link?.fromLogId ?? "");
         if (fromLogId && fromLogId === tId) children.push(it);
       }
@@ -244,17 +254,32 @@ export function installCallbackSourceButtons(root, actor) {
       if (!(row instanceof HTMLElement)) continue;
 
       const entryId = row?.dataset?.itemId ? String(row.dataset.itemId) : "";
+      const logItem = entryId ? actor.items.get(entryId) : null;
+
+      // Mark logs that are unconditionally ineligible as callback targets.
+      if (
+        logItem &&
+        isLogUnconditionallyIneligibleAsCallbackTarget(actor, logItem)
+      ) {
+        row.classList.add("sta-callback-ineligible-log");
+      } else {
+        row.classList.remove("sta-callback-ineligible-log");
+      }
 
       const toggleAnchor = row.querySelector("a.value-used.control.toggle");
       if (!(toggleAnchor instanceof HTMLElement)) continue;
       const isCurrentMissionRow =
         entryId && currentMissionLogId && entryId === currentMissionLogId;
+
+      // Always ensure an inlineActions container exists — used for both the
+      // current-mission indicator and the Write-Log button.
+      const inlineActions = ensureInlineActionsContainer(row, toggleAnchor);
+      if (!inlineActions) continue;
+
       const existingIndicator = row.querySelector(
         ".sta-current-mission-indicator",
       );
       if (isCurrentMissionRow) {
-        const inlineActions = ensureInlineActionsContainer(row, toggleAnchor);
-        if (!inlineActions) continue;
         row.classList.add("sta-current-mission-log");
         if (!existingIndicator) {
           const indicator = document.createElement("span");
@@ -299,9 +324,44 @@ export function installCallbackSourceButtons(root, actor) {
         );
       }
 
-      if (toggleAnchor.querySelector(":scope > .sta-show-source-btn")) continue;
+      if (inlineActions.querySelector(":scope > .sta-show-source-btn"))
+        continue;
 
-      const btn = document.createElement("a");
+      // ── Write-Log button ─────────────────────────────────────────────────
+      // Lives in inlineActions (a <span>), not inside the <a>.control toggle,
+      // to avoid the nested-anchor color problem and the 40px width cap.
+      // Current mission: labelled "Write Log". Other logs: pencil icon only.
+      if (!inlineActions.querySelector(":scope > .sta-write-log-btn")) {
+        const writeBtn = document.createElement("button");
+        writeBtn.type = "button";
+        writeBtn.className = "sta-write-log-btn sta-inline-sheet-btn";
+        if (isCurrentMissionRow) {
+          writeBtn.classList.add("sta-write-log-btn--current");
+          writeBtn.title = "Write log";
+          writeBtn.setAttribute("aria-label", "Write log");
+          writeBtn.innerHTML = '<i class="fa-solid fa-pen"></i> Write Log';
+        } else {
+          writeBtn.title = "Edit log";
+          writeBtn.setAttribute("aria-label", "Edit log");
+          writeBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
+        }
+        writeBtn.addEventListener("click", (ev) => {
+          try {
+            ev.preventDefault();
+            ev.stopPropagation();
+            ev.stopImmediatePropagation?.();
+          } catch (_) {
+            // ignore
+          }
+          const itemId = row?.dataset?.itemId ? String(row.dataset.itemId) : "";
+          const item = itemId ? actor.items?.get?.(itemId) : null;
+          if (item?.sheet) item.sheet.render(true);
+        });
+        inlineActions.append(writeBtn);
+      }
+
+      const btn = document.createElement("button");
+      btn.type = "button";
       btn.className = "sta-show-source-btn";
       btn.title = "Show Callback and Milestone";
       btn.setAttribute("aria-label", "Show Callback and Milestone");
@@ -323,7 +383,9 @@ export function installCallbackSourceButtons(root, actor) {
           ? (actor.items?.get?.(String(targetLogId)) ?? null)
           : null;
         const callbackLink =
-          targetLogItem?.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+          targetLogItem?.system?.callbackLink ??
+          targetLogItem?.getFlag?.(MODULE_ID, "callbackLink") ??
+          null;
         const fromLogId = String(callbackLink?.fromLogId ?? "");
         const milestoneId = String(callbackLink?.milestoneId ?? "");
 
@@ -358,7 +420,7 @@ export function installCallbackSourceButtons(root, actor) {
         }
       });
 
-      toggleAnchor.appendChild(btn);
+      inlineActions.append(btn);
     }
   } catch (_) {
     // ignore
@@ -438,7 +500,8 @@ export function installMilestoneHighlightButtons(root, actor) {
       const controlDiv = row.querySelector(".control");
       if (!(controlDiv instanceof HTMLElement)) continue;
 
-      const btn = document.createElement("a");
+      const btn = document.createElement("button");
+      btn.type = "button";
       btn.className = "sta-show-milestone-logs-btn";
       btn.title = childLogIds.length
         ? "Show Associated Logs"
@@ -536,8 +599,15 @@ export async function enforceUniqueFromLogIdTargets(
 
     for (const log of logs) {
       try {
-        if (log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true) continue;
-        const link = log.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+        if (
+          log.system?.callbackLinkDisabled === true ||
+          log.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true
+        )
+          continue;
+        const link =
+          log.system?.callbackLink ??
+          log.getFlag?.(MODULE_ID, "callbackLink") ??
+          null;
         const fromLogId = String(link?.fromLogId ?? "");
         if (!fromLogId) continue;
 
@@ -571,8 +641,7 @@ export async function enforceUniqueFromLogIdTargets(
         try {
           await losingLog.update(
             {
-              [`flags.${MODULE_ID}.callbackLink.fromLogId`]: null,
-              [`flags.${MODULE_ID}.callbackLink.valueId`]: null,
+              "system.callbackLink": null,
             },
             { renderSheet: false },
           );
@@ -649,9 +718,15 @@ export async function syncCallbackTargetUsedFlags(actor) {
     const targetIds = new Set();
     for (const child of logs) {
       try {
-        if (child.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true)
+        if (
+          child.system?.callbackLinkDisabled === true ||
+          child.getFlag?.(MODULE_ID, "callbackLinkDisabled") === true
+        )
           continue;
-        const link = child.getFlag?.(MODULE_ID, "callbackLink") ?? null;
+        const link =
+          child.system?.callbackLink ??
+          child.getFlag?.(MODULE_ID, "callbackLink") ??
+          null;
         const fromLogId = String(link?.fromLogId ?? "");
         if (fromLogId) targetIds.add(fromLogId);
       } catch (_) {
