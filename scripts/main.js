@@ -5,13 +5,17 @@ import {
   endCurrentMission,
   ensureNewSceneMacro,
   ensureOpenGroupShipMacro,
+  getMissionHistory,
   hasUsedCallbackThisMission,
   newScene,
   openGroupShip,
   promptAddParticipant,
   promptNewMissionAndReset,
   promptUnaddedActivePlayers,
+  reactivateLastEndedMission,
+  reactivateMissionFromHistory,
   registerMissionSettings,
+  removeMissionFromHistory,
   resetMissionCallbacks,
 } from "./missions/mission.js";
 import {
@@ -69,6 +73,10 @@ function registerApi() {
     resetMissionCallbacks,
     promptNewMissionAndReset,
     endCurrentMission,
+    reactivateLastEndedMission,
+    reactivateMissionFromHistory,
+    getMissionHistory,
+    removeMissionFromHistory,
     addParticipantToCurrentMission,
     promptAddParticipant,
 

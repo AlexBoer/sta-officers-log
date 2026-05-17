@@ -1,0 +1,60 @@
+<div class="sta-mission-manager">
+
+  {{! ─── Active Mission ─── }}
+  <section class="sta-mission-manager-section">
+    <h3 class="sta-mission-manager-header">{{labels.activeHeader}}</h3>
+    {{#if active}}
+      <div class="sta-mission-manager-active">
+        <span class="sta-mission-manager-title">{{currentTitle}}</span>
+        <div class="sta-mission-manager-active-actions">
+          <button type="button" data-action="add-players">
+            <i class="fas fa-user-plus"></i> {{labels.addPlayers}}
+          </button>
+          <button type="button" data-action="end-mission">
+            <i class="fas fa-stop-circle"></i> {{labels.endMission}}
+          </button>
+        </div>
+      </div>
+    {{else}}
+      <p class="sta-mission-manager-none">{{labels.noActiveMission}}</p>
+      <button type="button" data-action="new-mission">
+        <i class="fas fa-plus-circle"></i> {{labels.newMission}}
+      </button>
+    {{/if}}
+  </section>
+
+  <hr class="sta-mission-manager-divider">
+
+  {{! ─── Mission History ─── }}
+  <section class="sta-mission-manager-section">
+    <h3 class="sta-mission-manager-header">{{labels.historyHeader}}</h3>
+    {{#if hasHistory}}
+      <ul class="sta-mission-history-list">
+        {{#each history}}
+          <li class="sta-mission-history-entry">
+            <div class="sta-mission-history-info">
+              <strong class="sta-mission-history-title">{{this.title}}</strong>
+              <span class="sta-mission-history-meta">
+                {{this.endedDateStr}} &middot; {{this.participantCount}} {{../labels.participants}}
+              </span>
+            </div>
+            <div class="sta-mission-history-actions">
+              <button type="button" data-action="reactivate" data-index="{{this.index}}"
+                title="{{../labels.reactivate}}">
+                <i class="fas fa-undo"></i>
+                <span>{{../labels.reactivate}}</span>
+              </button>
+              <button type="button" class="sta-danger" data-action="remove-entry" data-index="{{this.index}}"
+                title="{{../labels.remove}}">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </li>
+        {{/each}}
+      </ul>
+    {{else}}
+      <p class="sta-mission-manager-none">{{labels.noHistory}}</p>
+    {{/if}}
+  </section>
+
+</div>

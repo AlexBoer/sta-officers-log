@@ -125,6 +125,7 @@
     "tools": {
       "sendPrompt": "STA: Send Callback Prompt",
       "resetMission": "STA: New Mission",
+      "manageMissions": "STA: Manage Mission",
       "newScene": "STA: New Scene",
       "openGroupShip": "STA: Open Group Ship",
       "labelValues": "Label Values",
@@ -190,7 +191,8 @@
       "pendingShipBenefitsAppliedDepartmentSwap": "Applied ship department swap: {from} → {to} for {character}.",
       "noGroupShipSet": "No Group Ship has been set. Configure one in module settings.",
       "groupShipNotFound": "The configured Group Ship actor could not be found.",
-      "missionEnded": "Mission ended."
+      "missionEnded": "Mission ended.",
+      "missionReactivated": "Mission \"{title}\" reactivated."
     },
     "acclaimSurvey": {
       "dialogTitle": "Roll Reputation",
@@ -559,6 +561,25 @@
         "ok": "Submit",
         "cancel": "Abort"
       },
+      "undoEndMission": {
+        "body": "Mission ended. Undo to reactivate it and restore all participants.",
+        "undo": "Undo",
+        "dismiss": "Dismiss"
+      },
+      "manageMissions": {
+        "activeMissionPrompt": "A mission is currently active. End it, or undo the last ended mission.",
+        "noMissionPrompt": "No active mission. Start a new one, or undo the last ending.",
+        "activeHeader": "Active Mission",
+        "historyHeader": "Mission History",
+        "noActiveMission": "No active mission.",
+        "noHistory": "No past missions recorded.",
+        "endMission": "End Mission",
+        "newMission": "New Mission",
+        "addPlayers": "Add Players",
+        "reactivate": "Reactivate",
+        "remove": "Remove",
+        "participants": "participants"
+      },
       "endMission": {
         "title": "End Current Mission",
         "body": "End the current mission?",
@@ -686,7 +707,8 @@
 
       "pendingShipBenefitsTalentSwapManual": "Ship talent swap for {character} requires manual application. The talent selection dialog should be shown.",
       "pendingShipBenefitsUnknownAction": "Unknown ship benefit action: {action}. Please apply manually.",
-      "noActiveMission": "No active mission."
+      "noActiveMission": "No active mission.",
+      "noUndoData": "No ended mission to undo."
     },
     "confirmDelete": {
       "delete": "Delete",

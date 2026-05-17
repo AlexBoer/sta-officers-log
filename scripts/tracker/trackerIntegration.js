@@ -7,6 +7,7 @@ import {
 } from "../directives/directives.js";
 import { promptUseDirective } from "../directives/useDirectiveButton.js";
 import { hasActiveMission } from "../missions/mission.js";
+import { MissionManagerApp } from "../missions/MissionManagerApp.mjs";
 import { setupMissionLogContextMenu } from "../sheet/contextMenu.js";
 
 const TRACKER_BUTTONS_TEMPLATE = `modules/${MODULE_ID}/templates/tracker-buttons.hbs`;
@@ -28,6 +29,13 @@ const TRACKER_INFO_CONFIG = [
     template: TRACKER_THREAT_INFO_TEMPLATE,
   },
 ];
+
+/**
+ * Open the Manage Missions dialog (ApplicationV2 with history list).
+ */
+function _manageMissions() {
+  new MissionManagerApp().render(true);
+}
 
 /**
  * Install Officers Log buttons in the STA Tracker panel.
@@ -109,15 +117,15 @@ export async function installOfficersLogButtonsInStaTracker(app, root) {
     );
     columns.insertAdjacentHTML("beforeend", buttonsHtml);
 
-    // Highlight the New Mission button yellow when a mission is active
-    const resetBtn = columns.querySelector("#sta-officers-log-reset-button");
+    // Highlight the Manage Mission button yellow when a mission is active
+    const resetBtn = columns.querySelector("#sta-officers-log-manage-button");
     if (resetBtn) {
       if (hasActiveMission()) {
         resetBtn.classList.add("sta-mission-active");
         resetBtn.title = t("sta-officers-log.dialog.endMission.title");
       } else {
         resetBtn.classList.remove("sta-mission-active");
-        resetBtn.title = t("sta-officers-log.tools.resetMission");
+        resetBtn.title = t("sta-officers-log.tools.manageMissions");
       }
     }
 
@@ -139,8 +147,8 @@ export async function installOfficersLogButtonsInStaTracker(app, root) {
         try {
           if (action === "openCallback") {
             game.staofficerslog.open();
-          } else if (action === "resetMission") {
-            game.staofficerslog.promptNewMissionAndReset();
+          } else if (action === "manageMissions") {
+            _manageMissions();
           } else if (action === "newScene") {
             game.staofficerslog.newScene();
           } else if (action === "openCreationWizard") {

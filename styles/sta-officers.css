@@ -4950,3 +4950,120 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
     border: 1px solid ButtonText;
   }
 }
+
+/* =============================================================================
+   Manage Missions Dialog (.sta-mission-manager-app)
+   ============================================================================= */
+
+.sta-mission-manager-app .window-content {
+  padding: 0.75rem;
+}
+
+.sta-mission-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sta-mission-manager-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sta-mission-manager-header {
+  font-family: "Antonio", "Roboto Condensed", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.65;
+  margin: 0;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.sta-mission-manager-divider {
+  border: none;
+  border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  margin: 0;
+}
+
+.sta-mission-manager-active {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sta-mission-manager-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.sta-mission-manager-active-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.sta-mission-manager-none {
+  opacity: 0.6;
+  font-style: italic;
+  margin: 0;
+}
+
+/* History list */
+.sta-mission-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.sta-mission-history-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  border-radius: 3px;
+}
+
+.sta-mission-history-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.sta-mission-history-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sta-mission-history-meta {
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+
+.sta-mission-history-actions {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.sta-mission-history-actions button {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.sta-mission-history-actions button.sta-danger {
+  color: #c44;
+}

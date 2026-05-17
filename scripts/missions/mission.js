@@ -69,6 +69,24 @@ export function registerMissionSettings() {
     default: "",
   });
 
+  game.settings.register(MODULE_ID, "lastEndedMission", {
+    name: "Last Ended Mission (Undo Data)",
+    hint: "Temporary snapshot of the most recently ended mission, used to support the Undo action. Cleared when reactivated or when a new mission begins.",
+    scope: "world",
+    config: false,
+    type: Object,
+    default: {},
+  });
+
+  game.settings.register(MODULE_ID, "missionHistory", {
+    name: "Mission History",
+    hint: "Archive of ended missions shown in the Manage Missions dialog. Stores up to 20 entries.",
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
+  });
+
   // GM-configurable world setting: select a starship actor to represent the party's "Group Ship".
   game.settings.register(MODULE_ID, GROUP_SHIP_ACTOR_SETTING, {
     name: t("sta-officers-log.settings.groupShip.name"),
@@ -1116,6 +1134,38 @@ export async function endCurrentMission() {
 
   if (!confirmed) return;
 
+  // Snapshot current state so the GM can undo this action.
+  const _undoSnapshot = {
+    title: missionTitle,
+    participantIds: [...participantIds],
+    startDate: (game.settings.get(MODULE_ID, "missionStartDate") ?? "").trim(),
+    directives: getMissionDirectives(),
+    actorLogMap: {},
+  };
+  for (const _userId of participantIds) {
+    const _u = game.users?.get?.(_userId);
+    const _a = _u?.character ?? null;
+    if (_a && _a.type === "character") {
+      const _lid = _a.system?.currentMissionLogId ?? null;
+      if (_lid) _undoSnapshot.actorLogMap[_a.id] = String(_lid);
+    }
+  }
+  try {
+    await game.settings.set(MODULE_ID, "lastEndedMission", _undoSnapshot);
+  } catch (_err) {
+    console.warn(`${MODULE_ID} | Failed to save undo snapshot:`, _err);
+  }
+
+  // Push to persistent mission history (newest first, max 20 entries).
+  try {
+    const _history = getMissionHistory();
+    _history.unshift({ ..._undoSnapshot, endedAt: Date.now() });
+    if (_history.length > 20) _history.length = 20;
+    await game.settings.set(MODULE_ID, "missionHistory", _history);
+  } catch (_histErr) {
+    console.warn(`${MODULE_ID} | Failed to update mission history:`, _histErr);
+  }
+
   // Clear currentMissionLogId on all participating character actors
   const clearOps = [];
   for (const userId of participantIds) {
@@ -1140,6 +1190,7 @@ export async function endCurrentMission() {
   await game.settings.set(MODULE_ID, "missionStartDate", "");
   await setMissionDirectives([]);
 
+  // Show mission-ended notification.
   ui.notifications.info(t("sta-officers-log.notifications.missionEnded"));
 
   // Re-render STA Tracker and broadcast refresh
@@ -1150,6 +1201,192 @@ export async function endCurrentMission() {
   } catch (_) {
     // ignore
   }
+}
+
+/**
+ * Show a non-blocking "Mission ended — Undo?" dialog after ending a mission.
+ * If the GM clicks Undo, reactivates the last ended mission immediately.
+ * @param {string} missionTitle
+ */
+// ---------------------------------------------------------------------------
+// Mission history helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the current mission history array (newest first).
+ * @returns {Array<object>}
+ */
+export function getMissionHistory() {
+  try {
+    return game.settings.get(MODULE_ID, "missionHistory") ?? [];
+  } catch (_) {
+    return [];
+  }
+}
+
+/**
+ * Removes a single entry from the mission history by index.
+ * @param {number} index
+ * @returns {Promise<boolean>}
+ */
+export async function removeMissionFromHistory(index) {
+  if (!game.user.isGM) {
+    ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
+    return false;
+  }
+  try {
+    const history = getMissionHistory();
+    if (index < 0 || index >= history.length) return false;
+    history.splice(index, 1);
+    await game.settings.set(MODULE_ID, "missionHistory", history);
+    return true;
+  } catch (err) {
+    console.warn(`${MODULE_ID} | removeMissionFromHistory:`, err);
+    return false;
+  }
+}
+
+/**
+ * Shared restore logic: applies a snapshot object back to world settings and
+ * actor fields, then re-renders the tracker.
+ *
+ * @param {object} snapshot
+ * @param {{ notify?: boolean }} [options]
+ */
+async function _restoreFromSnapshot(snapshot, { notify = true } = {}) {
+  const { title, participantIds, startDate, directives, actorLogMap } =
+    snapshot;
+
+  await game.settings.set(MODULE_ID, "missionTitle", title);
+  await game.settings.set(
+    MODULE_ID,
+    "missionParticipants",
+    Array.isArray(participantIds) ? participantIds : [],
+  );
+  if (startDate) {
+    await game.settings.set(MODULE_ID, "missionStartDate", startDate);
+  }
+  if (Array.isArray(directives) && directives.length) {
+    try {
+      await setMissionDirectives(directives);
+    } catch (_) {}
+  }
+
+  if (actorLogMap && typeof actorLogMap === "object") {
+    const ops = Object.entries(actorLogMap).map(([actorId, logId]) => {
+      const actor = game.actors?.get?.(actorId);
+      if (!actor) return Promise.resolve();
+      return actor
+        .update({ "system.currentMissionLogId": logId })
+        .catch((err) =>
+          console.warn(
+            `${MODULE_ID} | _restoreFromSnapshot: failed on ${actor.name}:`,
+            err,
+          ),
+        );
+    });
+    await Promise.allSettled(ops);
+  }
+
+  if (notify) {
+    ui.notifications.info(
+      tf("sta-officers-log.notifications.missionReactivated", { title }) ??
+        `Mission "${title}" reactivated.`,
+    );
+  }
+
+  await rerenderStaTracker();
+  try {
+    const sock = getModuleSocket();
+    if (sock) await sock.executeForOthers("refreshTracker");
+  } catch (_) {}
+}
+
+/**
+ * Reactivates a mission from the history array at the given index, removing
+ * it from the history. Also clears the lastEndedMission snapshot if it
+ * matches. GM-only.
+ *
+ * @param {number} index  Index into the missionHistory array (0 = most recent).
+ * @returns {Promise<boolean>}
+ */
+export async function reactivateMissionFromHistory(index) {
+  if (!game.user.isGM) {
+    ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
+    return false;
+  }
+
+  const history = getMissionHistory();
+  const snapshot = history[index];
+  if (!snapshot?.title) {
+    ui.notifications.warn(
+      t("sta-officers-log.warnings.noUndoData") ?? "No ended mission to undo.",
+    );
+    return false;
+  }
+
+  // Remove from history
+  history.splice(index, 1);
+  try {
+    await game.settings.set(MODULE_ID, "missionHistory", history);
+  } catch (_) {}
+
+  // If it matches lastEndedMission, clear that too
+  try {
+    const last = game.settings.get(MODULE_ID, "lastEndedMission") ?? {};
+    if (last.title === snapshot.title) {
+      await game.settings.set(MODULE_ID, "lastEndedMission", {});
+    }
+  } catch (_) {}
+
+  await _restoreFromSnapshot(snapshot, { notify: true });
+  return true;
+}
+
+/**
+ * Reactivate the most recently ended mission by restoring the undo snapshot.
+ * Restores missionTitle, missionParticipants, missionStartDate, directives,
+ * and each actor's currentMissionLogId. GM-only.
+ *
+ * @param {{ notify?: boolean }} [options]
+ * @returns {Promise<boolean>} true if reactivation succeeded.
+ */
+export async function reactivateLastEndedMission({ notify = true } = {}) {
+  if (!game.user.isGM) {
+    ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
+    return false;
+  }
+
+  let snapshot = {};
+  try {
+    snapshot = game.settings.get(MODULE_ID, "lastEndedMission") ?? {};
+  } catch (_) {}
+
+  const { title } = snapshot;
+
+  if (!title) {
+    ui.notifications.warn(
+      t("sta-officers-log.warnings.noUndoData") ?? "No ended mission to undo.",
+    );
+    return false;
+  }
+
+  // Clear the snapshot so it cannot be applied a second time
+  try {
+    await game.settings.set(MODULE_ID, "lastEndedMission", {});
+  } catch (_) {}
+
+  // Also remove from history if it appears as the most recent entry
+  try {
+    const history = getMissionHistory();
+    if (history.length && history[0].title === title) {
+      history.shift();
+      await game.settings.set(MODULE_ID, "missionHistory", history);
+    }
+  } catch (_) {}
+
+  await _restoreFromSnapshot(snapshot, { notify });
+  return true;
 }
 
 // Used by a new button in the STATracker to start a new mission.
@@ -1275,6 +1512,10 @@ export async function promptNewMissionAndReset() {
 
   await game.settings.set(MODULE_ID, "missionTitle", newTitle);
   await game.settings.set(MODULE_ID, "missionParticipants", selectedUserIds);
+  // Clear any pending undo snapshot — the new mission supersedes the old one.
+  try {
+    await game.settings.set(MODULE_ID, "lastEndedMission", {});
+  } catch (_) {}
 
   // Create a Log on each participating player's character
   if (createMissionLogs) {
