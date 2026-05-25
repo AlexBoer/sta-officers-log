@@ -109,6 +109,9 @@ export function installItemUpdateHooks() {
                   );
                 })();
 
+                const nameUpdates = [];
+                const flagUpdates = [];
+
                 for (const actor of candidateActors) {
                   const linkedMilestones = findLinkedMilestones(actor);
                   if (!linkedMilestones.length) continue;
@@ -140,26 +143,28 @@ export function installItemUpdateHooks() {
                     });
 
                     if (!desiredName) continue;
-                    if (ms?.name !== desiredName) {
-                      try {
-                        await ms.update({ name: desiredName });
-                      } catch (_) {
-                        // ignore
-                      }
-                    }
-
-                    if (syncPolicy === "once" && !syncedOnce) {
-                      try {
-                        await ms.setFlag(MODULE_ID, "milestoneBenefit", {
-                          ...(isPlainObject(benefit) ? benefit : {}),
-                          syncedOnce: true,
-                        });
-                      } catch (_) {
-                        // ignore
-                      }
-                    }
+                    if (ms?.name !== desiredName)
+                      nameUpdates.push({ ms, desiredName });
+                    if (syncPolicy === "once" && !syncedOnce)
+                      flagUpdates.push({ ms, benefit });
                   }
                 }
+
+                await Promise.all(
+                  nameUpdates.map(({ ms, desiredName }) =>
+                    ms.update({ name: desiredName }).catch(() => {}),
+                  ),
+                );
+                await Promise.all(
+                  flagUpdates.map(({ ms, benefit }) =>
+                    ms
+                      .setFlag(MODULE_ID, "milestoneBenefit", {
+                        ...(isPlainObject(benefit) ? benefit : {}),
+                        syncedOnce: true,
+                      })
+                      .catch(() => {}),
+                  ),
+                );
               })();
             }
           }

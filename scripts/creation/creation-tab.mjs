@@ -108,9 +108,10 @@ function _buildDots(filled, total) {
  * Call once during module initialisation (Hooks.once("init", ...)).
  */
 export function preloadCreationTabTemplate() {
-  if (typeof loadTemplates === "function") {
-    loadTemplates([TEMPLATE]).catch(() => {});
-  }
+  const fn =
+    foundry.applications.handlebars?.loadTemplates ??
+    (typeof loadTemplates === "function" ? loadTemplates : null);
+  fn?.([TEMPLATE])?.catch?.(() => {});
 }
 
 const CIP_DEBUG = true; // set to false to silence debug output

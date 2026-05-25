@@ -123,14 +123,14 @@
       }
     },
     "tools": {
-      "sendPrompt": "STA: Send Callback Prompt",
-      "resetMission": "STA: New Mission",
-      "manageMissions": "STA: Manage Mission",
-      "newScene": "STA: New Scene",
-      "openGroupShip": "STA: Open Group Ship",
+      "sendPrompt": "Send Callback Prompt",
+      "resetMission": "New Mission",
+      "manageMissions": "Manage Mission",
+      "newScene": "New Scene",
+      "openGroupShip": "Open Group Ship",
       "labelValues": "Label Values",
       "labelValuesTooltip": "Changes the icons of your Value items to indicate their order.",
-      "openCreationWizard": "STA: Creation in Play"
+      "openCreationWizard": "Creation in Play"
     },
     "logFilter": {
       "showAll": "Show all logs (currently hiding unused)",
@@ -578,7 +578,10 @@
         "addPlayers": "Add Players",
         "reactivate": "Reactivate",
         "remove": "Remove",
-        "participants": "participants"
+        "participants": "participants",
+        "viewJournal": "View Journal",
+        "createJournal": "Create Journal",
+        "syncJournal": "Sync Journal"
       },
       "endMission": {
         "title": "End Current Mission",

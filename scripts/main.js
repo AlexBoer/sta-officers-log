@@ -371,7 +371,9 @@ Hooks.once("init", () => {
         makeDefault: false,
       },
     );
-    loadTemplates([`modules/${MODULE_ID}/templates/officers-log-sheet.hbs`]);
+    (foundry.applications.handlebars.loadTemplates ?? loadTemplates)([
+      `modules/${MODULE_ID}/templates/officers-log-sheet.hbs`,
+    ]);
   } catch (err) {
     console.error(`${MODULE_ID} | failed to register OfficersLogSheet`, err);
   }

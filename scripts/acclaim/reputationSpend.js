@@ -899,11 +899,30 @@ export async function triggerAllPlayersAcclaimSurvey() {
  */
 export function installReputationSpendHook() {
   Hooks.on("renderChatMessageHTML", (message, html) => {
-    // Only process if acclaim survey is enabled
-    if (!isAcclaimSurveyEnabled()) return;
-
     const root = html;
     if (!root) return;
+
+    // ---- Handle GM-sent spend buttons embedded in chat messages ----
+    const gmBtn = root.querySelector(".sta-gm-spend-btn");
+    if (gmBtn && gmBtn.dataset.staWired !== "1") {
+      gmBtn.dataset.staWired = "1";
+      gmBtn.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const spendType = gmBtn.dataset.spendType;
+        const spendAmount = parseInt(gmBtn.dataset.spendAmount ?? "0", 10);
+        const actorId = gmBtn.dataset.actorId;
+        const actor = game.actors?.get?.(actorId);
+        if (!actor) {
+          ui.notifications?.error("Actor not found.");
+          return;
+        }
+        await openSpendDialog(spendType, spendAmount, actor);
+      });
+    }
+
+    // Only process reputation roll buttons if acclaim survey is enabled
+    if (!isAcclaimSurveyEnabled()) return;
 
     // Find the STA reputation roll card (v2.5.0+ uses .chatcard, older uses .sta.roll.chat.card)
     const card =
@@ -959,31 +978,5 @@ export function installReputationSpendHook() {
 
     btnContainer.appendChild(btn);
     card.appendChild(btnContainer);
-  });
-
-  // ---- Handle GM-sent spend buttons embedded in chat messages ----
-  Hooks.on("renderChatMessageHTML", (_message, html) => {
-    const root = html;
-    if (!root) return;
-
-    const gmBtn = root.querySelector(".sta-gm-spend-btn");
-    if (!gmBtn) return;
-    // Already wired
-    if (gmBtn.dataset.staWired === "1") return;
-    gmBtn.dataset.staWired = "1";
-
-    gmBtn.addEventListener("click", async (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      const spendType = gmBtn.dataset.spendType;
-      const spendAmount = parseInt(gmBtn.dataset.spendAmount ?? "0", 10);
-      const actorId = gmBtn.dataset.actorId;
-      const actor = game.actors?.get?.(actorId);
-      if (!actor) {
-        ui.notifications?.error("Actor not found.");
-        return;
-      }
-      await openSpendDialog(spendType, spendAmount, actor);
-    });
   });
 }

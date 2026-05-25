@@ -16,6 +16,12 @@ import {
   promptNewMissionAndReset,
   promptAddParticipant,
 } from "./mission.js";
+import {
+  isMissionLogJournalsEnabled,
+  getMissionJournalForLogName,
+  syncAllMissionJournals,
+  createMissionJournalForEntry,
+} from "../journal/index.js";
 
 const Base = foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2,
@@ -53,6 +59,29 @@ export class MissionManagerApp extends Base {
         await promptAddParticipant();
         this.render();
       },
+      "view-journal": async function (event, target) {
+        const uuid = target.dataset.journalUuid;
+        if (!uuid) return;
+        await syncAllMissionJournals();
+        const journal = await fromUuid(uuid);
+        journal?.sheet?.render(true);
+      },
+      "create-journal": async function (event, target) {
+        const index = parseInt(target.dataset.index, 10);
+        const rawHistory = getMissionHistory();
+        const entry = rawHistory[index];
+        if (!entry) return;
+        await createMissionJournalForEntry(entry);
+        this.render();
+      },
+      "sync-journal": async function (event, target) {
+        const index = parseInt(target.dataset.index, 10);
+        const rawHistory = getMissionHistory();
+        const entry = rawHistory[index];
+        if (!entry) return;
+        await createMissionJournalForEntry(entry);
+        this.render();
+      },
     },
   };
 
@@ -73,17 +102,51 @@ export class MissionManagerApp extends Base {
       } catch (_) {}
     }
 
+    const journalsEnabled = isMissionLogJournalsEnabled();
+
     const rawHistory = getMissionHistory();
-    const history = rawHistory.map((entry, index) => ({
-      index,
-      title: entry.title ?? "",
-      endedDateStr: entry.endedAt
-        ? new Date(entry.endedAt).toLocaleDateString()
-        : "",
-      participantCount: Array.isArray(entry.participantIds)
-        ? entry.participantIds.length
-        : 0,
-    }));
+    const history = rawHistory.map((entry, index) => {
+      let journalUuid = null;
+      let canCreateJournal = false;
+      if (journalsEnabled) {
+        const actorLogMap = entry.actorLogMap ?? {};
+        for (const [actorId, logId] of Object.entries(actorLogMap)) {
+          const actor = game.actors?.get(actorId);
+          if (!actor) continue;
+          const logItem = actor.items.get(logId);
+          if (!logItem?.name) continue;
+          const journal = getMissionJournalForLogName(logItem.name);
+          if (journal) {
+            journalUuid = journal.uuid;
+            break;
+          }
+        }
+        if (!journalUuid) {
+          // Check whether creation is possible (at least one valid participant)
+          for (const [actorId, logId] of Object.entries(actorLogMap)) {
+            const actor = game.actors?.get(actorId);
+            if (!actor) continue;
+            const logItem = actor.items.get(logId);
+            if (logItem?.name) {
+              canCreateJournal = true;
+              break;
+            }
+          }
+        }
+      }
+      return {
+        index,
+        title: entry.title ?? "",
+        endedDateStr: entry.endedAt
+          ? new Date(entry.endedAt).toLocaleDateString()
+          : "",
+        participantCount: Array.isArray(entry.participantIds)
+          ? entry.participantIds.length
+          : 0,
+        journalUuid,
+        canCreateJournal,
+      };
+    });
 
     return {
       active,
@@ -103,6 +166,9 @@ export class MissionManagerApp extends Base {
         reactivate: t(`${MODULE_ID}.dialog.manageMissions.reactivate`),
         remove: t(`${MODULE_ID}.dialog.manageMissions.remove`),
         participants: t(`${MODULE_ID}.dialog.manageMissions.participants`),
+        viewJournal: t(`${MODULE_ID}.dialog.manageMissions.viewJournal`),
+        createJournal: t(`${MODULE_ID}.dialog.manageMissions.createJournal`),
+        syncJournal: t(`${MODULE_ID}.dialog.manageMissions.syncJournal`),
       },
     };
   }

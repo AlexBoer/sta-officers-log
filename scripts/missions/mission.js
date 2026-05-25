@@ -1506,6 +1506,19 @@ export async function promptNewMissionAndReset() {
     .filter((u) => Boolean(result[`p_${u.id}`]))
     .map((u) => u.id);
 
+  // Reset talent uses for all participating characters (sta-utils integration).
+  if (
+    game.modules.get("sta-utils")?.active &&
+    typeof game.staUtils?.resetTalentUses === "function"
+  ) {
+    for (const userId of selectedUserIds) {
+      const u = game.users.get(userId);
+      if (u?.character) {
+        await game.staUtils.resetTalentUses(u.character);
+      }
+    }
+  }
+
   // Reset Momentum and/or set Threat based on selected options
   if (doResetMomentum) await _setMomentum(0);
   if (doSetThreat) await _setThreat(selectedUserIds.length * 2);

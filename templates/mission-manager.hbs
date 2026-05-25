@@ -39,6 +39,21 @@
               </span>
             </div>
             <div class="sta-mission-history-actions">
+              {{#if this.journalUuid}}
+                <button type="button" data-action="sync-journal" data-index="{{this.index}}"
+                  title="{{../labels.syncJournal}}">
+                  <i class="fas fa-sync"></i>
+                </button>
+                <button type="button" data-action="view-journal" data-journal-uuid="{{this.journalUuid}}"
+                  title="{{../labels.viewJournal}}">
+                  <i class="fas fa-book-open"></i>
+                </button>
+              {{else if this.canCreateJournal}}
+                <button type="button" data-action="create-journal" data-index="{{this.index}}"
+                  title="{{../labels.createJournal}}">
+                  <i class="fas fa-book-medical"></i>
+                </button>
+              {{/if}}
               <button type="button" data-action="reactivate" data-index="{{this.index}}"
                 title="{{../labels.reactivate}}">
                 <i class="fas fa-undo"></i>

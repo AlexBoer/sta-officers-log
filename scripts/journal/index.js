@@ -1,6 +1,7 @@
 export {
   WORLD_ENABLE_MISSION_LOG_JOURNALS_SETTING,
   isMissionLogJournalsEnabled,
+  getMissionJournalForLogName,
   syncPageForLogItem,
   deletePageForLogItem,
   syncJournalMetadataForActor,
@@ -8,4 +9,5 @@ export {
   syncMissionJournalsDebounced,
   syncAllMissionJournals,
   syncAllJournals,
+  createMissionJournalForEntry,
 } from "./missionLogJournals.js";

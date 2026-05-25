@@ -138,7 +138,7 @@ function buildPersonalJournalName(actor) {
 
 // ── Mission journal helpers ───────────────────────────────────────────────────
 
-function getMissionJournalForLogName(logName) {
+export function getMissionJournalForLogName(logName) {
   return (
     game.journal?.find(
       (j) => j.getFlag?.(MODULE_ID, MISSION_JOURNAL_LOG_NAME_FLAG) === logName,
@@ -666,39 +666,35 @@ export async function syncAllMissionJournals() {
     }
   }
 
-  // Sync journals for log names that have 2+ characters
-  for (const [logName, entries] of logNameMap) {
-    try {
-      await _syncMissionJournalImmediate(logName, entries, folder);
-    } catch (err) {
-      console.error(
-        `${MODULE_ID} | _syncMissionJournalImmediate failed for "${logName}":`,
-        err,
-      );
-    }
-  }
-
-  // Delete mission journals whose log name no longer has 2+ characters
-  for (const journal of game.journal ?? []) {
-    const logName = journal.getFlag?.(MODULE_ID, MISSION_JOURNAL_LOG_NAME_FLAG);
-    if (!logName) continue;
-    const entries = logNameMap.get(logName) ?? [];
-    if (entries.length < 2) {
-      try {
-        await journal.delete();
-      } catch (err) {
-        console.error(
-          `${MODULE_ID} | failed to delete stale mission journal "${logName}":`,
-          err,
-        );
-      }
-    }
-  }
+  // Sync EXISTING mission journals only — do not auto-create new ones.
+  // New journals are only created when the GM explicitly uses the Mission Manager.
+  await Promise.all(
+    [...logNameMap.entries()]
+      .filter(([logName]) => getMissionJournalForLogName(logName) != null)
+      .map(async ([logName, entries]) => {
+        try {
+          await _syncMissionJournalImmediate(logName, entries, folder);
+        } catch (err) {
+          console.error(
+            `${MODULE_ID} | _syncMissionJournalImmediate failed for "${logName}":`,
+            err,
+          );
+        }
+      }),
+  );
+  // Mission journals are only deleted when the GM explicitly removes them;
+  // auto-deletion based on actor count has been removed to match the
+  // on-demand creation model.
 }
 
-async function _syncMissionJournalImmediate(logName, entries, folder) {
-  // Only create/maintain when 2+ characters share this log name
-  if (entries.length < 2) return;
+async function _syncMissionJournalImmediate(
+  logName,
+  entries,
+  folder,
+  { forceCreate = false } = {},
+) {
+  // Require 2+ characters unless the GM is explicitly forcing creation
+  if (!forceCreate && entries.length < 2) return;
 
   let journal = getMissionJournalForLogName(logName);
   const observerOnly = { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER };
@@ -735,6 +731,9 @@ async function _syncMissionJournalImmediate(logName, entries, folder) {
     a.actor.name.localeCompare(b.actor.name),
   );
 
+  const newPages = [];
+  const pageUpdates = [];
+
   for (let i = 0; i < sortedEntries.length; i++) {
     const { actor, log } = sortedEntries[i];
 
@@ -748,28 +747,27 @@ async function _syncMissionJournalImmediate(logName, entries, folder) {
     );
 
     if (!existingPage) {
-      await journal.createEmbeddedDocuments("JournalEntryPage", [
-        {
-          name: actor.name,
-          type: "text",
-          text: {
-            content,
-            format: CONST.JOURNAL_ENTRY_PAGE_FORMATS.HTML,
-          },
-          sort: i + 1,
-          title: { show: true, level: 1 },
-          flags: {
-            [MODULE_ID]: { [MISSION_PAGE_ACTOR_ID_FLAG]: actor.id },
-          },
+      newPages.push({
+        name: actor.name,
+        type: "text",
+        text: {
+          content,
+          format: CONST.JOURNAL_ENTRY_PAGE_FORMATS.HTML,
         },
-      ]);
+        sort: i + 1,
+        title: { show: true, level: 1 },
+        flags: {
+          [MODULE_ID]: { [MISSION_PAGE_ACTOR_ID_FLAG]: actor.id },
+        },
+      });
     } else {
       const needsUpdate =
         existingPage.name !== actor.name ||
         existingPage.text?.content !== content ||
         existingPage.sort !== i + 1;
       if (needsUpdate) {
-        await existingPage.update({
+        pageUpdates.push({
+          _id: existingPage.id,
           name: actor.name,
           "text.content": content,
           sort: i + 1,
@@ -777,6 +775,55 @@ async function _syncMissionJournalImmediate(logName, entries, folder) {
       }
     }
   }
+
+  if (newPages.length > 0) {
+    await journal.createEmbeddedDocuments("JournalEntryPage", newPages);
+  }
+  if (pageUpdates.length > 0) {
+    await journal.updateEmbeddedDocuments("JournalEntryPage", pageUpdates);
+  }
+}
+
+// ── On-demand mission journal creation ───────────────────────────────────────
+
+/**
+ * Creates (or re-syncs) the mission journal for a specific history entry.
+ * Called when the GM clicks "Create Journal" in the Mission Manager.
+ * Works even if only one participant's log is still present.
+ */
+export async function createMissionJournalForEntry(historyEntry) {
+  if (!game.user?.isGM) return;
+  if (!isMissionLogJournalsEnabled()) return;
+
+  const folder = await ensureMissionLogsFolder();
+  const actorLogMap = historyEntry.actorLogMap ?? {};
+
+  // Collect valid actor+log pairs, grouped by log name
+  const logNameMap = new Map();
+  for (const [actorId, logId] of Object.entries(actorLogMap)) {
+    const actor = game.actors?.get(actorId);
+    if (!actor || !isEligibleActor(actor)) continue;
+    const logItem = actor.items.get(logId);
+    if (!logItem?.name) continue;
+    const name = logItem.name;
+    if (!logNameMap.has(name)) logNameMap.set(name, []);
+    logNameMap.get(name).push({ actor, log: logItem });
+  }
+
+  if (logNameMap.size === 0) {
+    ui.notifications?.warn(
+      `${MODULE_ID} | No eligible participants found for this mission entry.`,
+    );
+    return;
+  }
+
+  await Promise.all(
+    [...logNameMap.entries()].map(([logName, entries]) =>
+      _syncMissionJournalImmediate(logName, entries, folder, {
+        forceCreate: true,
+      }),
+    ),
+  );
 }
 
 // ── Sync all ───────────────────────────────────────────────────────────────────
