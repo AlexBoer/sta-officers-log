@@ -18,12 +18,16 @@
  *
  * v3 fields migrated (character actors):
  *   currentMissionLogId, usedCallbackThisMission, pendingShipBenefits
+ *
+ * v4 cleanup:
+ *   Unset stale showMilestoneArcButton flags on log items where the system
+ *   field is false but the legacy flag was left behind by older clearing code.
  */
 
 import { MODULE_ID } from "../core/constants.js";
 
 const MIGRATION_SETTING = "dataModelMigrationVersion";
-const CURRENT_VERSION = 3;
+const CURRENT_VERSION = 4;
 
 /** Keys to copy from flags → system on each log item. */
 const LOG_MIGRATED_KEYS = [
@@ -189,6 +193,40 @@ export async function runLogFlagMigration() {
     console.log(
       `${MODULE_ID} | Actor migration complete — ${actorMigrated} actors updated, ${actorErrors} errors.`,
     );
+  }
+
+  // v4: Unset stale showMilestoneArcButton flags on log items where the system
+  // field is already false (benefit was chosen) but the legacy flag was never
+  // cleared by older code, causing the "Choose Milestone" button to persist.
+  if (currentVersion < 4) {
+    let flagFixCount = 0;
+    let flagFixErrors = 0;
+    for (const actor of game.actors ?? []) {
+      if (actor.type !== "character") continue;
+      for (const item of actor.items ?? []) {
+        if (item.type !== "log") continue;
+        const flagVal = item.getFlag?.(MODULE_ID, "showMilestoneArcButton");
+        if (flagVal !== true) continue;
+        // Only unset the flag if the system field is already false (was cleared
+        // after a benefit was chosen, leaving a stale flag behind).
+        if (item.system?.showMilestoneArcButton === true) continue;
+        try {
+          await item.unsetFlag(MODULE_ID, "showMilestoneArcButton");
+          flagFixCount++;
+        } catch (err) {
+          console.warn(
+            `${MODULE_ID} | v4 flag cleanup failed for log "${item.name}" on "${actor.name}":`,
+            err,
+          );
+          flagFixErrors++;
+        }
+      }
+    }
+    if (flagFixCount || flagFixErrors) {
+      console.log(
+        `${MODULE_ID} | v4 flag cleanup — ${flagFixCount} stale showMilestoneArcButton flags removed, ${flagFixErrors} errors.`,
+      );
+    }
   }
 
   try {

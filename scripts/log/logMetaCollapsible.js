@@ -121,6 +121,10 @@ function attachLogMetaEventListeners(details, itemSheet, logItem) {
         await logItem.update({
           "system.showMilestoneArcButton": showMilestoneArcCheckbox.checked,
         });
+        // If unchecking, also clear any legacy flag so the OR-fallback doesn't re-show it
+        if (!showMilestoneArcCheckbox.checked) {
+          await logItem.unsetFlag?.(MODULE_ID, "showMilestoneArcButton");
+        }
         // Re-render the parent character sheet to update the log list UI
         // Use force: false and focus: false to avoid stealing focus and unnecessary work
         const parentActor = logItem.parent ?? logItem.actor;

@@ -1261,8 +1261,8 @@ div.section.character-log li.row.entry.sta-current-mission-log {
 }
 
 /* Logs ineligible as callback targets — show them struck through */
-div.section.milestones li.row.entry.sta-callback-ineligible-log input[name="name"],
-div.section.character-log li.row.entry.sta-callback-ineligible-log input[name="name"] {
+div.section.milestones li.row.entry.sta-callback-ineligible-log input.item-name,
+div.section.character-log li.row.entry.sta-callback-ineligible-log input.item-name {
   text-decoration: line-through;
   opacity: 0.65;
 }

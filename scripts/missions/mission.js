@@ -1166,23 +1166,39 @@ export async function endCurrentMission() {
     console.warn(`${MODULE_ID} | Failed to update mission history:`, _histErr);
   }
 
-  // Clear currentMissionLogId on all participating character actors
+  // Clear currentMissionLogId on all character actors that have it set.
+  // Scanning game.actors directly avoids missing actors whose user lacks an
+  // assigned character (user.character === null).
   const clearOps = [];
-  for (const userId of participantIds) {
-    const user = game.users?.get?.(userId);
-    const actor = user?.character ?? null;
-    if (actor && actor.type === "character") {
-      clearOps.push(
-        actor.update({ "system.currentMissionLogId": null }).catch((err) => {
-          console.warn(
-            `${MODULE_ID} | Failed to clear currentMissionLogId on ${actor.name}:`,
-            err,
-          );
-        }),
-      );
-    }
+  for (const actor of game.actors ?? []) {
+    if (actor.type !== "character") continue;
+    if (!actor.system?.currentMissionLogId) continue;
+    clearOps.push(
+      actor.update({ "system.currentMissionLogId": null }).catch((err) => {
+        console.warn(
+          `${MODULE_ID} | Failed to clear currentMissionLogId on ${actor.name}:`,
+          err,
+        );
+      }),
+    );
   }
   await Promise.allSettled(clearOps);
+
+  // Reset talent uses on all character actors (sta-utils integration).
+  if (
+    game.modules.get("sta-utils")?.active &&
+    typeof game.staUtils?.resetTalentUses === "function"
+  ) {
+    for (const actor of game.actors ?? []) {
+      if (actor.type !== "character") continue;
+      await game.staUtils.resetTalentUses(actor).catch((err) => {
+        console.warn(
+          `${MODULE_ID} | Failed to reset talent uses on ${actor.name}:`,
+          err,
+        );
+      });
+    }
+  }
 
   // Clear mission state
   await game.settings.set(MODULE_ID, "missionTitle", "");

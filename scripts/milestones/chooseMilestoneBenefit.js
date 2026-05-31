@@ -325,6 +325,7 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
             // Still clear the button so the button goes away
             try {
               await logItem.update({ "system.showMilestoneArcButton": false });
+              await logItem.unsetFlag?.(MODULE_ID, "showMilestoneArcButton");
             } catch (_) {}
             return;
           }
@@ -406,6 +407,7 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
           // Auto-uncheck showMilestoneArcButton after benefit is chosen
           try {
             await logItem.update({ "system.showMilestoneArcButton": false });
+            await logItem.unsetFlag?.(MODULE_ID, "showMilestoneArcButton");
           } catch (_) {
             // ignore
           }
