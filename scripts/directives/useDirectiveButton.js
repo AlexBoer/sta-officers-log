@@ -180,9 +180,11 @@ export async function promptUseDirective(actor) {
     ? actor.items.get(String(currentMissionLogId))
     : null;
 
-  // Prefer per-log snapshot (permanently copied at mission start)
+  // Prefer live mission directives so revisions are always reflected.
+  // Fall back to the per-log snapshot only when no live directives exist.
+  const liveDirectives = getMissionDirectives();
   const snapshot = currentLog ? getDirectiveSnapshotForLog(currentLog) : [];
-  const directives = snapshot.length ? snapshot : getMissionDirectives();
+  const directives = liveDirectives.length ? liveDirectives : snapshot;
 
   const byKey = new Map();
   for (const d of directives) {
