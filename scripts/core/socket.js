@@ -566,5 +566,76 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     await rerenderStaTracker();
   });
 
+  // --- RPC: Player -> GM (request approval to introduce a supporting char when crew support is at max) ---
+  moduleSocket.register("requestCrewSupportIntroApproval", async (msg) => {
+    if (!game.user.isGM) return { approved: false, reason: "not-gm" };
+
+    const actorName = String(msg.actorName ?? "");
+    const requestingUserName = _formatUserName(msg.requestingUserId);
+    const crewValue = Number(msg.crewValue ?? 0);
+    const crewMax = Number(msg.crewMax ?? 0);
+    const crewIncrement = Number(msg.crewIncrement ?? 1);
+
+    const content =
+      game.i18n?.format?.(
+        "sta-officers-log.supporting.crewSupportGmRequestContent",
+        {
+          userName: requestingUserName,
+          actorName,
+          value: String(crewValue),
+          max: String(crewMax),
+          increment: String(crewIncrement),
+        },
+      ) ??
+      `${requestingUserName} wants to introduce ${actorName} (+${crewIncrement} Crew Support) but this would exceed the maximum (${crewValue}/${crewMax}). Approve?`;
+
+    const dialogResult = await foundry.applications.api.DialogV2.wait({
+      classes: ["sta-officers-log"],
+      window: {
+        title: t("sta-officers-log.supporting.crewSupportGmRequestTitle"),
+      },
+      content: `<p>${foundry.utils.escapeHTML(content)}</p>`,
+      buttons: [
+        {
+          action: "approve",
+          label: t("sta-officers-log.supporting.crewSupportGmApprove"),
+          default: true,
+        },
+        {
+          action: "no-advancement",
+          label: t("sta-officers-log.supporting.crewSupportGmNoAdvancement"),
+        },
+        {
+          action: "deny",
+          label: t("sta-officers-log.supporting.crewSupportGmDeny"),
+        },
+      ],
+      rejectClose: false,
+      modal: false,
+    });
+
+    if (dialogResult === "approve") return { result: "approve" };
+    if (dialogResult === "no-advancement") return { result: "no-advancement" };
+    return { result: "deny" };
+  });
+
+  // --- RPC: Player -> GM (set ship crew support to a specific value) ---
+  moduleSocket.register("gmSetCrewSupport", async (msg) => {
+    if (!game.user.isGM) return { success: false, reason: "not-gm" };
+
+    const shipActorId = String(msg.shipActorId ?? "");
+    if (!shipActorId) return { success: false, reason: "missing-id" };
+
+    const ship = game.actors?.get(shipActorId);
+    if (!ship) return { success: false, reason: "ship-not-found" };
+
+    const newValue = Number(msg.newValue);
+    if (!Number.isFinite(newValue) || newValue < 0)
+      return { success: false, reason: "invalid-value" };
+
+    await ship.update({ "system.crew.value": newValue });
+    return { success: true };
+  });
+
   return moduleSocket;
 }

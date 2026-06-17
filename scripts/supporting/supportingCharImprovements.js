@@ -155,6 +155,14 @@ async function checkAndAutoCheckNext(actor, improvementType, button) {
   }
 }
 
+async function _createSupportingMilestone(actor, name) {
+  try {
+    await actor.createEmbeddedDocuments("Item", [{ name, type: "milestone" }]);
+  } catch (err) {
+    console.error(`${MODULE_ID} | Failed to create supporting milestone`, err);
+  }
+}
+
 /**
  * Handle "New Value" improvement button
  */
@@ -172,6 +180,11 @@ async function handleNewValue(actor, button) {
       created[0].sheet.render(true);
     }
 
+    await _createSupportingMilestone(
+      actor,
+      created?.[0]?.name ??
+        t("sta-officers-log.dialog.chooseMilestoneBenefit.arcAddValue"),
+    );
     // Auto-check next checkbox
     await checkAndAutoCheckNext(actor, "newvalue", button);
   } catch (_) {
@@ -265,6 +278,10 @@ async function handleImproveAttribute(actor, button) {
     }
 
     await actor.update({ [path]: Math.min(12, value + 1) });
+    await _createSupportingMilestone(
+      actor,
+      `${ATTRIBUTE_LABELS[key] ?? key} +1`,
+    );
     // Auto-check next checkbox
     await checkAndAutoCheckNext(actor, "attribute", button);
   } catch (err) {
@@ -352,6 +369,10 @@ async function handleImproveDepartment(actor, button) {
     }
 
     await actor.update({ [path]: Math.min(5, value + 1) });
+    await _createSupportingMilestone(
+      actor,
+      `${DISCIPLINE_LABELS[key] ?? key} +1`,
+    );
     // Auto-check next checkbox
     await checkAndAutoCheckNext(actor, "department", button);
   } catch (err) {
@@ -370,6 +391,7 @@ async function handleNewFocus(actor, button) {
     });
 
     if (result?.applied) {
+      await _createSupportingMilestone(actor, result.name ?? "New Focus");
       // Auto-check next checkbox
       await checkAndAutoCheckNext(actor, "focus", button);
     }
@@ -389,6 +411,7 @@ async function handleNewTalent(actor, button) {
     });
 
     if (result?.applied) {
+      await _createSupportingMilestone(actor, result.name ?? "New Talent");
       // Auto-check next checkbox
       await checkAndAutoCheckNext(actor, "talent", button);
     }

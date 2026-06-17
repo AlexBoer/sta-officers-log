@@ -91,7 +91,11 @@ export function isLogUnconditionallyIneligibleAsCallbackTarget(actor, log) {
     }
 
     return false;
-  } catch (_) {
+  } catch (err) {
+    console.warn(
+      `${MODULE_ID} | isLogUnconditionallyIneligibleAsCallbackTarget: unexpected error`,
+      err,
+    );
     return false;
   }
 }
@@ -159,8 +163,12 @@ export function hasEligibleCallbackTargetForValueId(
     }
 
     return false;
-  } catch (_) {
-    // Preserve previous behavior if this check fails unexpectedly.
+  } catch (err) {
+    // Preserve previous behavior (allow prompting) if this check fails unexpectedly.
+    console.warn(
+      `${MODULE_ID} | hasEligibleCallbackTargetForValueId: unexpected error`,
+      err,
+    );
     return true;
   }
 }

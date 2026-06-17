@@ -305,11 +305,11 @@ export class CallbackRequestApp extends Base {
 
     if (action === "yes") {
       if (!valueId) {
-        ui.notifications.warn("No value selected for callback.");
+        ui.notifications.warn(t("sta-officers-log.callback.warnNoValue"));
         return;
       }
       if (!logId) {
-        ui.notifications.warn("No log selected for callback.");
+        ui.notifications.warn(t("sta-officers-log.callback.warnNoLog"));
         return;
       }
 

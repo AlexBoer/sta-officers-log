@@ -324,6 +324,42 @@
       "disabledTooltip": "Mission still in progress.",
       "disabledNotification": "You can choose a milestone/arc at the end of a mission."
     },
+    "supporting": {
+      "introduceButton": "Introduce Support Character",
+      "introducedButton": "Introduced",
+      "introduceButtonTooltip": "Mark this character as introduced for the current mission and record a pending advancement.",
+      "introducedButtonTooltip": "This character has already been introduced this mission.",
+      "unintroduceTooltip": "Undo introduction (removes the pending advancement log for this mission).",
+      "chooseAdvancement": "Choose Advancement",
+      "chooseAdvancementTooltip": "Choose a supporting character advancement for this mission.",
+      "advancementLogsTitle": "Missions",
+      "addAdvancementLog": "Add a mission introduction entry manually",
+      "advancementDialog": {
+        "title": "Choose Supporting Character Advancement",
+        "pickType": "Choose an advancement for this supporting character:",
+        "attr": "Increase Attribute",
+        "disc": "Increase Discipline",
+        "focus": "Add Focus",
+        "talent": "Add Talent",
+        "value": "Add Value",
+        "cancel": "Cancel"
+      },
+      "crewSupportMaxTitle": "Crew Support Limit",
+      "crewSupportMaxContent": "Introducing {actorName} would bring Crew Support to {value}/{max} (over the maximum). Introduce anyway (Crew Support will not be incremented)?",
+      "crewSupportApprove": "Introduce Anyway",
+      "crewSupportNoAdvancement": "Introduce (no advancement)",
+      "crewSupportDeny": "Cancel",
+      "crewSupportGmRequestTitle": "Crew Support Limit — Approval Request",
+      "crewSupportGmRequestContent": "{userName} wants to introduce {actorName} (+{increment} Crew Support), but this would exceed the maximum ({value}/{max}). Approve the introduction?",
+      "crewSupportGmApprove": "Approve",
+      "crewSupportGmNoAdvancement": "Accept (no advancement)",
+      "crewSupportGmDeny": "Reject",
+      "crewSupportMaxPending": "Crew Support would be exceeded — awaiting GM approval…",
+      "supervisoryChar": "Supervisory Character",
+      "supervisoryCharTooltip": "Supervisory characters contribute +2 Crew Support when introduced, instead of +1.",
+      "introducedCrewTitle": "Introduced Crew",
+      "introducedCrewEmpty": "—"
+    },
     "logSheet": {
       "arcComplete": "Arc Complete",
       "arcCompleteNeedsChain": "A chain value (primary value) must be set before marking an arc as complete.",
@@ -631,6 +667,8 @@
       "chooseAnother": "Choose another log",
       "confirmSelection": "Confirm",
       "noInvokedValues": "No invoked values recorded in this log.",
+      "warnNoValue": "No value selected for callback.",
+      "warnNoLog": "No log selected for callback.",
       "bodyHtml": "<h2>Make a Callback</h2><p></p><p>Build a character arc! Link this mission to a previous one where you were motivated by the same value.</p>",
       "rewardHtml": "<h5>You made a callback!</h5>\n<ul>\n<li>+1 Determination.</li>\n<li>At the end of the mission, choose a new Milestone!</li>\n</ul>"
     },
@@ -820,6 +858,10 @@
       "dialogPastimeTitle": "Define a Pastime",
       "dialogPastimeLabel": "Enter your Pastime:",
       "dialogPasttimePlaceholder": "e.g. Holodeck Fiction Writing",
+
+      "warnNoDeptRatingsAvailable": "No remaining department ratings available.",
+      "warnAllDeptsAlreadyDefined": "All departments have already been defined.",
+      "notifPastimeUpdated": "Pastime updated.",
 
       "equipmentNotes": "Equipment Notes",
 

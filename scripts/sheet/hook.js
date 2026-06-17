@@ -27,6 +27,11 @@ import {
   installMilestoneHighlightButtons,
 } from "../log/callbackSourceButtons.js";
 import { installSupportingCharImprovementButtons } from "../supporting/supportingCharImprovements.js";
+import {
+  installIntroduceSupportingCharButton,
+  installChooseAdvancementButtons,
+  isSupervisoryChar,
+} from "../supporting/introduceButton.js";
 import { handleBenefitDialogRender } from "./benefitDialogHandler.js";
 import { handleItemSheetRender } from "./itemSheetHandlers.js";
 import { installMissionLogSortButton } from "../log/missionLogSortButton.js";
@@ -41,6 +46,7 @@ import { installAcclaimButtonOverride } from "../acclaim/acclaimButton.js";
 import { installCreationInPlayTab } from "../creation/creation-tab.mjs";
 import { isUnlinkedTokenActor } from "../core/utils.js";
 import { t } from "../core/i18n.js";
+import { installIntroducedCrewList } from "../ship/introducedCrewList.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Handler: STA Tracker
@@ -131,7 +137,9 @@ function handleCharacterSheetRender(app, root) {
       if (!existingBanner) {
         const banner = document.createElement("div");
         banner.className = "sta-unlinked-token-banner";
-        banner.title = t("sta-officers-log.unlinkedToken.warningTitle") ?? "Unlinked Token Warning";
+        banner.title =
+          t("sta-officers-log.unlinkedToken.warningTitle") ??
+          "Unlinked Token Warning";
         banner.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${
           t("sta-officers-log.unlinkedToken.warningMessage") ??
           "This token is not linked to its world actor. Changes (including log entries) will not persist."
@@ -154,6 +162,28 @@ function handleCharacterSheetRender(app, root) {
   try {
     if (isSupportingCharacterSheet(actor)) {
       installSupportingCharImprovementButtons(root, actor);
+      installIntroduceSupportingCharButton(root, actor);
+      installChooseAdvancementButtons(root, actor);
+      // Rename "Milestones / Arcs" header to "Advancements" on supporting sheets
+      const milestoneTitleEl = root.querySelector(
+        ".section.milestones > .title",
+      );
+      if (milestoneTitleEl?.textContent?.trim() === "Milestones / Arcs") {
+        milestoneTitleEl.textContent = "Advancements";
+      }
+      // Remove the "Is Arc" column header and checkboxes — supporting characters cannot have arcs
+      root
+        .querySelector(
+          ".section.milestones .header.row .two-column-with-roll-secondary",
+        )
+        ?.remove();
+      for (const cb of root.querySelectorAll(
+        ".section.milestones li.row.entry input.item-quantity",
+      )) {
+        cb.remove();
+      }
+      // Inject supervisory-character checkbox into the biography tab next to the klingon checkbox
+      _installSupervisoryCheckbox(root, actor);
     }
   } catch (_) {
     // ignore
@@ -226,6 +256,61 @@ function handleCharacterSheetRender(app, root) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Supervisory character checkbox
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MODULE_ID_FOR_HOOK = "sta-officers-log";
+
+/**
+ * Inject a "Supervisory Character" checkbox into the biography tab of a
+ * supporting character sheet, placed next to the "Am I Klingon?" checkbox.
+ */
+function _installSupervisoryCheckbox(root, actor) {
+  // Guard: inject once per render
+  if (root.querySelector(".sta-supervisory-char-row")) return;
+
+  const klingonDiv = root.querySelector(".amiklingon");
+  if (!klingonDiv) return;
+
+  const isChecked = isSupervisoryChar(actor);
+
+  const row = document.createElement("div");
+  row.className = "amiklingon sta-supervisory-char-row";
+
+  const label = document.createElement("label");
+  label.htmlFor = "sta-supervisory-char-cb";
+  label.style.marginRight = "5px";
+  label.title = t("sta-officers-log.supporting.supervisoryCharTooltip");
+  label.textContent =
+    t("sta-officers-log.supporting.supervisoryChar") || "Supervisory Character";
+
+  const cb = document.createElement("input");
+  cb.type = "checkbox";
+  cb.id = "sta-supervisory-char-cb";
+  cb.className = "checkbox";
+  cb.checked = isChecked;
+  cb.title = t("sta-officers-log.supporting.supervisoryCharTooltip");
+
+  cb.addEventListener("change", async () => {
+    try {
+      await actor.setFlag(MODULE_ID_FOR_HOOK, "isSupervisoryChar", cb.checked);
+    } catch (err) {
+      console.error(
+        `${MODULE_ID_FOR_HOOK} | Failed to set supervisory flag`,
+        err,
+      );
+      cb.checked = !cb.checked; // revert on error
+    }
+  });
+
+  row.appendChild(label);
+  row.appendChild(cb);
+
+  // Insert after the klingon row
+  klingonDiv.insertAdjacentElement("afterend", row);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main Hook
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -260,6 +345,8 @@ export function installRenderApplicationV2Hook() {
       appId.startsWith("MobileCharacterSheet2e") ||
       appId.startsWith("LcarsCharacterSheet2e") ||
       appId.startsWith("LcarsSupportingSheet2e") ||
+      appId.startsWith("LcarsStarshipSheet2e") ||
+      appId.startsWith("STAStarshipSheet2e") ||
       app?.constructor?.name?.startsWith?.("STA");
     const isDialog =
       app?.constructor?.name === "DialogV2" || appId.startsWith("dialog-");
@@ -306,5 +393,29 @@ export function installRenderApplicationV2Hook() {
 
     // Handle character sheet enhancements.
     handleCharacterSheetRender(app, root);
+
+    // Handle starship sheet enhancements.
+    handleStarshipSheetRender(app, root);
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Handler: Starship Sheets
+// ─────────────────────────────────────────────────────────────────────────────
+
+function handleStarshipSheetRender(app, root) {
+  if (
+    !app?.id?.startsWith("LcarsStarshipSheet2e") &&
+    !app?.id?.startsWith("STAStarshipSheet2e")
+  )
+    return;
+
+  const actor = app.actor;
+  if (!actor || actor.type !== "starship") return;
+
+  try {
+    installIntroducedCrewList(root, actor);
+  } catch (_) {
+    // ignore
+  }
 }

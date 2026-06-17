@@ -155,8 +155,7 @@ export class MissionFlowchartApp extends Base {
 
   get title() {
     const actorName = this.actor?.name ?? "";
-    const base =
-      t("sta-officers-log.flowchart.title") ?? "Mission Log Flowchart";
+    const base = t("sta-officers-log.flowchart.title");
     return actorName ? `${base}: ${actorName}` : base;
   }
 
@@ -2232,24 +2231,21 @@ export class MissionFlowchartApp extends Base {
     let valueId;
 
     if (commonValues.length > 0) {
-      // Common values exist — prefer the target's primary, fallback to first common
+      // Common values exist Ã¢â‚¬â€ prefer the target's primary, fallback to first common
       valueId =
         targetNode.primaryValueId &&
         commonValues.includes(targetNode.primaryValueId)
           ? targetNode.primaryValueId
           : commonValues[0];
     } else {
-      // No common values — prompt the user to pick a value from the target log
+      // No common values Ã¢â‚¬â€ prompt the user to pick a value from the target log
       const targetValueChoices = valueItems.filter((v) =>
         targetInvoked.has(v.id),
       );
 
       if (targetValueChoices.length === 0) {
-        // Target has no invoked values at all — reject
-        ui.notifications.warn(
-          t("sta-officers-log.flowchart.noCommonValues") ??
-            "The target log has no invoked values. Cannot create callback link.",
-        );
+        // Target has no invoked values at all Ã¢â‚¬â€ reject
+        ui.notifications.warn(t("sta-officers-log.flowchart.noCommonValues"));
         return;
       }
 
@@ -2267,16 +2263,14 @@ export class MissionFlowchartApp extends Base {
       const result = await foundry.applications.api.DialogV2.prompt({
         classes: ["sta-officers-log"],
         window: {
-          title:
-            t("sta-officers-log.flowchart.pickValueTitle") ??
-            "Choose Value for Callback",
+          title: t("sta-officers-log.flowchart.pickValueTitle"),
         },
         content: `
-          <p>${t("sta-officers-log.flowchart.pickValueMessage") ?? "These logs share no invoked values. Did you use one of these values from the target log?"}</p>
+          <p>${t("sta-officers-log.flowchart.pickValueMessage")}</p>
           <div class="sta-flowchart-value-choices">${choiceHTML}</div>
         `,
         ok: {
-          label: t("sta-officers-log.flowchart.useValue") ?? "Use Value",
+          label: t("sta-officers-log.flowchart.useValue"),
           callback: (event, button) => {
             const selected = button.form?.elements?.valueId?.value;
             return selected || null;
@@ -2286,7 +2280,7 @@ export class MissionFlowchartApp extends Base {
       });
 
       if (!result) {
-        // User cancelled or didn't select a value — reject
+        // User cancelled or didn't select a value Ã¢â‚¬â€ reject
         return;
       }
 
@@ -2446,7 +2440,7 @@ export class MissionFlowchartApp extends Base {
 
     const node = this._nodes.find((n) => n.id === nodeId);
     if (!node) {
-      sidebarContent.innerHTML = `<p class="sta-flowchart-sidebar-hint">${t("sta-officers-log.flowchart.selectNodeHint") ?? "Click a node to view details"}</p>`;
+      sidebarContent.innerHTML = `<p class="sta-flowchart-sidebar-hint">${t("sta-officers-log.flowchart.selectNodeHint")}</p>`;
       return;
     }
 
@@ -2542,7 +2536,7 @@ export class MissionFlowchartApp extends Base {
         
         <div class="sta-flowchart-edit-section">
           <label class="sta-flowchart-edit-label">
-            ${t("sta-officers-log.flowchart.primaryValue") ?? "Primary Value"}
+            ${t("sta-officers-log.flowchart.primaryValue")}
             <select data-action="set-primary-value" class="sta-flowchart-select">
               ${primaryValueOptionsHtml}
             </select>
@@ -2552,18 +2546,18 @@ export class MissionFlowchartApp extends Base {
         <div class="sta-flowchart-edit-section">
           <label class="sta-flowchart-edit-checkbox">
             <input type="checkbox" data-action="toggle-arc-complete" ${isArcEnd ? "checked" : ""}>
-            ${t("sta-officers-log.flowchart.completesChain") ?? "Completes Chain (Arc End)"}
+            ${t("sta-officers-log.flowchart.completesChain")}
           </label>
           <div class="sta-flowchart-arc-steps" ${isArcEnd ? "" : 'style="display:none"'}>
             <label class="sta-flowchart-edit-label">
-              ${t("sta-officers-log.flowchart.arcSteps") ?? "Arc Steps"}
+              ${t("sta-officers-log.flowchart.arcSteps")}
               <input type="number" data-action="set-arc-steps" min="${minArcSteps}" max="15" value="${arcSteps}" class="sta-flowchart-number-input">
             </label>
           </div>
         </div>
 
         <div class="sta-flowchart-edit-section">
-          <h6 class="sta-flowchart-section-title">${t("sta-officers-log.flowchart.valueStates") ?? "Value States"}</h6>
+          <h6 class="sta-flowchart-section-title">${t("sta-officers-log.flowchart.valueStates")}</h6>
           <div class="sta-flowchart-value-states">
             ${valueStatesHtml || '<p class="sta-flowchart-no-values">No values on character</p>'}
           </div>
@@ -2573,7 +2567,7 @@ export class MissionFlowchartApp extends Base {
 
         <div class="sta-flowchart-edit-section">
           <label class="sta-flowchart-edit-label">
-            ${t("sta-officers-log.flowchart.milestone") ?? "Milestone"}
+            ${t("sta-officers-log.flowchart.milestone")}
             <select data-action="set-milestone" class="sta-flowchart-select">
               ${this._buildMilestoneOptions(nodeId)}
             </select>
@@ -2582,10 +2576,10 @@ export class MissionFlowchartApp extends Base {
         
         <div class="sta-flowchart-node-actions">
           <button type="button" class="sta-flowchart-btn" data-action="open-log" data-node-id="${nodeId}">
-            <i class="fa-solid fa-external-link-alt"></i> ${t("sta-officers-log.flowchart.openLog") ?? "Open Log"}
+            <i class="fa-solid fa-external-link-alt"></i> ${t("sta-officers-log.flowchart.openLog")}
           </button>
           <button type="button" class="sta-flowchart-btn sta-flowchart-btn-danger" data-action="delete-log" data-node-id="${nodeId}">
-            <i class="fa-solid fa-trash"></i> ${t("sta-officers-log.flowchart.deleteLog") ?? "Delete"}
+            <i class="fa-solid fa-trash"></i> ${t("sta-officers-log.flowchart.deleteLog")}
           </button>
         </div>
       </div>
@@ -2613,7 +2607,7 @@ export class MissionFlowchartApp extends Base {
 
     const node = this._nodes.find((n) => n.id === nodeId);
     if (!node) {
-      descContent.innerHTML = `<p class="sta-flowchart-sidebar-hint">${t("sta-officers-log.flowchart.selectNodeHint") ?? "Click a node to view details"}</p>`;
+      descContent.innerHTML = `<p class="sta-flowchart-sidebar-hint">${t("sta-officers-log.flowchart.selectNodeHint")}</p>`;
       return;
     }
 
@@ -2627,7 +2621,9 @@ export class MissionFlowchartApp extends Base {
     }
 
     // Enrich HTML for the view mode (resolves links, inline rolls, etc.)
-    const enriched = await TextEditor.enrichHTML(description, {
+    const _TextEditor =
+      foundry?.applications?.ux?.TextEditor?.implementation ?? TextEditor;
+    const enriched = await _TextEditor.enrichHTML(description, {
       async: true,
       relativeTo: log,
     });
@@ -2675,7 +2671,7 @@ export class MissionFlowchartApp extends Base {
         .join("");
       infoSection.innerHTML += `
         <div class="sta-flowchart-info-group">
-          <h6 class="sta-flowchart-info-label">${t("sta-officers-log.flowchart.valuesUsed") ?? "Values Used"}</h6>
+          <h6 class="sta-flowchart-info-label">${t("sta-officers-log.flowchart.valuesUsed")}</h6>
           <div class="sta-flowchart-info-values">${valuesHtml}</div>
         </div>`;
     }
@@ -2693,7 +2689,7 @@ export class MissionFlowchartApp extends Base {
       if (hasCallback) {
         const targetLog = this.actor?.items.get(callbackLink.fromLogId);
         const targetName = targetLog?.name ?? "Unknown";
-        linksHtml += `<p class="sta-flowchart-info-link"><i class="fa-solid fa-arrow-right"></i> ${t("sta-officers-log.flowchart.callbacksTo") ?? "Callbacks to:"} <strong>${foundry.utils.escapeHTML(targetName)}</strong></p>`;
+        linksHtml += `<p class="sta-flowchart-info-link"><i class="fa-solid fa-arrow-right"></i> ${t("sta-officers-log.flowchart.callbacksTo")} <strong>${foundry.utils.escapeHTML(targetName)}</strong></p>`;
       }
       if (incomingCallbacks.length > 0) {
         const sourceNames = incomingCallbacks
@@ -2702,11 +2698,11 @@ export class MissionFlowchartApp extends Base {
             return srcLog?.name ?? "Unknown";
           })
           .map((n) => foundry.utils.escapeHTML(n));
-        linksHtml += `<p class="sta-flowchart-info-link"><i class="fa-solid fa-arrow-left"></i> ${t("sta-officers-log.flowchart.referencedBy") ?? "Referenced by:"} <strong>${sourceNames.join(", ")}</strong></p>`;
+        linksHtml += `<p class="sta-flowchart-info-link"><i class="fa-solid fa-arrow-left"></i> ${t("sta-officers-log.flowchart.referencedBy")} <strong>${sourceNames.join(", ")}</strong></p>`;
       }
       infoSection.innerHTML += `
         <div class="sta-flowchart-info-group">
-          <h6 class="sta-flowchart-info-label">${t("sta-officers-log.flowchart.links") ?? "Links"}</h6>
+          <h6 class="sta-flowchart-info-label">${t("sta-officers-log.flowchart.links")}</h6>
           ${linksHtml}
         </div>`;
     }
@@ -2721,7 +2717,7 @@ export class MissionFlowchartApp extends Base {
         "sta-flowchart-btn sta-flowchart-btn-warning sta-flowchart-btn-sm";
       clearBtn.dataset.action = "clear-callback";
       clearBtn.dataset.nodeId = nodeId;
-      clearBtn.innerHTML = `<i class="fa-solid fa-unlink"></i> ${t("sta-officers-log.flowchart.clearCallback") ?? "Clear Callback"}`;
+      clearBtn.innerHTML = `<i class="fa-solid fa-unlink"></i> ${t("sta-officers-log.flowchart.clearCallback")}`;
       clearDiv.appendChild(clearBtn);
       infoSection.appendChild(clearDiv);
     }
@@ -2744,20 +2740,20 @@ export class MissionFlowchartApp extends Base {
       const msName = foundry.utils.escapeHTML(linkedMilestone.name);
       infoSection.innerHTML += `
         <div class="sta-flowchart-info-group">
-          <h6 class="sta-flowchart-info-label">${t("sta-officers-log.flowchart.milestone") ?? "Milestone"}</h6>
+          <h6 class="sta-flowchart-info-label">${t("sta-officers-log.flowchart.milestone")}</h6>
           <p class="sta-flowchart-info-milestone"><i class="fa-solid fa-trophy"></i> ${msName}</p>
         </div>`;
     } else if (hasCallback) {
-      // Has callback but no milestone — offer to create one
+      // Has callback but no milestone Ã¢â‚¬â€ offer to create one
       const createDiv = document.createElement("div");
       createDiv.className = "sta-flowchart-info-group";
       createDiv.innerHTML = `
-        <h6 class="sta-flowchart-info-label">${t("sta-officers-log.flowchart.milestone") ?? "Milestone"}</h6>
-        <p class="sta-flowchart-info-no-milestone">${t("sta-officers-log.flowchart.noMilestone") ?? "No milestone for this callback."}</p>`;
+        <h6 class="sta-flowchart-info-label">${t("sta-officers-log.flowchart.milestone")}</h6>
+        <p class="sta-flowchart-info-no-milestone">${t("sta-officers-log.flowchart.noMilestone")}</p>`;
       const createBtn = document.createElement("button");
       createBtn.type = "button";
       createBtn.className = "sta-flowchart-btn sta-flowchart-btn-sm";
-      createBtn.innerHTML = `<i class="fa-solid fa-plus"></i> ${t("sta-officers-log.flowchart.createMilestone") ?? "Create Milestone"}`;
+      createBtn.innerHTML = `<i class="fa-solid fa-plus"></i> ${t("sta-officers-log.flowchart.createMilestone")}`;
       createBtn.addEventListener("click", () => {
         openNewMilestoneArcDialog(this.actor);
       });
@@ -2910,10 +2906,7 @@ export class MissionFlowchartApp extends Base {
     } else {
       await log.update({ "system.primaryValueId": "" });
     }
-    ui.notifications.info(
-      t("sta-officers-log.flowchart.primaryValueUpdated") ??
-        "Primary value updated",
-    );
+    ui.notifications.info(t("sta-officers-log.flowchart.primaryValueUpdated"));
   }
 
   /**
@@ -2946,9 +2939,7 @@ export class MissionFlowchartApp extends Base {
     } else {
       await log.update({ "system.arcInfo": null });
     }
-    ui.notifications.info(
-      t("sta-officers-log.flowchart.arcStatusUpdated") ?? "Arc status updated",
-    );
+    ui.notifications.info(t("sta-officers-log.flowchart.arcStatusUpdated"));
   }
 
   /**
@@ -2971,9 +2962,7 @@ export class MissionFlowchartApp extends Base {
       steps: Math.max(minSteps, Math.min(15, steps)),
     };
     await log.update({ "system.arcInfo": arcInfo });
-    ui.notifications.info(
-      t("sta-officers-log.flowchart.arcStepsUpdated") ?? "Arc steps updated",
-    );
+    ui.notifications.info(t("sta-officers-log.flowchart.arcStepsUpdated"));
   }
 
   /**
@@ -3004,10 +2993,7 @@ export class MissionFlowchartApp extends Base {
       [`system.valueStates.${valueId}`]:
         valueStates.length > 0 ? valueStates : null,
     });
-    ui.notifications.info(
-      t("sta-officers-log.flowchart.valueStateUpdated") ??
-        "Value state updated",
-    );
+    ui.notifications.info(t("sta-officers-log.flowchart.valueStateUpdated"));
   }
 
   /**
@@ -3024,10 +3010,7 @@ export class MissionFlowchartApp extends Base {
       await import("../log/callbackSourceButtons.js");
     await syncCallbackTargetUsedFlags(this.actor);
 
-    ui.notifications.info(
-      t("sta-officers-log.flowchart.callbackCleared") ??
-        "Callback link cleared",
-    );
+    ui.notifications.info(t("sta-officers-log.flowchart.callbackCleared"));
     // Live update hook will refresh the flowchart
   }
 
@@ -3041,11 +3024,11 @@ export class MissionFlowchartApp extends Base {
     const confirmed = await foundry.applications.api.DialogV2.confirm({
       classes: ["sta-officers-log"],
       window: {
-        title: t("sta-officers-log.confirmDelete.title") ?? "Delete",
+        title: t("sta-officers-log.confirmDelete.title"),
       },
-      content: `<p>${t("sta-officers-log.flowchart.confirmDeleteLog") ?? "Are you sure you want to delete this log?"}</p>`,
-      yes: { label: t("sta-officers-log.confirmDelete.delete") ?? "Delete" },
-      no: { label: t("sta-officers-log.confirmDelete.cancel") ?? "Cancel" },
+      content: `<p>${t("sta-officers-log.flowchart.confirmDeleteLog")}</p>`,
+      yes: { label: t("sta-officers-log.confirmDelete.delete") },
+      no: { label: t("sta-officers-log.confirmDelete.cancel") },
     });
 
     if (confirmed) {
@@ -3129,8 +3112,7 @@ export class MissionFlowchartApp extends Base {
   async _createNewLog() {
     if (!this.actor) return;
 
-    const defaultName =
-      t("sta-officers-log.flowchart.newLogName") ?? "New Mission Log";
+    const defaultName = t("sta-officers-log.flowchart.newLogName");
 
     // Create the log item
     const created = await this.actor.createEmbeddedDocuments("Item", [
@@ -3352,9 +3334,7 @@ export class MissionFlowchartApp extends Base {
     this._isDirty = false;
     this._updateSaveButtonState();
 
-    ui.notifications.info(
-      t("sta-officers-log.flowchart.positionsSaved") ?? "Positions saved",
-    );
+    ui.notifications.info(t("sta-officers-log.flowchart.positionsSaved"));
   }
 
   async close(options) {
@@ -3363,17 +3343,13 @@ export class MissionFlowchartApp extends Base {
       const confirmed = await foundry.applications.api.DialogV2.confirm({
         classes: ["sta-officers-log"],
         window: {
-          title:
-            t("sta-officers-log.flowchart.unsavedChangesTitle") ??
-            "Unsaved Changes",
+          title: t("sta-officers-log.flowchart.unsavedChangesTitle"),
         },
-        content: `<p>${t("sta-officers-log.flowchart.unsavedChangesMessage") ?? "You have unsaved position changes. Are you sure you want to close without saving?"}</p>`,
+        content: `<p>${t("sta-officers-log.flowchart.unsavedChangesMessage")}</p>`,
         yes: {
-          label:
-            t("sta-officers-log.flowchart.closeWithoutSaving") ??
-            "Close Without Saving",
+          label: t("sta-officers-log.flowchart.closeWithoutSaving"),
         },
-        no: { label: t("sta-officers-log.flowchart.cancel") ?? "Cancel" },
+        no: { label: t("sta-officers-log.flowchart.cancel") },
       });
 
       if (!confirmed) return;

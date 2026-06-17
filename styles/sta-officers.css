@@ -1116,7 +1116,8 @@
 /* Character sheet: draggable divider to resize Character Log/Milestones list height */
 div.section.milestones > .staol-log-resizer,
 div.section.character-log > .staol-log-resizer,
-div.section.milestones > .staol-milestone-resizer {
+div.section.milestones > .staol-milestone-resizer,
+div.sta-sup-advancement-logs > .staol-sup-advancement-resizer {
   height: 8px;
   margin: 2px 0 6px 0;
   cursor: row-resize;
@@ -1130,7 +1131,8 @@ div.section.milestones > .staol-milestone-resizer {
 
 div.section.milestones > .staol-log-resizer::after,
 div.section.character-log > .staol-log-resizer::after,
-div.section.milestones > .staol-milestone-resizer::after {
+div.section.milestones > .staol-milestone-resizer::after,
+div.sta-sup-advancement-logs > .staol-sup-advancement-resizer::after {
   content: "";
   position: absolute;
   left: 10px;
@@ -1144,7 +1146,8 @@ div.section.milestones > .staol-milestone-resizer::after {
 
 div.section.milestones > .staol-log-resizer:hover,
 div.section.character-log > .staol-log-resizer:hover,
-div.section.milestones > .staol-milestone-resizer:hover {
+div.section.milestones > .staol-milestone-resizer:hover,
+div.sta-sup-advancement-logs > .staol-sup-advancement-resizer:hover {
   background: rgba(250, 223, 71, 0.10);
   border-color: rgba(250, 223, 71, 0.35);
 }
@@ -1152,6 +1155,12 @@ div.section.milestones > .staol-milestone-resizer:hover {
 body.staol-resize-dragging {
   user-select: none;
   cursor: row-resize;
+}
+
+/* Force scrolling on the Mission Introductions list (sta-lcars may inherit overflow:hidden) */
+.sta-sup-advancement-logs .item-list-scrollable {
+  overflow-y: auto !important;
+  max-height: 150px;
 }
 
 /* Keep injected text actions inside the STA sheet columns */
@@ -1205,8 +1214,9 @@ div.section.character-log li.row.entry a.value-used.control.toggle {
   opacity: 1;
 }
 
-/* Icon-only control: show associated logs from milestone rows */
-div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milestone-logs-btn {
+/* Icon-only control: show associated logs from milestone rows (and advancement log rows) */
+div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milestone-logs-btn,
+.sta-sup-advancement-logs li.row.entry[data-item-type="log"] .sta-show-milestone-logs-btn {
   /* reset <button> defaults */
   background: none;
   border: none;
@@ -1222,15 +1232,18 @@ div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milest
   color: #e0e0e0;
 }
 
-.theme-light div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milestone-logs-btn {
+.theme-light div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milestone-logs-btn,
+.theme-light .sta-sup-advancement-logs li.row.entry[data-item-type="log"] .sta-show-milestone-logs-btn {
   color: #333333;
 }
 
-div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milestone-logs-btn:hover {
+div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milestone-logs-btn:hover,
+.sta-sup-advancement-logs li.row.entry[data-item-type="log"] .sta-show-milestone-logs-btn:hover {
   opacity: 1;
 }
 
-div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milestone-logs-btn.is-disabled {
+div.section.milestones li.row.entry[data-item-type="milestone"] .sta-show-milestone-logs-btn.is-disabled,
+.sta-sup-advancement-logs li.row.entry[data-item-type="log"] .sta-show-milestone-logs-btn.is-disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
@@ -1343,6 +1356,88 @@ div.section.character-log li.row.entry .sta-current-mission-indicator {
     border-color: goldenrod;
     color: goldenrod;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Introduce Support Character button
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.sta-introduce-btn-wrapper {
+  display: flex;
+  padding: 3px 0 6px;
+}
+
+.sta-introduce-btn {
+  flex: 1 1 auto;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  background: none;
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.8em;
+  line-height: 1.4;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.sta-introduce-btn:hover:not(:disabled) {
+  border-color: goldenrod;
+  color: goldenrod;
+}
+
+.sta-introduce-btn--introduced,
+.sta-introduce-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Undo / unintroduce icon button (appears to the right of "Introduced") */
+.sta-introduce-undo-btn {
+  flex: 0 0 auto;
+  background: none;
+  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.75em;
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.sta-introduce-undo-btn:hover {
+  border-color: goldenrod;
+  color: goldenrod;
+}
+
+.theme-light .sta-introduce-undo-btn {
+  border-color: rgba(0, 0, 0, 0.22);
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.theme-light .sta-introduce-btn {
+  border-color: rgba(0, 0, 0, 0.3);
+  color: rgba(0, 0, 0, 0.6);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Supporting character advancement log section (development tab)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Row entries inherit existing .sta-lcars-items li.row.entry styling. */
+
+.sta-sup-advancement-logs-title {
+  /* Inherits .title LCARS pill styling from the sheet theme.
+     Extra class keeps specificity low so theme overrides win. */
+}
+
+/* Milestone link button reuses .sta-inline-sheet-btn; no extra overrides needed. */
+
+/* Advancement button inherits .sta-inline-sheet-btn; no extra overrides needed. */
 
 .sta-trait-scar-control {
   display: flex;
@@ -5066,4 +5161,86 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
 
 .sta-mission-history-actions button.sta-danger {
   color: #c44;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────── */
+/* Introduced Crew list — LCARS starship sheet                                */
+/* ───────────────────────────────────────────────────────────────────────────── */
+
+.starship-sheet .sta-officers-introduced-crew {
+  margin-bottom: 4px;
+}
+
+.starship-sheet .sta-officers-introduced-crew-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 2px 5px 4px;
+}
+
+.starship-sheet .sta-officers-crew-chip {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  background: var(--lcars-chrome, var(--lcars-orange, #c88b2a));
+  border: none;
+  border-radius: 4px;
+  padding: 3px 7px 3px 3px;
+  cursor: pointer;
+  color: var(--lcars-text-title, #000);
+  font-size: 0.7rem;
+  font-family: var(--lcars-font-heading, inherit);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0.9;
+  transition: opacity 0.12s;
+  height: 25px;
+}
+
+.starship-sheet .sta-officers-crew-chip:hover,
+.starship-sheet .sta-officers-crew-chip:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--lcars-chrome, var(--lcars-orange, #c88b2a));
+  outline-offset: 1px;
+}
+
+.starship-sheet .sta-officers-crew-chip img {
+  width: 20px;
+  height: 20px;
+  object-fit: cover;
+  border-radius: 2px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.starship-sheet .sta-officers-crew-chip span {
+  display: block;
+}
+
+.starship-sheet .sta-officers-introduced-crew-empty {
+  font-size: 0.7rem;
+  color: var(--lcars-tracktitle, var(--lcars-lavender, #c8a0d8));
+  font-style: italic;
+  padding: 2px 0;
+}
+
+.starship-sheet .sta-officers-crew-chip--supervisor {
+  outline: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.starship-sheet .sta-officers-crew-chip-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.45);
+  font-size: 0.75rem;
+  font-weight: bold;
+  letter-spacing: 0;
+  flex-shrink: 0;
 }

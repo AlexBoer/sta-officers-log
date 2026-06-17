@@ -7,6 +7,8 @@ export const CLIENT_HIDE_CHALLENGED_TOGGLE_SETTING = "hideChallengedToggle";
 export const CLIENT_CHARACTER_LOG_MAX_HEIGHT_SETTING = "characterLogMaxHeight";
 export const CLIENT_CHARACTER_MILESTONE_MAX_HEIGHT_SETTING =
   "characterMilestoneMaxHeight";
+export const CLIENT_SUP_ADVANCEMENT_MAX_HEIGHT_SETTING =
+  "supAdvancementMaxHeight";
 export const CLIENT_ENABLE_FLOWCHART_VIEW_SETTING = "enableFlowchartView";
 export const CLIENT_ENABLE_LCARS_MODE_SETTING = "enableLcarsMode";
 export const WORLD_ENABLE_TRAUMA_RULES_SETTING = "enableTraumaRules";
@@ -159,6 +161,33 @@ export function registerClientSettings() {
       },
     },
   );
+
+  // Supporting character: allow resizing the Mission Introductions list height via drag handle.
+  game.settings.register(MODULE_ID, CLIENT_SUP_ADVANCEMENT_MAX_HEIGHT_SETTING, {
+    name: "Supporting Char Advancement Height",
+    hint: "Height (px) for the Mission Introductions scroll area on supporting character sheets; updated by dragging the divider.",
+    scope: "client",
+    config: false,
+    type: Number,
+    default: 150,
+    onChange: () => {
+      try {
+        for (const app of Object.values(ui?.windows ?? {})) {
+          try {
+            if (
+              app?.id?.startsWith?.("STASupportingSheet2e") ||
+              app?.id?.startsWith?.("LcarsSupportingSheet2e")
+            )
+              app.render?.(true);
+          } catch (_) {
+            // app may have been closed
+          }
+        }
+      } catch (_) {
+        // continue if windows inaccessible
+      }
+    },
+  });
 
   // Client setting: Enable interactive flowchart view for mission logs
   game.settings.register(MODULE_ID, CLIENT_ENABLE_FLOWCHART_VIEW_SETTING, {
@@ -342,6 +371,17 @@ export function getCharacterMilestoneMaxHeightSetting() {
         MODULE_ID,
         CLIENT_CHARACTER_MILESTONE_MAX_HEIGHT_SETTING,
       ),
+    );
+    return Number.isFinite(n) ? n : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+export function getSupAdvancementMaxHeightSetting() {
+  try {
+    const n = Number(
+      game.settings.get(MODULE_ID, CLIENT_SUP_ADVANCEMENT_MAX_HEIGHT_SETTING),
     );
     return Number.isFinite(n) ? n : null;
   } catch (_) {

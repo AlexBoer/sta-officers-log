@@ -95,6 +95,15 @@ export function registerMissionSettings() {
     config: true,
     type: String,
     default: "",
+    onChange: () => {
+      // When the group ship is changed, ensure its token is linked.
+      ensureGroupShipTokenLinked().catch((err) => {
+        console.warn(
+          `${MODULE_ID} | ensureGroupShipTokenLinked (onChange) failed`,
+          err,
+        );
+      });
+    },
     // Use a function so the Settings UI evaluates choices after the world loads.
     // (At init-time, game.actors may not be populated yet.)
     choices: () => {
@@ -156,6 +165,57 @@ export function getGroupShipActor() {
   const id = getGroupShipActorId?.() ?? "";
   if (!id) return null;
   return game.actors?.get?.(id) ?? null;
+}
+
+/**
+ * Ensure the group ship actor's prototype token is linked (actorLink: true),
+ * and re-link any existing unlinked tokens for this actor on all scenes.
+ * A linked token shares data directly with the base actor, so updates via
+ * actor.update() are immediately reflected on any open token sheet.
+ *
+ * Safe to call for non-GM users (no-ops silently).
+ */
+export async function ensureGroupShipTokenLinked() {
+  if (!game.user?.isGM) return;
+  const actor = getGroupShipActor();
+  if (!actor) return;
+
+  // 1. Fix the prototype token so future placements are linked.
+  if (actor.prototypeToken?.actorLink === false) {
+    try {
+      await actor.update({ "prototypeToken.actorLink": true });
+      console.log(
+        `${MODULE_ID} | ensureGroupShipTokenLinked: set prototypeToken.actorLink = true on "${actor.name}"`,
+      );
+    } catch (err) {
+      console.warn(
+        `${MODULE_ID} | ensureGroupShipTokenLinked: failed to update prototypeToken`,
+        err,
+      );
+    }
+  }
+
+  // 2. Fix any already-placed unlinked tokens across all scenes.
+  const scenes = game.scenes ?? [];
+  for (const scene of scenes) {
+    const tokens =
+      scene.tokens?.filter(
+        (t) => t.actorId === actor.id && t.actorLink === false,
+      ) ?? [];
+    for (const token of tokens) {
+      try {
+        await token.update({ actorLink: true });
+        console.log(
+          `${MODULE_ID} | ensureGroupShipTokenLinked: linked token "${token.name}" in scene "${scene.name}"`,
+        );
+      } catch (err) {
+        console.warn(
+          `${MODULE_ID} | ensureGroupShipTokenLinked: failed to link token in scene "${scene.name}"`,
+          err,
+        );
+      }
+    }
+  }
 }
 
 function _getAssignedCharacterActorForUserId(userId) {
@@ -1206,6 +1266,16 @@ export async function endCurrentMission() {
   await game.settings.set(MODULE_ID, "missionStartDate", "");
   await setMissionDirectives([]);
 
+  // Reset Group Ship crew support to 0 when a mission ends.
+  try {
+    const ship = getGroupShipActor();
+    if (ship) {
+      await ship.update({ "system.crew.value": 0 });
+    }
+  } catch (_err) {
+    console.warn(`${MODULE_ID} | end mission: crew support reset failed`, _err);
+  }
+
   // Show mission-ended notification.
   ui.notifications.info(t("sta-officers-log.notifications.missionEnded"));
 
@@ -1545,6 +1615,17 @@ export async function promptNewMissionAndReset() {
   try {
     await game.settings.set(MODULE_ID, "lastEndedMission", {});
   } catch (_) {}
+
+  // Reset Group Ship crew support to 0 for the new mission.
+  try {
+    const ship = getGroupShipActor();
+    if (ship) {
+      await ship.update({ "system.crew.value": 0 });
+    }
+  } catch (_err) {
+    // non-critical — crew support reset is best-effort
+    console.warn(`${MODULE_ID} | new mission: crew support reset failed`, _err);
+  }
 
   // Create a Log on each participating player's character
   if (createMissionLogs) {

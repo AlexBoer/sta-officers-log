@@ -456,7 +456,8 @@ export function installMilestoneHighlightButtons(root, actor) {
         'li.row.entry[data-item-type="log"][data-item-id="' + normalized + '"]';
       const rowEl =
         root.querySelector("div.section.character-log " + suffix) ??
-        root.querySelector("div.section.milestones " + suffix);
+        root.querySelector("div.section.milestones " + suffix) ??
+        root.querySelector(".sta-sup-advancement-logs " + suffix);
       return rowEl instanceof HTMLElement ? rowEl : null;
     };
 

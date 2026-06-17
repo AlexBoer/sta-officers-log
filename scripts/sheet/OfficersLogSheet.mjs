@@ -203,8 +203,10 @@ export class OfficersLogSheet extends api.HandlebarsApplicationMixin(
     // ── Enriched description ───────────────────────────────────────────────────
     let enrichedNotes = "";
     try {
+      const _TextEditor =
+        foundry?.applications?.ux?.TextEditor?.implementation ?? TextEditor;
       enrichedNotes =
-        (await TextEditor?.enrichHTML?.(item.system?.description ?? "", {
+        (await _TextEditor?.enrichHTML?.(item.system?.description ?? "", {
           relativeTo: item,
           secrets: item.isOwner,
         })) ?? "";

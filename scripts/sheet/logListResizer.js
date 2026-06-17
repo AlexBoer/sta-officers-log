@@ -2,6 +2,7 @@ import { MODULE_ID } from "../core/constants.js";
 import {
   getCharacterLogMaxHeightSetting,
   getCharacterMilestoneMaxHeightSetting,
+  getSupAdvancementMaxHeightSetting,
 } from "../settings/clientSettings.js";
 
 function _getPxNumber(value) {
@@ -308,4 +309,26 @@ export function installCharacterLogListResizer(root) {
     settingKey: "characterMilestoneMaxHeight",
     getSetting: getCharacterMilestoneMaxHeightSetting,
   });
+
+  // Supporting character: Mission Introductions section resizer
+  const supAdvancementSection = root.querySelector?.(
+    "div.sta-sup-advancement-logs",
+  );
+  const supAdvancementListScrollable =
+    supAdvancementSection instanceof HTMLElement
+      ? (supAdvancementSection.querySelector(
+          ":scope > .item-list-scrollable",
+        ) ?? null)
+      : null;
+
+  if (supAdvancementListScrollable instanceof HTMLElement) {
+    installResizer({
+      listEl: supAdvancementListScrollable,
+      sectionEl: supAdvancementSection,
+      resizerClass: "staol-sup-advancement-resizer",
+      ariaLabel: "Resize Mission Introductions",
+      settingKey: "supAdvancementMaxHeight",
+      getSetting: getSupAdvancementMaxHeightSetting,
+    });
+  }
 }

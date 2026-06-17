@@ -9,6 +9,7 @@
  */
 
 import { MODULE_ID } from "../core/constants.js";
+import { t } from "../core/i18n.js";
 import { DISCIPLINE_KEYS, DISCIPLINE_LABELS } from "./creation-wizard-data.mjs";
 
 const DV2 = () => foundry.applications.api.DialogV2;
@@ -75,7 +76,9 @@ export async function openDefineValueDialog(actor) {
 export async function openDefineDepartmentDialog(actor, cipFlag) {
   const remainingRatings = [...(cipFlag.remainingDeptRatings ?? [3, 2, 2, 1])];
   if (remainingRatings.length === 0) {
-    ui.notifications.warn("No remaining department ratings available.");
+    ui.notifications.warn(
+      t("sta-officers-log.creation.warnNoDeptRatingsAvailable"),
+    );
     return;
   }
 
@@ -85,7 +88,9 @@ export async function openDefineDepartmentDialog(actor, cipFlag) {
   );
 
   if (undefinedDepts.length === 0) {
-    ui.notifications.info("All departments have already been defined.");
+    ui.notifications.info(
+      t("sta-officers-log.creation.warnAllDeptsAlreadyDefined"),
+    );
     return;
   }
 
@@ -294,5 +299,5 @@ export async function openDefinePastimeDialog(actor) {
   if (result === null || result === undefined) return;
 
   await actor.update({ "system.pastimes": result });
-  ui.notifications.info("Pastime updated.");
+  ui.notifications.info(t("sta-officers-log.creation.notifPastimeUpdated"));
 }

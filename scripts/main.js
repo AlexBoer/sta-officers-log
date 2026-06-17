@@ -3,6 +3,7 @@ import { MODULE_ID, t, tf, initSocket } from "./core/index.js";
 import {
   addParticipantToCurrentMission,
   endCurrentMission,
+  ensureGroupShipTokenLinked,
   ensureNewSceneMacro,
   ensureOpenGroupShipMacro,
   getMissionHistory,
@@ -416,6 +417,24 @@ Hooks.once("ready", () => {
     if (game.user.isGM) ensureNewSceneMacro();
   } catch (err) {
     console.error(`${MODULE_ID} | ensureNewSceneMacro failed`, err);
+  }
+
+  // Ensure the group ship actor's prototype token is linked so that
+  // actor.update() calls are reflected on all open token sheets.
+  try {
+    if (game.user.isGM) {
+      ensureGroupShipTokenLinked().catch((err) => {
+        console.warn(
+          `${MODULE_ID} | ensureGroupShipTokenLinked (ready) failed`,
+          err,
+        );
+      });
+    }
+  } catch (err) {
+    console.error(
+      `${MODULE_ID} | ensureGroupShipTokenLinked startup failed`,
+      err,
+    );
   }
 
   // Check for pending ship benefits and notify GM
