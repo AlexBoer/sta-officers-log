@@ -126,6 +126,9 @@
       "sendPrompt": "Send Callback Prompt",
       "resetMission": "New Mission",
       "manageMissions": "Manage Mission",
+      "missionManager": "Mission Manager",
+      "conflictReference": "Conflict Reference",
+      "requestRoll": "Request Roll",
       "newScene": "New Scene",
       "openGroupShip": "Open Group Ship",
       "labelValues": "Label Values",
@@ -357,6 +360,7 @@
       "crewSupportMaxPending": "Crew Support would be exceeded — awaiting GM approval…",
       "supervisoryChar": "Supervisory Character",
       "supervisoryCharTooltip": "Supervisory characters contribute +2 Crew Support when introduced, instead of +1.",
+      "addManualAdvancementTooltip": "Add a manual advancement.",
       "introducedCrewTitle": "Introduced Crew",
       "introducedCrewEmpty": "—"
     },

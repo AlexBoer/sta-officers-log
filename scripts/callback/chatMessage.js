@@ -35,7 +35,7 @@ export function installCreateChatMessageHook() {
     if (!authorId) return;
 
     const targetUser = game.users.get(authorId);
-    if (!targetUser || !targetUser.active || targetUser.isGM) return;
+    if (!targetUser || !targetUser.active) return;
 
     // Spend 1 determination automatically when a roll uses Determination.
     // Prefer the message speaker actor; fall back to the user's assigned character.

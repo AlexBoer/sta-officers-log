@@ -26,7 +26,10 @@ import {
   installCallbackSourceButtons,
   installMilestoneHighlightButtons,
 } from "../log/callbackSourceButtons.js";
-import { installSupportingCharImprovementButtons } from "../supporting/supportingCharImprovements.js";
+import {
+  installSupportingAdvancementHeaderButton,
+  installSupportingCharImprovementButtons,
+} from "../supporting/supportingCharImprovements.js";
 import {
   installIntroduceSupportingCharButton,
   installChooseAdvancementButtons,
@@ -128,6 +131,13 @@ function handleCharacterSheetRender(app, root) {
     return;
 
   const actor = app.actor;
+
+  // Add the "Label Values" context menu on any supported STA actor sheet
+  // that renders a Values section (main/supporting/NPC variants).
+  if (actor) {
+    installLabelValuesButton(root, actor, app);
+  }
+
   if (!actor || actor.type !== "character") return;
 
   // Show a persistent warning banner if this sheet belongs to an unlinked token (GM only).
@@ -162,14 +172,18 @@ function handleCharacterSheetRender(app, root) {
   try {
     if (isSupportingCharacterSheet(actor)) {
       installSupportingCharImprovementButtons(root, actor);
+      installSupportingAdvancementHeaderButton(root, actor);
       installIntroduceSupportingCharButton(root, actor);
       installChooseAdvancementButtons(root, actor);
       // Rename "Milestones / Arcs" header to "Advancements" on supporting sheets
       const milestoneTitleEl = root.querySelector(
         ".section.milestones > .title",
       );
-      if (milestoneTitleEl?.textContent?.trim() === "Milestones / Arcs") {
-        milestoneTitleEl.textContent = "Advancements";
+      if (milestoneTitleEl) {
+        const titleText = milestoneTitleEl.childNodes[0];
+        if (titleText?.nodeType === Node.TEXT_NODE) {
+          titleText.textContent = "Advancements";
+        }
       }
       // Remove the "Is Arc" column header and checkboxes — supporting characters cannot have arcs
       root
@@ -222,9 +236,6 @@ function handleCharacterSheetRender(app, root) {
   } catch (_) {
     // ignore
   }
-
-  // Add the "Label Values" button once.
-  installLabelValuesButton(root, actor, app);
 
   // Add a section-level "Use Directive" button once.
   installUseDirectiveButton(root, actor, app);

@@ -99,8 +99,7 @@
     const actorRowsHtml = rows
       .map(({ actor, log }) => {
         const userId =
-          game.users.find((u) => !u.isGM && u.character?.id === actor.id)?.id ??
-          "";
+          game.users.find((u) => u.character?.id === actor.id)?.id ?? "";
         const created = log._stats?.createdTime
           ? new Date(log._stats.createdTime).toLocaleDateString()
           : "unknown";

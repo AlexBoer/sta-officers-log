@@ -9,6 +9,7 @@ import {
 } from "../core/gameConstants.js";
 import { _getFirstExistingNumeric } from "../milestones/dialogs.js";
 import { applyNonArcMilestoneBenefitInternal } from "../milestones/benefits.js";
+import { openNewMilestoneArcDialog } from "../milestones/newMilestoneArcDialog.js";
 
 /**
  * Installs caps/limits on the supporting character benefit buttons in the
@@ -161,6 +162,15 @@ async function _createSupportingMilestone(actor, name) {
   } catch (err) {
     console.error(`${MODULE_ID} | Failed to create supporting milestone`, err);
   }
+}
+
+/**
+ * Open the manual advancement dialog from the supporting sheet header button.
+ * This bypasses the checkbox-driven improvement caps below the section.
+ */
+function _openManualAdvancementDialog(actor) {
+  if (!actor) return;
+  openNewMilestoneArcDialog(actor);
 }
 
 /**
@@ -576,4 +586,44 @@ export function installSupportingCharImprovementButtons(root, actor) {
   } catch (_) {
     // ignore
   }
+}
+
+/**
+ * Wire the Advancements section header + button on supporting sheets so it
+ * opens the milestone / arc dialog for a manual advancement entry.
+ *
+ * @param {HTMLElement} root - The root element of the character sheet
+ * @param {Actor} actor - The character actor
+ */
+export function installSupportingAdvancementHeaderButton(root, actor) {
+  if (!root || !actor || actor.type !== "character") return;
+
+  const titleEl = root.querySelector(".section.milestones > .title");
+  if (titleEl instanceof HTMLElement) {
+    titleEl.style.display = "flex";
+    titleEl.style.alignItems = "center";
+  }
+
+  const createBtn = root.querySelector(
+    '.section.milestones > .title .control.create[data-type="milestone"]',
+  );
+  if (!(createBtn instanceof HTMLElement)) return;
+  if (createBtn.dataset.staManualAdvancementBound === "1") return;
+  createBtn.dataset.staManualAdvancementBound = "1";
+  createBtn.style.marginLeft = "auto";
+
+  createBtn.title =
+    t("sta-officers-log.supporting.addManualAdvancementTooltip") ??
+    "Add a manual advancement.";
+
+  createBtn.addEventListener(
+    "click",
+    (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      ev.stopImmediatePropagation?.();
+      _openManualAdvancementDialog(actor);
+    },
+    true,
+  );
 }

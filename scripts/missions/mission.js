@@ -11,14 +11,13 @@ import {
 import { resetAllTraumaPositiveUseCounts } from "../values/trauma/trauma.js";
 
 /**
- * Checks if any player-assigned characters have unlinked prototype tokens.
+ * Checks if any user-assigned characters have unlinked prototype tokens.
  * @returns {Array<{userId: string, userName: string, actorId: string, actorName: string}>}
  */
 export function getPlayerCharactersWithUnlinkedPrototypeTokens() {
   const results = [];
   try {
     for (const u of game.users) {
-      if (u.isGM) continue;
       const char = u.character;
       if (!char || char.type !== "character") continue;
       const prototypeToken = char.prototypeToken ?? null;
@@ -240,6 +239,19 @@ function _getAssignedCharacterActorForUserId(userId) {
   }
 }
 
+function _readCurrentMissionLogIdFromActor(actor) {
+  if (!actor || actor.type !== "character") return null;
+
+  // Treat an explicitly stored system value (including null) as authoritative.
+  const systemValue = actor.system?.currentMissionLogId;
+  if (typeof systemValue !== "undefined") {
+    return systemValue ? String(systemValue) : null;
+  }
+
+  const legacyValue = actor.getFlag?.(MODULE_ID, "currentMissionLogId") ?? null;
+  return legacyValue ? String(legacyValue) : null;
+}
+
 /**
  * Get the current mission log ID for a user.
  * Stores the log ID in the user's character actor flags for offline support.
@@ -249,11 +261,8 @@ export function getCurrentMissionLogIdForUser(userId) {
   // This avoids selecting an arbitrary owned actor when a user owns multiple characters.
   const assignedActor = _getAssignedCharacterActorForUserId(userId);
   if (assignedActor) {
-    const flagValue =
-      assignedActor.system?.currentMissionLogId ??
-      assignedActor.getFlag?.(MODULE_ID, "currentMissionLogId") ??
-      null;
-    if (flagValue) return String(flagValue);
+    const missionLogId = _readCurrentMissionLogIdFromActor(assignedActor);
+    if (missionLogId) return missionLogId;
   }
 
   // Fallback: first character actor the user owns.
@@ -264,11 +273,8 @@ export function getCurrentMissionLogIdForUser(userId) {
   );
 
   if (ownedActor) {
-    const flagValue =
-      ownedActor.system?.currentMissionLogId ??
-      ownedActor.getFlag?.(MODULE_ID, "currentMissionLogId") ??
-      null;
-    if (flagValue) return String(flagValue);
+    const missionLogId = _readCurrentMissionLogIdFromActor(ownedActor);
+    if (missionLogId) return missionLogId;
   }
 
   return null;
@@ -331,12 +337,7 @@ export async function setCurrentMissionLogForActor(actor, logId) {
  * This is useful when you have the actor but not necessarily a userId.
  */
 export function getCurrentMissionLogForActor(actor) {
-  if (!actor || actor.type !== "character") return null;
-  const value =
-    actor.system?.currentMissionLogId ??
-    actor.getFlag?.(MODULE_ID, "currentMissionLogId") ??
-    null;
-  return value ? String(value) : null;
+  return _readCurrentMissionLogIdFromActor(actor);
 }
 
 export function isLogUsed(item) {
@@ -878,7 +879,7 @@ export async function addParticipantToCurrentMission(
     return ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
 
   const user = game.users.get(userId);
-  if (!user || user.isGM)
+  if (!user)
     return ui.notifications.warn(
       t("sta-officers-log.notifications.invalidUser"),
     );
@@ -932,7 +933,7 @@ export async function promptAddParticipant() {
   const participants = new Set(
     game.settings.get(MODULE_ID, "missionParticipants") ?? [],
   );
-  const users = game.users.filter((u) => !u.isGM);
+  const users = game.users.filter((u) => u.character?.type === "character");
 
   const available = users.filter((u) => !participants.has(u.id));
   const already = users.filter((u) => participants.has(u.id));
@@ -995,7 +996,8 @@ export async function promptUnaddedActivePlayers() {
   );
 
   const unaddedActive = (game.users ?? []).filter(
-    (u) => !u.isGM && u.active && !participants.has(u.id),
+    (u) =>
+      u.active && u.character?.type === "character" && !participants.has(u.id),
   );
 
   if (!unaddedActive.length) return;
@@ -1206,7 +1208,7 @@ export async function endCurrentMission() {
     const _u = game.users?.get?.(_userId);
     const _a = _u?.character ?? null;
     if (_a && _a.type === "character") {
-      const _lid = _a.system?.currentMissionLogId ?? null;
+      const _lid = _readCurrentMissionLogIdFromActor(_a);
       if (_lid) _undoSnapshot.actorLogMap[_a.id] = String(_lid);
     }
   }
@@ -1232,14 +1234,33 @@ export async function endCurrentMission() {
   const clearOps = [];
   for (const actor of game.actors ?? []) {
     if (actor.type !== "character") continue;
-    if (!actor.system?.currentMissionLogId) continue;
+    const hasSystemValue = Boolean(actor.system?.currentMissionLogId);
+    const hasLegacyValue = Boolean(
+      actor.getFlag?.(MODULE_ID, "currentMissionLogId"),
+    );
+    if (!hasSystemValue && !hasLegacyValue) continue;
     clearOps.push(
-      actor.update({ "system.currentMissionLogId": null }).catch((err) => {
-        console.warn(
-          `${MODULE_ID} | Failed to clear currentMissionLogId on ${actor.name}:`,
-          err,
-        );
-      }),
+      (async () => {
+        try {
+          await actor.update({ "system.currentMissionLogId": null });
+        } catch (err) {
+          console.warn(
+            `${MODULE_ID} | Failed to clear currentMissionLogId on ${actor.name}:`,
+            err,
+          );
+        }
+
+        if (hasLegacyValue && typeof actor.unsetFlag === "function") {
+          try {
+            await actor.unsetFlag(MODULE_ID, "currentMissionLogId");
+          } catch (err) {
+            console.warn(
+              `${MODULE_ID} | Failed to clear legacy currentMissionLogId flag on ${actor.name}:`,
+              err,
+            );
+          }
+        }
+      })(),
     );
   }
   await Promise.allSettled(clearOps);
@@ -1494,7 +1515,7 @@ export async function promptNewMissionAndReset() {
     game.settings.get(MODULE_ID, "missionParticipants") ?? [],
   );
 
-  const players = game.users.filter((u) => !u.isGM);
+  const players = game.users.filter((u) => u.character?.type === "character");
 
   const playersForTemplate = players.map((u) => {
     const hasChar = Boolean(u.character && u.character.type === "character");

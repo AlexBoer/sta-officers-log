@@ -760,14 +760,13 @@ export async function sendCallbackPromptToUser(
     defaultValueState = "positive",
   } = {},
 ) {
-  // Allow GM to prompt any player, or a player to prompt themselves
+  // Allow users to prompt themselves, and GMs to prompt other active users.
   const isGMPrompting = game.user.isGM && targetUser.id !== game.user.id;
-  const isPlayerPromptingSelf =
-    !game.user.isGM && targetUser.id === game.user.id;
-  if (!isGMPrompting && !isPlayerPromptingSelf) return;
+  const isSelfPrompting = targetUser.id === game.user.id;
+  if (!isGMPrompting && !isSelfPrompting) return;
 
-  // Safety: only prompt connected non-GM users
-  if (!targetUser?.active || targetUser.isGM) return;
+  // Safety: only prompt connected users.
+  if (!targetUser?.active) return;
 
   const actor = targetUser.character;
   if (!actor) {
@@ -858,9 +857,9 @@ export async function promptCallbackForActorAsGM(
 
   const userId = targetUserId ? String(targetUserId) : "";
   const targetUser = userId ? game.users.get(userId) : null;
-  if (!targetUser || targetUser.isGM) {
+  if (!targetUser) {
     ui.notifications?.warn(
-      "Cannot prompt for callback: no owning player user found for this character.",
+      "Cannot prompt for callback: no owning user found for this character.",
     );
     return;
   }
@@ -882,8 +881,10 @@ function isGM() {
   return game.user?.isGM;
 }
 
-function getActiveNonGMUsers() {
-  return game.users.filter((u) => u.active && !u.isGM);
+function getActiveMissionUsers() {
+  return game.users.filter(
+    (u) => u.active && u.character?.type === "character",
+  );
 }
 
 export async function openGMFlow() {
@@ -896,7 +897,7 @@ export async function openGMFlow() {
     );
   }
 
-  const players = getActiveNonGMUsers();
+  const players = getActiveMissionUsers();
   if (!players.length) {
     return ui.notifications.warn(
       t("sta-officers-log.warnings.noActivePlayers"),

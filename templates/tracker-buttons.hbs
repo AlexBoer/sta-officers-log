@@ -1,17 +1,12 @@
 <div class="sta-tracker-button-divider sta-officers-log-divider"></div>
 <div class="sta-tracker-button-group sta-officers-log-group" data-module="{{moduleId}}">
-  <button type="button" id="sta-officers-log-open-button" class="button sta-officers-log-open" title="{{localize "sta-officers-log.tools.sendPrompt"}}" aria-label="{{localize "sta-officers-log.tools.sendPrompt"}}" data-action="openCallback">
-    <i class="fa-solid fa-reply fa-fw" aria-hidden="true"></i>
+  <button type="button" id="sta-officers-log-open-button" class="button sta-officers-log-open" title="{{localize "sta-officers-log.tools.conflictReference"}}" aria-label="{{localize "sta-officers-log.tools.conflictReference"}}" data-action="conflictReference">
+    <i class="fa-solid fa-sitemap fa-fw" aria-hidden="true"></i>
   </button>
-  <button type="button" id="sta-officers-log-manage-button" class="button sta-officers-log-manage" title="{{localize "sta-officers-log.tools.manageMissions"}}" aria-label="{{localize "sta-officers-log.tools.manageMissions"}}" data-action="manageMissions">
+  <button type="button" id="sta-officers-log-manage-button" class="button sta-officers-log-manage" title="{{localize "sta-officers-log.tools.missionManager"}}" aria-label="{{localize "sta-officers-log.tools.missionManager"}}" data-action="missionManager">
     <i class="fa-solid fa-book fa-fw" aria-hidden="true"></i>
   </button>
-  <button type="button" id="sta-officers-log-new-scene-button" class="button sta-officers-log-new-scene" title="{{localize "sta-officers-log.tools.newScene"}}" aria-label="{{localize "sta-officers-log.tools.newScene"}}" data-action="newScene">
-    <i class="fa-solid fa-clapperboard fa-fw" aria-hidden="true"></i>
+  <button type="button" id="sta-officers-log-request-roll-button" class="button sta-officers-log-request-roll" title="{{localize "sta-officers-log.tools.requestRoll"}}" aria-label="{{localize "sta-officers-log.tools.requestRoll"}}" data-action="requestRoll">
+    <i class="fa-solid fa-arrow-up-from-bracket fa-fw" aria-hidden="true"></i>
   </button>
-  {{#if showCreationWizardButton}}
-  <button type="button" id="sta-officers-log-creation-wizard-button" class="button sta-officers-log-creation-wizard" title="{{localize "sta-officers-log.creation.wizardTitle"}}" aria-label="{{localize "sta-officers-log.creation.wizardTitle"}}" data-action="openCreationWizard">
-    <i class="fa-solid fa-user-plus fa-fw" aria-hidden="true"></i>
-  </button>
-  {{/if}}
 </div>

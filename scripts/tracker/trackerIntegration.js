@@ -39,126 +39,15 @@ function _manageMissions() {
 
 /**
  * Install Officers Log buttons in the STA Tracker panel.
- * GM-only feature that adds buttons for callback prompts, new mission, and new scene.
+ * GM-only feature that adds buttons for conflict reference, mission manager, and roll request.
  */
 export async function installOfficersLogButtonsInStaTracker(app, root) {
   try {
-    if (!(root instanceof HTMLElement)) return;
-    if (!game.user?.isGM) return;
-    if (!game.staofficerslog) return;
-
-    // Detect the STA system tracker.
-    const ctorName = String(app?.constructor?.name ?? "");
-    const looksLikeTracker =
-      ctorName === "STATracker" ||
-      !!root.querySelector?.(".tracker-container") ||
-      !!root.querySelector?.("#sta-roll-task-button") ||
-      !!root.querySelector?.("#sta-momentum-tracker");
-
-    if (!looksLikeTracker) return;
-
-    // Avoid duplicates across rerenders.
-    if (root.querySelector?.(".sta-officers-log-group")) return;
-
-    // Insert next to the existing roll buttons column.
-    const row =
-      root.querySelector?.(".tracker-container .row") ??
-      root.querySelector?.(".row") ??
-      null;
-    if (!row) return;
-
-    const iconContainer = row.querySelector?.(":scope > .icon-container");
-    if (!iconContainer) return;
-
-    // Wrap the existing STA tracker buttons and our module buttons into a 2-column layout.
-    let columns = iconContainer.querySelector?.(
-      ":scope > .sta-tracker-button-columns",
-    );
-    let systemGroup = iconContainer.querySelector?.(
-      ":scope > .sta-tracker-button-columns > .sta-tracker-button-group.sta-tracker-system-buttons",
-    );
-
-    if (!columns || !systemGroup) {
-      columns = document.createElement("div");
-      columns.className = "sta-tracker-button-columns";
-
-      systemGroup = document.createElement("div");
-      systemGroup.className =
-        "sta-tracker-button-group sta-tracker-system-buttons";
-
-      // Move existing buttons into the system group.
-      const children = Array.from(iconContainer.children);
-      for (const child of children) systemGroup.appendChild(child);
-
-      // Replace iconContainer contents with the columns wrapper.
-      iconContainer.innerHTML = "";
-      columns.appendChild(systemGroup);
-      iconContainer.appendChild(columns);
-    }
-
-    // Render buttons from template
-    const staUtilsActive = game.modules.get("sta-utils")?.active ?? false;
-    let showCreationWizardButton = false;
-    if (staUtilsActive) {
-      try {
-        showCreationWizardButton = Boolean(
-          game.settings.get("sta-utils", "showCreationWizardButton"),
-        );
-      } catch (_) {
-        showCreationWizardButton = false;
-      }
-    }
-    const buttonsHtml = await foundry.applications.handlebars.renderTemplate(
-      TRACKER_BUTTONS_TEMPLATE,
-      {
-        moduleId: MODULE_ID,
-        showCreationWizardButton,
-      },
-    );
-    columns.insertAdjacentHTML("beforeend", buttonsHtml);
-
-    // Highlight the Manage Mission button yellow when a mission is active
-    const resetBtn = columns.querySelector("#sta-officers-log-manage-button");
-    if (resetBtn) {
-      if (hasActiveMission()) {
-        resetBtn.classList.add("sta-mission-active");
-        resetBtn.title = t("sta-officers-log.dialog.endMission.title");
-      } else {
-        resetBtn.classList.remove("sta-mission-active");
-        resetBtn.title = t("sta-officers-log.tools.manageMissions");
-      }
-    }
-
-    // Attach event listeners to the rendered buttons
-    const officersGroup = columns.querySelector(".sta-officers-log-group");
-    if (officersGroup) {
-      officersGroup.addEventListener("click", (event) => {
-        const btn = event.target?.closest?.("[data-action]");
-        if (!btn) return;
-
-        try {
-          event?.preventDefault?.();
-          event?.stopPropagation?.();
-        } catch (_) {
-          // event may be synthetic
-        }
-
-        const action = btn.dataset.action;
-        try {
-          if (action === "openCallback") {
-            game.staofficerslog.open();
-          } else if (action === "manageMissions") {
-            _manageMissions();
-          } else if (action === "newScene") {
-            game.staofficerslog.newScene();
-          } else if (action === "openCreationWizard") {
-            game.staofficerslog.openCreationWizard();
-          }
-        } catch (err) {
-          console.error(`${MODULE_ID} | tracker button failed`, err);
-        }
-      });
-    }
+    // Tracker button injection has been moved to sta-utils.
+    // Officers Log still exposes the API and tracker dialogs, but does not
+    // own the tracker button layout anymore.
+    void app;
+    void root;
   } catch (_) {
     // tracker integration is optional
   }

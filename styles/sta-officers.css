@@ -357,7 +357,7 @@
 }
 
 /* Match STA tracker icon styling (size + color) */
-.tracker-container .icon-container .sta-officers-log-group .button i {
+.tracker-container .icon-container .sta-tracker-button-group .button i {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -368,9 +368,14 @@
   height: 1em;
 }
 
-.tracker-container .icon-container .sta-officers-log-group .button i:hover,
-.tracker-container .icon-container .sta-officers-log-group .button:focus-visible i {
+.tracker-container .icon-container .sta-tracker-button-group .button:hover i,
+.tracker-container .icon-container .sta-tracker-button-group .button:focus-visible i {
   color:#89CFF0;
+}
+
+.tracker-container .icon-container .sta-tracker-button-group .button:hover .combadge,
+.tracker-container .icon-container .sta-tracker-button-group .button:focus-visible .combadge {
+  filter: drop-shadow(0 0 2px rgba(137, 207, 240, 0.9)) brightness(1.2);
 }
 
 /* Yellow highlight on 'New Mission' button when a mission is active */
@@ -407,6 +412,10 @@
 /* STA system tracker: widen container slightly */
 .tracker-container[data-application-part="tracker"] {
   width: 235px;
+}
+
+.tracker-container[data-application-part="tracker"][data-sta-utils-second-column="true"] {
+  width: 315px;
 }
 
 .tracker-container[data-application-part="tracker"] .tracker {
@@ -1172,6 +1181,17 @@ div.section.character-log li.row.entry a.value-used.control.toggle {
   justify-content: flex-end;
   gap: 0.25rem;
   min-width: 0;
+}
+
+/* Keep the challenged-value uncross icon visible on dark sheets at rest. */
+.theme-dark div.section.values li.row.entry[data-item-type="value"] a.value-used.control.toggle,
+.theme-dark div.section.values li.row.entry[data-item-type="value"] a.value-used.control.toggle i[data-action="onStrikeThrough"] {
+  color: rgba(232, 236, 244, 0.90) !important;
+}
+
+.theme-light div.section.values li.row.entry[data-item-type="value"] a.value-used.control.toggle,
+.theme-light div.section.values li.row.entry[data-item-type="value"] a.value-used.control.toggle i[data-action="onStrikeThrough"] {
+  color: rgba(24, 28, 34, 0.72) !important;
 }
 
 /* Hide only the "used" strike-through icon on Log rows unless explicitly enabled.

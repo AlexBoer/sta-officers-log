@@ -66,6 +66,7 @@ import {
   syncJournalMetadataForActor,
   syncMissionJournalsDebounced,
 } from "./journal/index.js";
+import { MissionManagerApp } from "./missions/MissionManagerApp.mjs";
 
 function registerApi() {
   // Public API (available on all clients; methods may GM-guard internally)
@@ -99,6 +100,9 @@ function registerApi() {
 
     // Open Group Ship sheet
     openGroupShip,
+
+    // Open Mission Manager directly
+    openMissionManager: () => new MissionManagerApp().render(true),
 
     // GM: Send spend dialog to a player
     promptGMSpendDialog,

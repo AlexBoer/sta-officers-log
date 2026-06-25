@@ -244,7 +244,7 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
 
       openNewMilestoneArcDialog(actor, {
         initialTab,
-        lockOtherTab: true,
+        lockOtherTab: !isArcBenefit,
         traumaValueId,
         traumaAllChallenged,
         onApplied: async ({ applied }) => {
