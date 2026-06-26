@@ -1,6 +1,6 @@
 import { MODULE_ID } from "../core/constants.js";
 import { t, tf } from "../core/i18n.js";
-import { isPlainObject } from "../core/utils.js";
+import { escapeHTML, isPlainObject } from "../core/utils.js";
 import { getFocusPickerCustomCompendiumKeys } from "../settings/pickerSettings.js";
 
 const Base = foundry.applications.api.HandlebarsApplicationMixin(
@@ -80,6 +80,100 @@ function _extractFocusItemData(document) {
   if (!isPlainObject(data)) return null;
   delete data._id;
   return data;
+}
+
+function _extractFocusDescription(source) {
+  if (!source) return null;
+
+  const rawDescription =
+    foundry.utils.getProperty(source, "system.description.value") ??
+    foundry.utils.getProperty(source, "system.description") ??
+    source?.system?.description ??
+    "";
+  if (!rawDescription) return null;
+  if (typeof rawDescription === "string") return rawDescription;
+  if (
+    isPlainObject(rawDescription) &&
+    typeof rawDescription.value === "string"
+  ) {
+    return rawDescription.value;
+  }
+  return null;
+}
+
+function _descriptionHtmlToText(rawDescription) {
+  const html = String(rawDescription ?? "").trim();
+  if (!html) return "";
+
+  let normalized = html
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*\/\s*p\s*>/gi, "\n")
+    .replace(/<\s*\/\s*li\s*>/gi, "\n")
+    .replace(/&nbsp;/gi, " ");
+
+  try {
+    const TextEditorImpl =
+      globalThis.foundry?.applications?.ux?.TextEditor?.implementation ??
+      globalThis.TextEditor ??
+      null;
+    if (TextEditorImpl && typeof TextEditorImpl.getTextContent === "function") {
+      normalized = TextEditorImpl.getTextContent(normalized);
+    } else {
+      normalized = normalized.replace(/<[^>]*>/g, " ");
+    }
+  } catch (_) {
+    normalized = normalized.replace(/<[^>]*>/g, " ");
+  }
+
+  return String(normalized)
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
+async function _confirmFocusChoice({ name = "", description = "" } = {}) {
+  const unnamedFocusLabel =
+    t("sta-officers-log.dialog.focusPicker.confirmUnnamed") ??
+    "(Unnamed Focus)";
+  const noDescriptionLabel =
+    t("sta-officers-log.dialog.focusPicker.confirmNoDescription") ??
+    "No description available for this focus.";
+  const safeName = escapeHTML(name || unnamedFocusLabel);
+  const safeDescription = escapeHTML(description || noDescriptionLabel).replace(
+    /\n/g,
+    "<br />",
+  );
+
+  const result = await foundry.applications.api.DialogV2.wait({
+    classes: ["sta-officers-log"],
+    window: {
+      title:
+        t("sta-officers-log.dialog.focusPicker.confirmTitle") ??
+        "Confirm Focus Choice",
+    },
+    content: `<div class="sta-picker-confirm-dialog"><p><strong>${safeName}</strong></p><p>${safeDescription}</p></div>`,
+    buttons: [
+      {
+        action: "confirm",
+        label:
+          t("sta-officers-log.dialog.focusPicker.confirmButton") ?? "Confirm",
+        default: true,
+        callback: () => true,
+      },
+      {
+        action: "cancel",
+        label:
+          t("sta-officers-log.dialog.focusPicker.cancelButton") ?? "Cancel",
+        callback: () => false,
+      },
+    ],
+    rejectClose: false,
+    modal: true,
+  });
+
+  return result === true || result === "confirm";
 }
 
 class FocusPickerApp extends Base {
@@ -311,16 +405,26 @@ class FocusPickerApp extends Base {
         if (!name) return;
 
         let focusItem = null;
+        let focusDescription = null;
         if (uuid) {
           const selectedFocus = this._focuses.find(
             (focus) => String(focus?.uuid ?? "") === uuid,
           );
           focusItem = selectedFocus?.item ?? null;
+          focusDescription = _extractFocusDescription(focusItem);
           if (!focusItem) {
             const doc = await _getFocusDocumentByUuid(uuid);
             focusItem = _extractFocusItemData(doc);
+            focusDescription =
+              focusDescription ?? _extractFocusDescription(doc);
           }
         }
+
+        const confirmed = await _confirmFocusChoice({
+          name,
+          description: _descriptionHtmlToText(focusDescription),
+        });
+        if (!confirmed) return;
 
         this._resolveOnce({
           name,

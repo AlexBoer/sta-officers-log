@@ -154,6 +154,10 @@
       "selectOne": "Select",
       "addDirective": "Add"
     },
+    "talents": {
+      "orLabel": "or",
+      "noneLabel": "none"
+    },
     "traits": {
       "scarLabel": "Scar",
       "scarTooltip": "Mark this Trait as a scar.",
@@ -513,6 +517,11 @@
         "createCustom": "Create Custom Focus",
         "search": "Search",
         "searchPlaceholder": "Type to filter focuses…",
+        "confirmTitle": "Confirm Focus Choice",
+        "confirmButton": "Confirm",
+        "cancelButton": "Cancel",
+        "confirmUnnamed": "(Unnamed Focus)",
+        "confirmNoDescription": "No description available for this focus.",
         "none": "No focuses found.",
         "found": "Found: {count}"
       },
@@ -523,6 +532,11 @@
         "eligibleOnly": "Only show talents I qualify for",
         "previewTitle": "Talent Details",
         "previewClose": "Close",
+        "confirmTitle": "Confirm Talent Choice",
+        "confirmButton": "Confirm",
+        "cancelButton": "Cancel",
+        "confirmUnnamed": "(Unnamed Talent)",
+        "confirmNoDescription": "No description available for this talent.",
         "none": "No talents found.",
         "found": "Found: {count}",
         "loadingTitle": "Loading Talents",

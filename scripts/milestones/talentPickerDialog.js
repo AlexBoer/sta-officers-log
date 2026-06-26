@@ -1,6 +1,6 @@
 import { MODULE_ID } from "../core/constants.js";
 import { t, tf } from "../core/i18n.js";
-import { isPlainObject } from "../core/utils.js";
+import { escapeHTML, isPlainObject } from "../core/utils.js";
 import {
   getTalentPickerCustomCompendiumKeys,
   getTalentPickerCustomFolderFilterEnabled,
@@ -403,6 +403,15 @@ export function bindTalentPickerInteractions(
     }
 
     if (action === "choose") {
+      const rawDescription =
+        _extractTalentDescription(entry?.item) ??
+        (entry?.uuid ? await _getTalentDescription(entry.uuid) : null);
+      const confirmed = await _confirmTalentChoice({
+        name: entry?.name,
+        description: _descriptionHtmlToText(rawDescription),
+      });
+      if (!confirmed) return;
+
       if (onChoose) {
         await onChoose(entry, btn);
       }
@@ -632,6 +641,81 @@ function _extractTalentDescription(document) {
     return rawDescription.value;
   }
   return null;
+}
+
+function _descriptionHtmlToText(rawDescription) {
+  const html = String(rawDescription ?? "").trim();
+  if (!html) return "";
+
+  let normalized = html
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*\/\s*p\s*>/gi, "\n")
+    .replace(/<\s*\/\s*li\s*>/gi, "\n")
+    .replace(/&nbsp;/gi, " ");
+
+  try {
+    const TextEditorImpl =
+      globalThis.foundry?.applications?.ux?.TextEditor?.implementation ??
+      globalThis.TextEditor ??
+      null;
+    if (TextEditorImpl && typeof TextEditorImpl.getTextContent === "function") {
+      normalized = TextEditorImpl.getTextContent(normalized);
+    } else {
+      normalized = normalized.replace(/<[^>]*>/g, " ");
+    }
+  } catch (_) {
+    normalized = normalized.replace(/<[^>]*>/g, " ");
+  }
+
+  return String(normalized)
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
+async function _confirmTalentChoice({ name = "", description = "" } = {}) {
+  const unnamedTalentLabel =
+    t("sta-officers-log.dialog.talentPicker.confirmUnnamed") ??
+    "(Unnamed Talent)";
+  const noDescriptionLabel =
+    t("sta-officers-log.dialog.talentPicker.confirmNoDescription") ??
+    "No description available for this talent.";
+  const safeName = escapeHTML(name || unnamedTalentLabel);
+  const safeDescription = escapeHTML(description || noDescriptionLabel).replace(
+    /\n/g,
+    "<br />",
+  );
+
+  const result = await foundry.applications.api.DialogV2.wait({
+    classes: ["sta-officers-log"],
+    window: {
+      title:
+        t("sta-officers-log.dialog.talentPicker.confirmTitle") ??
+        "Confirm Talent Choice",
+    },
+    content: `<div class="sta-picker-confirm-dialog"><p><strong>${safeName}</strong></p><p>${safeDescription}</p></div>`,
+    buttons: [
+      {
+        action: "confirm",
+        label:
+          t("sta-officers-log.dialog.talentPicker.confirmButton") ?? "Confirm",
+        default: true,
+        callback: () => true,
+      },
+      {
+        action: "cancel",
+        label:
+          t("sta-officers-log.dialog.talentPicker.cancelButton") ?? "Cancel",
+        callback: () => false,
+      },
+    ],
+    rejectClose: false,
+    modal: true,
+  });
+
+  return result === true || result === "confirm";
 }
 
 function _isNpcTalentFromDocument(document) {
