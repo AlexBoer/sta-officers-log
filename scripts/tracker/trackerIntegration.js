@@ -8,25 +8,20 @@ import {
 import { promptUseDirective } from "../directives/useDirectiveButton.js";
 import { hasActiveMission } from "../missions/mission.js";
 import { MissionManagerApp } from "../missions/MissionManagerApp.mjs";
-import { setupMissionLogContextMenu } from "../sheet/contextMenu.js";
 
 const TRACKER_BUTTONS_TEMPLATE = `modules/${MODULE_ID}/templates/tracker-buttons.hbs`;
 const TRACKER_DIRECTIVES_TEMPLATE = `modules/${MODULE_ID}/templates/tracker-directives.hbs`;
-const TRACKER_MOMENTUM_INFO_TEMPLATE = `modules/${MODULE_ID}/templates/tracker-momentum-info.hbs`;
-const TRACKER_THREAT_INFO_TEMPLATE = `modules/${MODULE_ID}/templates/tracker-threat-info.hbs`;
 
 const TRACKER_INFO_CONFIG = [
   {
     label: "Momentum",
     key: "momentum",
     title: "Momentum",
-    template: TRACKER_MOMENTUM_INFO_TEMPLATE,
   },
   {
     label: "Threat",
     key: "threat",
     title: "Threat",
-    template: TRACKER_THREAT_INFO_TEMPLATE,
   },
 ];
 
@@ -244,59 +239,14 @@ export function installTrackerInfoButtonsInStaTracker(root) {
           }
 
           try {
-            const content = config.template
-              ? await foundry.applications.handlebars.renderTemplate(
-                  config.template,
-                  {},
-                )
-              : config.body;
-
-            await foundry.applications.api.DialogV2.wait({
-              classes: ["sta-officers-log"],
-              window: { title: config.title },
-              content: content ?? "",
-              render: (_event, dialog) => {
-                try {
-                  const html = dialog?.element;
-                  if (!(html instanceof HTMLElement)) return;
-
-                  // DialogV2 window.classes is unreliable — add manually.
-                  html.classList.add("officers-log-dialog");
-
-                  setupMissionLogContextMenu({
-                    container: html,
-                    selector: ".row",
-                    label: "Send to Chat",
-                    onSelect: async (row) => {
-                      const chatContent = buildCheatsheetRowChatContent(
-                        row,
-                        config.title,
-                      );
-                      if (!chatContent) return;
-
-                      await ChatMessage.create({
-                        content: chatContent,
-                        speaker: ChatMessage.getSpeaker(),
-                      });
-                    },
-                  });
-                } catch (err) {
-                  console.error(
-                    `${MODULE_ID} | tracker info context menu failed`,
-                    err,
-                  );
-                }
-              },
-              buttons: [
-                {
-                  action: "ok",
-                  label: "OK",
-                  default: true,
-                },
-              ],
-              rejectClose: false,
-              modal: false,
-            });
+            const openReference = game.staUtils?.trackerReference;
+            if (typeof openReference !== "function") {
+              ui.notifications?.warn?.(
+                "STA-Utils tracker reference dialogs are unavailable.",
+              );
+              return;
+            }
+            await openReference(config.key);
           } catch (err) {
             console.error(`${MODULE_ID} | tracker info dialog failed`, err);
           }
@@ -382,47 +332,4 @@ function findTrackerLabelParents(root, label) {
   }
 
   return Array.from(matches);
-}
-
-/**
- * Build chat HTML for a cheatsheet row.
- *
- * @param {HTMLElement} row - Row element containing a cheatsheet entry.
- * @param {string} dialogTitle - The dialog title (Momentum/Threat).
- * @returns {string|null} HTML string or null if row is not a cheatsheet entry.
- */
-function buildCheatsheetRowChatContent(row, dialogTitle) {
-  if (!(row instanceof HTMLElement)) return null;
-
-  const titleEl = row.querySelector(".tracktitle");
-  if (!titleEl) return null;
-
-  const titleText = String(titleEl.textContent ?? "").trim();
-  if (!titleText) return null;
-
-  const valueEl = row.querySelector(".column.value");
-  const valueText = String(valueEl?.textContent ?? "").trim();
-  const tooltipText = String(titleEl.getAttribute("title") ?? "").trim();
-
-  const escape = foundry.utils?.escapeHTML ?? ((s) => s);
-  const safeTitle = escape(titleText);
-  const safeValue = valueText ? escape(valueText) : "";
-  const safeTooltip = tooltipText ? escape(tooltipText) : "";
-  const safeDialogTitle = dialogTitle ? escape(dialogTitle) : "";
-
-  const valueSuffix = safeValue ? ` — ${safeValue}` : "";
-  const tooltipHtml = safeTooltip
-    ? `<div class="hint">${safeTooltip}</div>`
-    : "";
-  const headerHtml = safeDialogTitle
-    ? `<div class="sta-cheatsheet-chat-title">${safeDialogTitle}</div>`
-    : "";
-
-  return `
-    <div class="sta-cheatsheet-chat">
-      ${headerHtml}
-      <div><strong>${safeTitle}</strong>${valueSuffix}</div>
-      ${tooltipHtml}
-    </div>
-  `;
 }

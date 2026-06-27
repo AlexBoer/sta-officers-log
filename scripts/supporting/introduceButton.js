@@ -633,6 +633,10 @@ export function installIntroduceSupportingCharButton(root, actor) {
     const advFlag = introLogItem?.getFlag?.(MODULE_ID, "pendingSupAdvancement");
     const advChosen = advFlag?.chosen === true;
 
+    const showUndo = Boolean(
+      canEdit && introLogItem && (!advChosen || game.user?.isGM),
+    );
+
     if (!advChosen && introLogItem) {
       // Show "Choose Advancement" shortcut — same dialog as the dev-tab button.
       btn.textContent = t("sta-officers-log.supporting.chooseAdvancement");
@@ -645,7 +649,7 @@ export function installIntroduceSupportingCharButton(root, actor) {
       wrapper.appendChild(btn);
 
       // Undo button for owner/GM
-      if (canEdit) {
+      if (showUndo) {
         const undoBtn = document.createElement("button");
         undoBtn.type = "button";
         undoBtn.className = "sta-introduce-undo-btn";
@@ -678,6 +682,34 @@ export function installIntroduceSupportingCharButton(root, actor) {
       btn.title = t("sta-officers-log.supporting.introducedButtonTooltip");
       btn.disabled = true;
       wrapper.appendChild(btn);
+
+      // GMs should always retain undo access, even after advancement is chosen.
+      if (showUndo) {
+        const undoBtn = document.createElement("button");
+        undoBtn.type = "button";
+        undoBtn.className = "sta-introduce-undo-btn";
+        undoBtn.title = t("sta-officers-log.supporting.unintroduceTooltip");
+        undoBtn.innerHTML = '<i class="fas fa-rotate-left"></i>';
+        undoBtn.addEventListener("click", async (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          undoBtn.disabled = true;
+          try {
+            if (introLogItem) await introLogItem.delete();
+            await actor.unsetFlag(MODULE_ID, "missionIntroductionState");
+            // Decrement group ship crew support by 1 (min 0)
+            const ship = getGroupShipActor();
+            if (ship) await _decrementCrewSupport(ship);
+          } catch (err) {
+            console.error(
+              `${MODULE_ID} | Failed to unintroduce supporting character`,
+              err,
+            );
+            undoBtn.disabled = false;
+          }
+        });
+        wrapper.appendChild(undoBtn);
+      }
     }
   } else {
     btn.textContent = t("sta-officers-log.supporting.introduceButton");
