@@ -447,9 +447,8 @@ export class OfficersLogSheet extends api.HandlebarsApplicationMixin(
     const valueId = target.dataset.valueId;
     if (!valueId) return;
     const key = getDirectiveKeyFromValueId(valueId);
-    // Use Foundry's "-=key" deletion syntax so mergeObject actually removes the
-    // entry instead of leaving the old key in place via recursive merge.
-    const updates = { [`system.directiveLabels.-=${key}`]: true };
+    // Use Foundry's "-=key" deletion syntax with null (required in v14).
+    const updates = { [`system.directiveLabels.-=${key}`]: null };
     if (this.item.system.primaryDirectiveKey === key) {
       updates["system.primaryDirectiveKey"] = "";
     }

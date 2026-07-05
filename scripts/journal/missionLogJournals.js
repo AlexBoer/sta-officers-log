@@ -11,8 +11,9 @@
  *
  *  Mission Journals — one journal per log *name* that appears on 2+ characters
  *                     (named after the log, e.g. "Encounter at Narendra III")
- *                     with one page per character who has that log, showing
- *                     only their description.  All users get OBSERVER.
+ *                     with a blank Summary page plus one page per character
+ *                     who has that log, showing only their description.
+ *                     All users get OBSERVER.
  *
  * All writes are GM-only.  Disabling the setting leaves existing journals
  * as frozen snapshots — nothing is deleted.
@@ -98,8 +99,159 @@ const LINKED_LOG_ITEM_ID_FLAG = "linkedLogItemId";
 
 /** Mission journal — flagged with the exact log-item name it represents. */
 const MISSION_JOURNAL_LOG_NAME_FLAG = "missionJournalLogName";
+/** Mission journal summary page — flagged with true. */
+const MISSION_SUMMARY_PAGE_FLAG = "missionSummaryPage";
 /** Page in a mission journal — flagged with the actor ID it belongs to. */
 const MISSION_PAGE_ACTOR_ID_FLAG = "missionPageActorId";
+/** Mission journal details page — flagged with true. */
+const MISSION_DETAILS_PAGE_FLAG = "missionDetailsPage";
+
+function _escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function _buildMissionDetailsHtml({
+  directives = [],
+  mainCharacters = [],
+  supportingCharacters = [],
+} = {}) {
+  const none = t("sta-officers-log.dialog.manageMissions.none") ?? "None";
+  const noDirectives =
+    t("sta-officers-log.dialog.manageMissions.noDirectives") ?? "No directives";
+  const valuesUsed =
+    t("sta-officers-log.dialog.manageMissions.valuesUsed") ?? "Values used";
+  const noValuesUsed =
+    t("sta-officers-log.dialog.manageMissions.noValuesUsed") ??
+    "No values used";
+  const callbackMade =
+    t("sta-officers-log.dialog.manageMissions.callbackMade") ?? "Callback made";
+  const callbackNotMade =
+    t("sta-officers-log.dialog.manageMissions.callbackNotMade") ??
+    "No callback";
+  const callbackMilestone =
+    t("sta-officers-log.dialog.manageMissions.callbackMilestone") ??
+    "Callback milestone";
+  const milestoneChosen =
+    t("sta-officers-log.dialog.manageMissions.milestoneChosen") ?? "Chosen";
+  const milestonePending =
+    t("sta-officers-log.dialog.manageMissions.milestonePending") ?? "Pending";
+  const advancement =
+    t("sta-officers-log.dialog.manageMissions.advancement") ?? "Advancement";
+  const advancementChosen =
+    t("sta-officers-log.dialog.manageMissions.advancementChosen") ?? "Chosen";
+  const advancementPending =
+    t("sta-officers-log.dialog.manageMissions.advancementPending") ?? "Pending";
+  const noAdvancement =
+    t("sta-officers-log.dialog.manageMissions.noAdvancement") ??
+    "No advancement";
+
+  const parts = [];
+
+  parts.push(
+    `<h2>${_escapeHtml(t("sta-officers-log.dialog.manageMissions.directives") ?? "Directives")}</h2>`,
+  );
+  if (Array.isArray(directives) && directives.length > 0) {
+    const lis = directives
+      .map((d) => String(d ?? "").trim())
+      .filter((d) => Boolean(d))
+      .map((d) => `<li>${_escapeHtml(d)}</li>`)
+      .join("");
+    parts.push(
+      `<ul>${lis || `<li><em>${_escapeHtml(noDirectives)}</em></li>`}</ul>`,
+    );
+  } else {
+    parts.push(`<p><em>${_escapeHtml(noDirectives)}</em></p>`);
+  }
+
+  parts.push(
+    `<h2>${_escapeHtml(t("sta-officers-log.dialog.manageMissions.mainCharacters") ?? "Main Characters")}</h2>`,
+  );
+  if (Array.isArray(mainCharacters) && mainCharacters.length > 0) {
+    const rows = mainCharacters
+      .map((row) => {
+        const name = _escapeHtml(row?.name ?? "Unknown");
+        const callback = row?.madeCallback ? callbackMade : callbackNotMade;
+        const values = Array.isArray(row?.valuesUsed)
+          ? row.valuesUsed
+              .map((v) => String(v ?? "").trim())
+              .filter((v) => Boolean(v))
+          : [];
+        const valuesText = values.length ? values.join(", ") : noValuesUsed;
+
+        let milestoneText = none;
+        if (row?.callbackMilestoneChosen) {
+          const label = String(row?.callbackMilestoneLabel ?? "").trim();
+          milestoneText = label ? label : milestoneChosen;
+        } else if (row?.callbackMilestonePending) {
+          milestoneText = milestonePending;
+        }
+
+        return `<li><strong>${name}</strong><ul><li>${_escapeHtml(valuesUsed)}: ${_escapeHtml(valuesText)}</li><li>${_escapeHtml(callback)}</li><li>${_escapeHtml(callbackMilestone)}: ${_escapeHtml(milestoneText)}</li></ul></li>`;
+      })
+      .join("");
+    parts.push(`<ul>${rows}</ul>`);
+  } else {
+    parts.push(`<p><em>${_escapeHtml(none)}</em></p>`);
+  }
+
+  parts.push(
+    `<h2>${_escapeHtml(t("sta-officers-log.dialog.manageMissions.supportingCharacters") ?? "Introduced Supporting Characters")}</h2>`,
+  );
+  if (Array.isArray(supportingCharacters) && supportingCharacters.length > 0) {
+    const rows = supportingCharacters
+      .map((row) => {
+        const name = _escapeHtml(row?.name ?? "Unknown");
+        let advText = noAdvancement;
+        if (row?.advancementChosen) {
+          const label = String(row?.advancementLabel ?? "").trim();
+          advText = label ? label : advancementChosen;
+        } else if (row?.advancementPending) {
+          advText = advancementPending;
+        }
+        return `<li><strong>${name}</strong> — ${_escapeHtml(advancement)}: ${_escapeHtml(advText)}</li>`;
+      })
+      .join("");
+    parts.push(`<ul>${rows}</ul>`);
+  } else {
+    parts.push(`<p><em>${_escapeHtml(none)}</em></p>`);
+  }
+
+  return parts.join("\n");
+}
+
+async function _ensureMissionSummaryPage(journal) {
+  const existingSummaryPage =
+    journal.pages?.find(
+      (p) => p.getFlag?.(MODULE_ID, MISSION_SUMMARY_PAGE_FLAG) === true,
+    ) ?? null;
+
+  if (existingSummaryPage) return existingSummaryPage;
+
+  await journal.createEmbeddedDocuments("JournalEntryPage", [
+    {
+      name: t("sta-officers-log.dialog.manageMissions.summary") ?? "Summary",
+      type: "text",
+      text: {
+        content: "",
+        format: CONST.JOURNAL_ENTRY_PAGE_FORMATS.HTML,
+      },
+      sort: 1,
+      title: { show: true, level: 1 },
+      flags: {
+        [MODULE_ID]: { [MISSION_SUMMARY_PAGE_FLAG]: true },
+      },
+    },
+  ]);
+
+  return journal.pages?.find?.(
+    (p) => p.getFlag?.(MODULE_ID, MISSION_SUMMARY_PAGE_FLAG) === true,
+  );
+}
 
 // ── Actor eligibility ────────────────────────────────────────────────────────
 
@@ -691,7 +843,7 @@ async function _syncMissionJournalImmediate(
   logName,
   entries,
   folder,
-  { forceCreate = false } = {},
+  { forceCreate = false, detailsPage = null } = {},
 ) {
   // Require 2+ characters unless the GM is explicitly forcing creation
   if (!forceCreate && entries.length < 2) return;
@@ -712,6 +864,55 @@ async function _syncMissionJournalImmediate(
     if (journal.name !== logName) await journal.update({ name: logName });
   }
 
+  await _ensureMissionSummaryPage(journal);
+  journal = getMissionJournalForLogName(logName) ?? journal;
+
+  // Optional mission-details page, kept at the top of the mission journal.
+  if (detailsPage && detailsPage.content) {
+    const detailsTitle = String(
+      detailsPage.title ||
+        (t("sta-officers-log.dialog.manageMissions.missionDetails") ??
+          "Mission Details"),
+    );
+    const detailsContent = String(detailsPage.content ?? "");
+
+    const existingDetailsPage =
+      journal.pages?.find(
+        (p) => p.getFlag?.(MODULE_ID, MISSION_DETAILS_PAGE_FLAG) === true,
+      ) ?? null;
+
+    if (!existingDetailsPage) {
+      await journal.createEmbeddedDocuments("JournalEntryPage", [
+        {
+          name: detailsTitle,
+          type: "text",
+          text: {
+            content: detailsContent,
+            format: CONST.JOURNAL_ENTRY_PAGE_FORMATS.HTML,
+          },
+          sort: 1,
+          title: { show: true, level: 1 },
+          flags: {
+            [MODULE_ID]: { [MISSION_DETAILS_PAGE_FLAG]: true },
+          },
+        },
+      ]);
+      journal = getMissionJournalForLogName(logName) ?? journal;
+    } else {
+      const needsUpdate =
+        existingDetailsPage.name !== detailsTitle ||
+        existingDetailsPage.text?.content !== detailsContent ||
+        existingDetailsPage.sort !== 1;
+      if (needsUpdate) {
+        await existingDetailsPage.update({
+          name: detailsTitle,
+          "text.content": detailsContent,
+          sort: 1,
+        });
+      }
+    }
+  }
+
   const actorIdSet = new Set(entries.map(({ actor }) => actor.id));
 
   // Delete pages for characters who no longer have this log
@@ -727,6 +928,18 @@ async function _syncMissionJournalImmediate(
   }
 
   // Sort alphabetically by actor name for a stable, readable order
+  const hasSummaryPage = Boolean(
+    journal.pages?.find(
+      (p) => p.getFlag?.(MODULE_ID, MISSION_SUMMARY_PAGE_FLAG) === true,
+    ),
+  );
+  const hasDetailsPage = Boolean(
+    journal.pages?.find(
+      (p) => p.getFlag?.(MODULE_ID, MISSION_DETAILS_PAGE_FLAG) === true,
+    ),
+  );
+  const sortOffset = (hasSummaryPage ? 1 : 0) + (hasDetailsPage ? 1 : 0);
+
   const sortedEntries = [...entries].sort((a, b) =>
     a.actor.name.localeCompare(b.actor.name),
   );
@@ -754,7 +967,7 @@ async function _syncMissionJournalImmediate(
           content,
           format: CONST.JOURNAL_ENTRY_PAGE_FORMATS.HTML,
         },
-        sort: i + 1,
+        sort: i + 1 + sortOffset,
         title: { show: true, level: 1 },
         flags: {
           [MODULE_ID]: { [MISSION_PAGE_ACTOR_ID_FLAG]: actor.id },
@@ -764,13 +977,13 @@ async function _syncMissionJournalImmediate(
       const needsUpdate =
         existingPage.name !== actor.name ||
         existingPage.text?.content !== content ||
-        existingPage.sort !== i + 1;
+        existingPage.sort !== i + 1 + sortOffset;
       if (needsUpdate) {
         pageUpdates.push({
           _id: existingPage.id,
           name: actor.name,
           "text.content": content,
-          sort: i + 1,
+          sort: i + 1 + sortOffset,
         });
       }
     }
@@ -817,10 +1030,30 @@ export async function createMissionJournalForEntry(historyEntry) {
     return;
   }
 
+  const detailsPage = {
+    title:
+      t("sta-officers-log.dialog.manageMissions.missionDetails") ??
+      "Mission Details",
+    content: _buildMissionDetailsHtml({
+      directives: Array.isArray(historyEntry?.directives)
+        ? historyEntry.directives
+        : [],
+      mainCharacters: Array.isArray(historyEntry?.mainCharacters)
+        ? historyEntry.mainCharacters
+        : [],
+      supportingCharacters: Array.isArray(
+        historyEntry?.introducedSupportingCharacters,
+      )
+        ? historyEntry.introducedSupportingCharacters
+        : [],
+    }),
+  };
+
   await Promise.all(
     [...logNameMap.entries()].map(([logName, entries]) =>
       _syncMissionJournalImmediate(logName, entries, folder, {
         forceCreate: true,
+        detailsPage,
       }),
     ),
   );

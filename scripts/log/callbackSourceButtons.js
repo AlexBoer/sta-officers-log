@@ -18,6 +18,15 @@ import {
 } from "../sheet/contextMenu.js";
 import { isLogUnconditionallyIneligibleAsCallbackTarget } from "../callback/callbackEligibility.js";
 
+function isStaUtilsItemEditButtonsEnabled() {
+  try {
+    if (!game.modules?.get?.("sta-utils")?.active) return false;
+    return Boolean(game.settings?.get?.("sta-utils", "showItemEditButtons"));
+  } catch (_) {
+    return false;
+  }
+}
+
 /**
  * Install callback source buttons on log rows in the character sheet.
  * This adds the "Show Callback and Milestone" button and current mission indicator.
@@ -29,6 +38,7 @@ export function installCallbackSourceButtons(root, actor) {
 
     const shouldAllowUsedToggle =
       String(root?.dataset?.staShowLogUsedToggle ?? "0") === "1";
+    const shouldUseStaUtilsInlineEdit = isStaUtilsItemEditButtonsEnabled();
 
     const logRows = root.querySelectorAll(
       'div.section.milestones li.row.entry[data-item-type="log"], div.section.character-log li.row.entry[data-item-type="log"]',
@@ -270,6 +280,8 @@ export function installCallbackSourceButtons(root, actor) {
       if (!(toggleAnchor instanceof HTMLElement)) continue;
       const isCurrentMissionRow =
         entryId && currentMissionLogId && entryId === currentMissionLogId;
+      const shouldShowWriteLogButton =
+        !shouldUseStaUtilsInlineEdit || isCurrentMissionRow;
 
       // Always ensure an inlineActions container exists — used for both the
       // current-mission indicator and the Write-Log button.
@@ -324,40 +336,61 @@ export function installCallbackSourceButtons(root, actor) {
         );
       }
 
+      // When sta-utils inline edit buttons are enabled, hide the placeholder
+      // used-toggle anchor on rows where toggle use is disabled. This removes
+      // the empty gap between inline buttons and the right-side edit control.
+      row.classList.toggle(
+        "sta-hide-log-used-toggle-gap",
+        shouldUseStaUtilsInlineEdit && !shouldAllowUsedToggle,
+      );
+
       if (inlineActions.querySelector(":scope > .sta-show-source-btn"))
         continue;
 
       // ── Write-Log button ─────────────────────────────────────────────────
-      // Lives in inlineActions (a <span>), not inside the <a>.control toggle,
-      // to avoid the nested-anchor color problem and the 40px width cap.
-      // Current mission: labelled "Write Log". Other logs: pencil icon only.
-      if (!inlineActions.querySelector(":scope > .sta-write-log-btn")) {
-        const writeBtn = document.createElement("button");
-        writeBtn.type = "button";
-        writeBtn.className = "sta-write-log-btn sta-inline-sheet-btn";
+      // Lives in inlineActions (a <span>), not inside the <a>.control toggle.
+      // When sta-utils inline edit buttons are enabled, keep this button only
+      // on the current mission log and rely on the row's right-side edit button
+      // for all other logs.
+      let writeBtn = inlineActions.querySelector(":scope > .sta-write-log-btn");
+      if (!shouldShowWriteLogButton) {
+        writeBtn?.remove();
+        writeBtn = null;
+      }
+
+      if (shouldShowWriteLogButton) {
+        if (!(writeBtn instanceof HTMLButtonElement)) {
+          writeBtn = document.createElement("button");
+          writeBtn.type = "button";
+          writeBtn.className = "sta-write-log-btn sta-inline-sheet-btn";
+          writeBtn.addEventListener("click", (ev) => {
+            try {
+              ev.preventDefault();
+              ev.stopPropagation();
+              ev.stopImmediatePropagation?.();
+            } catch (_) {
+              // ignore
+            }
+            const itemId = row?.dataset?.itemId
+              ? String(row.dataset.itemId)
+              : "";
+            const item = itemId ? actor.items?.get?.(itemId) : null;
+            if (item?.sheet) item.sheet.render(true);
+          });
+          inlineActions.append(writeBtn);
+        }
+
         if (isCurrentMissionRow) {
           writeBtn.classList.add("sta-write-log-btn--current");
           writeBtn.title = "Write log";
           writeBtn.setAttribute("aria-label", "Write log");
           writeBtn.innerHTML = '<i class="fa-solid fa-pen"></i> Write Log';
         } else {
+          writeBtn.classList.remove("sta-write-log-btn--current");
           writeBtn.title = "Edit log";
           writeBtn.setAttribute("aria-label", "Edit log");
           writeBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
         }
-        writeBtn.addEventListener("click", (ev) => {
-          try {
-            ev.preventDefault();
-            ev.stopPropagation();
-            ev.stopImmediatePropagation?.();
-          } catch (_) {
-            // ignore
-          }
-          const itemId = row?.dataset?.itemId ? String(row.dataset.itemId) : "";
-          const item = itemId ? actor.items?.get?.(itemId) : null;
-          if (item?.sheet) item.sheet.render(true);
-        });
-        inlineActions.append(writeBtn);
       }
 
       const btn = document.createElement("button");

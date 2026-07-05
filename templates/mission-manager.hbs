@@ -6,20 +6,124 @@
     {{#if active}}
       <div class="sta-mission-manager-active">
         <span class="sta-mission-manager-title">{{currentTitle}}</span>
-        <div class="sta-mission-manager-active-actions">
-          <button type="button" data-action="add-players">
-            <i class="fas fa-user-plus"></i> {{labels.addPlayers}}
-          </button>
-          <button type="button" data-action="end-mission">
-            <i class="fas fa-stop-circle"></i> {{labels.endMission}}
-          </button>
-        </div>
+        {{#if isGM}}
+          <div class="sta-mission-manager-active-actions">
+            <button type="button" data-action="copy-active-markdown" title="{{labels.copyMarkdown}}">
+              <i class="fas fa-clipboard"></i> {{labels.copyMarkdown}}
+            </button>
+            <button type="button" data-action="add-players">
+              <i class="fas fa-user-plus"></i> {{labels.addPlayers}}
+            </button>
+            <button type="button" data-action="end-mission">
+              <i class="fas fa-stop-circle"></i> {{labels.endMission}}
+            </button>
+          </div>
+        {{/if}}
       </div>
+      {{#if activeHasCharacterSummary}}
+        <div class="sta-mission-character-summary">
+          <div class="sta-mission-character-group">
+            <div class="sta-mission-character-group-title">{{labels.directives}}</div>
+            {{#if activeDirectives.length}}
+              <ul class="sta-mission-character-list is-compact">
+                {{#each activeDirectives}}
+                  <li class="sta-mission-character-item">{{this}}</li>
+                {{/each}}
+              </ul>
+            {{else}}
+              <p class="sta-mission-manager-none">{{labels.noDirectives}}</p>
+            {{/if}}
+          </div>
+          <div class="sta-mission-character-group">
+            <div class="sta-mission-character-group-title">{{labels.mainCharacters}}</div>
+            {{#if activeMainCharacters.length}}
+              <ul class="sta-mission-character-list">
+                {{#each activeMainCharacters}}
+                  <li class="sta-mission-character-item is-entity-item">
+                    <div class="sta-mission-character-name-row">
+                              {{#if ../isGM}}
+                                {{#if this.logId}}
+                        <button type="button" class="sta-open-log-btn" data-action="open-main-log" data-actor-id="{{this.actorId}}"
+                          data-log-id="{{this.logId}}" title="{{../labels.openLog}}">
+                          <i class="fas fa-book"></i>
+                        </button>
+                                {{/if}}
+                              {{/if}}
+                      <strong>{{this.name}}</strong>
+                      {{#if this.madeCallback}}
+                        <span class="sta-mission-callback-badge">{{../labels.callbackMade}}</span>
+                      {{else}}
+                        <span class="sta-mission-callback-badge is-muted">{{../labels.callbackNotMade}}</span>
+                      {{/if}}
+                    </div>
+                    <div class="sta-mission-values-row">
+                      <span class="sta-mission-values-label">{{../labels.valuesUsed}}:</span>
+                      {{#if this.valuesUsed.length}}
+                        <span>{{this.valuesUsedText}}</span>
+                      {{else}}
+                        <span class="is-muted">{{../labels.noValuesUsed}}</span>
+                      {{/if}}
+                    </div>
+                    <div class="sta-mission-values-row">
+                      <span class="sta-mission-values-label">{{../labels.callbackMilestone}}:</span>
+                      {{#if this.callbackMilestoneChosen}}
+                        {{#if this.callbackMilestoneLabel}}
+                          <span class="sta-mission-pill-label">{{this.callbackMilestoneLabel}}</span>
+                        {{else}}
+                          <span class="sta-mission-pill-label">{{../labels.milestoneChosen}}</span>
+                        {{/if}}
+                      {{else if this.callbackMilestonePending}}
+                        <span class="is-muted">{{../labels.milestonePending}}</span>
+                      {{else}}
+                        <span class="is-muted">{{../labels.none}}</span>
+                      {{/if}}
+                    </div>
+                  </li>
+                {{/each}}
+              </ul>
+            {{else}}
+              <p class="sta-mission-manager-none">{{labels.none}}</p>
+            {{/if}}
+          </div>
+          <div class="sta-mission-character-group">
+            <div class="sta-mission-character-group-title">{{labels.supportingCharacters}}</div>
+            {{#if activeSupportingCharacters.length}}
+              <ul class="sta-mission-character-list">
+                {{#each activeSupportingCharacters}}
+                  <li class="sta-mission-character-item is-entity-item">
+                    <div class="sta-mission-character-name-row">
+                      <strong>{{this.name}}</strong>
+                    </div>
+                    <div class="sta-mission-values-row">
+                      <span class="sta-mission-values-label">{{../labels.advancement}}:</span>
+                      {{#if this.advancementChosen}}
+                        {{#if this.advancementLabel}}
+                          <span class="sta-mission-pill-label">{{this.advancementLabel}}</span>
+                        {{else}}
+                          <span>{{../labels.advancementChosen}}</span>
+                        {{/if}}
+                      {{else if this.advancementPending}}
+                        <span class="is-muted">{{../labels.advancementPending}}</span>
+                      {{else}}
+                        <span class="is-muted">{{../labels.noAdvancement}}</span>
+                      {{/if}}
+                    </div>
+                  </li>
+                {{/each}}
+              </ul>
+            {{else}}
+              <p class="sta-mission-manager-none">{{labels.none}}</p>
+            {{/if}}
+          </div>
+        </div>
+      {{/if}}
     {{else}}
       <p class="sta-mission-manager-none">{{labels.noActiveMission}}</p>
-      <button type="button" data-action="new-mission">
-        <i class="fas fa-plus-circle"></i> {{labels.newMission}}
-      </button>
+      {{#if isGM}}
+        <button type="button" data-action="new-mission">
+          <i class="fas fa-plus-circle"></i> {{labels.newMission}}
+        </button>
+      {{/if}}
     {{/if}}
   </section>
 
@@ -32,38 +136,146 @@
       <ul class="sta-mission-history-list">
         {{#each history}}
           <li class="sta-mission-history-entry">
-            <div class="sta-mission-history-info">
-              <strong class="sta-mission-history-title">{{this.title}}</strong>
-              <span class="sta-mission-history-meta">
-                {{this.endedDateStr}} &middot; {{this.participantCount}} {{../labels.participants}}
-              </span>
-            </div>
-            <div class="sta-mission-history-actions">
-              {{#if this.journalUuid}}
-                <button type="button" data-action="sync-journal" data-index="{{this.index}}"
-                  title="{{../labels.syncJournal}}">
-                  <i class="fas fa-sync"></i>
-                </button>
-                <button type="button" data-action="view-journal" data-journal-uuid="{{this.journalUuid}}"
-                  title="{{../labels.viewJournal}}">
-                  <i class="fas fa-book-open"></i>
-                </button>
-              {{else if this.canCreateJournal}}
-                <button type="button" data-action="create-journal" data-index="{{this.index}}"
-                  title="{{../labels.createJournal}}">
-                  <i class="fas fa-book-medical"></i>
-                </button>
+            <div class="sta-mission-history-top">
+              <div class="sta-mission-history-info">
+                <strong class="sta-mission-history-title">{{this.title}}</strong>
+                <span class="sta-mission-history-meta">
+                  {{this.endedDateStr}} &middot; {{this.participantCount}} {{../labels.participants}}
+                </span>
+              </div>
+              {{#if ../isGM}}
+                <div class="sta-mission-history-actions">
+                  <button type="button" data-action="copy-history-markdown" data-index="{{this.index}}"
+                    title="{{../labels.copyMarkdown}}">
+                    <i class="fas fa-clipboard"></i>
+                  </button>
+                  {{#if this.journalUuid}}
+                    <button type="button" data-action="sync-journal" data-index="{{this.index}}"
+                      title="{{../labels.syncJournal}}">
+                      <i class="fas fa-sync"></i>
+                    </button>
+                    <button type="button" data-action="view-journal" data-journal-uuid="{{this.journalUuid}}"
+                      title="{{../labels.viewJournal}}">
+                      <i class="fas fa-book-open"></i>
+                    </button>
+                  {{else if this.canCreateJournal}}
+                    <button type="button" data-action="create-journal" data-index="{{this.index}}"
+                      title="{{../labels.createJournal}}">
+                      <i class="fas fa-book-medical"></i>
+                    </button>
+                  {{/if}}
+                  <button type="button" data-action="reactivate" data-index="{{this.index}}"
+                    title="{{../labels.reactivate}}">
+                    <i class="fas fa-undo"></i>
+                    <span>{{../labels.reactivate}}</span>
+                  </button>
+                  <button type="button" class="sta-danger" data-action="remove-entry" data-index="{{this.index}}"
+                    title="{{../labels.remove}}">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
               {{/if}}
-              <button type="button" data-action="reactivate" data-index="{{this.index}}"
-                title="{{../labels.reactivate}}">
-                <i class="fas fa-undo"></i>
-                <span>{{../labels.reactivate}}</span>
-              </button>
-              <button type="button" class="sta-danger" data-action="remove-entry" data-index="{{this.index}}"
-                title="{{../labels.remove}}">
-                <i class="fas fa-times"></i>
-              </button>
             </div>
+            {{#if this.hasCharacterSummary}}
+              <details class="sta-mission-history-details">
+                <summary class="sta-mission-history-details-summary">{{../labels.missionDetails}}</summary>
+                <div class="sta-mission-character-summary">
+                  <div class="sta-mission-character-group">
+                    <div class="sta-mission-character-group-title">{{../labels.directives}}</div>
+                    {{#if this.directives.length}}
+                      <ul class="sta-mission-character-list is-compact">
+                        {{#each this.directives}}
+                          <li class="sta-mission-character-item">{{this}}</li>
+                        {{/each}}
+                      </ul>
+                    {{else}}
+                      <p class="sta-mission-manager-none">{{../labels.noDirectives}}</p>
+                    {{/if}}
+                  </div>
+                  <div class="sta-mission-character-group">
+                    <div class="sta-mission-character-group-title">{{../labels.mainCharacters}}</div>
+                    {{#if this.mainCharacters.length}}
+                      <ul class="sta-mission-character-list">
+                        {{#each this.mainCharacters}}
+                          <li class="sta-mission-character-item is-entity-item">
+                            <div class="sta-mission-character-name-row">
+                              {{#if ../../isGM}}
+                                {{#if this.logId}}
+                                <button type="button" class="sta-open-log-btn" data-action="open-main-log" data-actor-id="{{this.actorId}}"
+                                  data-log-id="{{this.logId}}" title="{{../../labels.openLog}}">
+                                  <i class="fas fa-book"></i>
+                                </button>
+                                {{/if}}
+                              {{/if}}
+                              <strong>{{this.name}}</strong>
+                              {{#if this.madeCallback}}
+                                <span class="sta-mission-callback-badge">{{../../labels.callbackMade}}</span>
+                              {{else}}
+                                <span class="sta-mission-callback-badge is-muted">{{../../labels.callbackNotMade}}</span>
+                              {{/if}}
+                            </div>
+                            <div class="sta-mission-values-row">
+                              <span class="sta-mission-values-label">{{../../labels.valuesUsed}}:</span>
+                              {{#if this.valuesUsed.length}}
+                                <span>{{this.valuesUsedText}}</span>
+                              {{else}}
+                                <span class="is-muted">{{../../labels.noValuesUsed}}</span>
+                              {{/if}}
+                            </div>
+                            <div class="sta-mission-values-row">
+                                <span class="sta-mission-values-label">{{../../labels.callbackMilestone}}:</span>
+                              {{#if this.callbackMilestoneChosen}}
+                                {{#if this.callbackMilestoneLabel}}
+                                  <span class="sta-mission-pill-label">{{this.callbackMilestoneLabel}}</span>
+                                  {{else}}
+                                    <span class="sta-mission-pill-label">{{../../labels.milestoneChosen}}</span>
+                                {{/if}}
+                              {{else if this.callbackMilestonePending}}
+                                <span class="is-muted">{{../../labels.milestonePending}}</span>
+                              {{else}}
+                                <span class="is-muted">{{../../labels.none}}</span>
+                              {{/if}}
+                            </div>
+                          </li>
+                        {{/each}}
+                      </ul>
+                    {{else}}
+                      <p class="sta-mission-manager-none">{{../labels.none}}</p>
+                    {{/if}}
+                  </div>
+                  <div class="sta-mission-character-group">
+                    <div class="sta-mission-character-group-title">{{../labels.supportingCharacters}}</div>
+                    {{#if this.supportingCharacters.length}}
+                      <ul class="sta-mission-character-list">
+                        {{#each this.supportingCharacters}}
+                          <li class="sta-mission-character-item is-entity-item">
+                            <div class="sta-mission-character-name-row">
+                              <strong>{{this.name}}</strong>
+                            </div>
+                            <div class="sta-mission-values-row">
+                              <span class="sta-mission-values-label">{{../../labels.advancement}}:</span>
+                              {{#if this.advancementChosen}}
+                                {{#if this.advancementLabel}}
+                                  <span class="sta-mission-pill-label">{{this.advancementLabel}}</span>
+                                {{else}}
+                                  <span>{{../../labels.advancementChosen}}</span>
+                                {{/if}}
+                              {{else if this.advancementPending}}
+                                <span class="is-muted">{{../../labels.advancementPending}}</span>
+                              {{else}}
+                                <span class="is-muted">{{../../labels.noAdvancement}}</span>
+                              {{/if}}
+                            </div>
+                          </li>
+                        {{/each}}
+                      </ul>
+                    {{else}}
+                      <p class="sta-mission-manager-none">{{../labels.none}}</p>
+                    {{/if}}
+                  </div>
+                </div>
+              </details>
+            {{/if}}
           </li>
         {{/each}}
       </ul>

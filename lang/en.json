@@ -156,7 +156,13 @@
     },
     "talents": {
       "orLabel": "or",
-      "noneLabel": "none"
+      "noneLabel": "none",
+      "type": {
+        "starship": "Starship"
+      },
+      "npcSpeciesTitle": "Requires Species (optional)",
+      "npcSpeciesPlaceholder": "Any NPC species",
+      "npcSpeciesHint": "Leave blank to allow any NPC species."
     },
     "traits": {
       "scarLabel": "Scar",
@@ -633,6 +639,30 @@
         "reactivate": "Reactivate",
         "remove": "Remove",
         "participants": "participants",
+        "mainCharacters": "Main Characters",
+        "supportingCharacters": "Introduced Supporting Characters",
+        "valuesUsed": "Values used",
+        "noValuesUsed": "No values used",
+        "callbackMade": "Callback made",
+        "callbackNotMade": "No callback",
+        "callbackTo": "Callback to",
+        "callbackMilestone": "Milestone",
+        "milestone": "Milestone",
+        "milestoneChosen": "Chosen",
+        "milestonePending": "Pending",
+        "advancement": "Advancement",
+        "advancementChosen": "Chosen",
+        "advancementPending": "Pending",
+        "noAdvancement": "No advancement",
+        "openLog": "Open Log",
+        "directives": "Directives",
+        "noDirectives": "No directives",
+        "copyMarkdown": "Copy Markdown",
+        "summary": "Summary",
+        "missionDetails": "Mission Details",
+        "copied": "Mission details copied to clipboard.",
+        "copyFailed": "Could not copy mission details to clipboard.",
+        "none": "None",
         "viewJournal": "View Journal",
         "createJournal": "Create Journal",
         "syncJournal": "Sync Journal"

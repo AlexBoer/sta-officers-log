@@ -15,6 +15,8 @@ import { installLogMetaCollapsible } from "../log/logMetaCollapsible.js";
 import { installTraitScarCheckbox } from "../scars/scarFlags.js";
 import { installValueTraumaCheckbox } from "../values/trauma/traumaCheckbox.js";
 import { installTalentSecondRequirement } from "./talentSecondRequirement.js";
+import { installTalentNpcSpeciesRequirement } from "./talentNpcSpeciesRequirement.js";
+import { installTalentStarshipType } from "./talentStarshipType.js";
 
 /**
  * Handle item sheet rendering enhancements.
@@ -64,7 +66,9 @@ export async function handleItemSheetRender(app, root) {
     } else if (item?.type === "value") {
       installValueTraumaCheckbox(root, item);
     } else if (item?.type === "talent") {
+      installTalentStarshipType(root, item);
       installTalentSecondRequirement(root, item);
+      installTalentNpcSpeciesRequirement(root, item);
     }
   } catch (_) {
     // ignore

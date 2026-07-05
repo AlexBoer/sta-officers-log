@@ -3,12 +3,14 @@ import { t, tf } from "../core/i18n.js";
 import { getModuleSocket } from "../core/socket.js";
 import { escapeHTML, isPlainObject } from "../core/utils.js";
 import {
+  getDirectiveTextForValueId,
   getMissionDirectives,
   rerenderStaTracker,
   sanitizeDirectiveText,
   setMissionDirectives,
 } from "../directives/directives.js";
 import { resetAllTraumaPositiveUseCounts } from "../values/trauma/trauma.js";
+import { getValueStateArray, isValueInvokedState } from "../values/values.js";
 
 /**
  * Checks if any user-assigned characters have unlinked prototype tokens.
@@ -831,6 +833,428 @@ function _uniqueItemName(actor, baseName) {
   return `${baseName} (${n})`;
 }
 
+function _getIntroducedSupportingCharactersForMissionTitle(missionTitle) {
+  const title = String(missionTitle ?? "").trim();
+  if (!title) return [];
+
+  const rows = [];
+  for (const actor of game.actors ?? []) {
+    if (actor?.type !== "character") continue;
+
+    const state = actor.getFlag?.(MODULE_ID, "missionIntroductionState");
+    if (!isPlainObject(state) || state.introduced !== true) continue;
+    if (String(state.missionTitle ?? "").trim() !== title) continue;
+
+    const logId = state.logId ? String(state.logId) : "";
+    const logItem = logId ? actor.items.get(logId) : null;
+    const advFlag =
+      logItem?.getFlag?.(MODULE_ID, "pendingSupAdvancement") ?? null;
+
+    let advancementStatus = "none";
+    let advancementLabel = "";
+    let advancementChosen = false;
+
+    if (isPlainObject(advFlag) && advFlag.pending === true) {
+      const milestoneId = advFlag.milestoneId
+        ? String(advFlag.milestoneId)
+        : "";
+      const milestone = milestoneId ? actor.items.get(milestoneId) : null;
+      advancementChosen = advFlag.chosen === true;
+      advancementStatus = advancementChosen ? "chosen" : "pending";
+      advancementLabel = String(
+        milestone?.name ?? advFlag.chosenAction ?? "",
+      ).trim();
+    }
+
+    rows.push({
+      actorId: String(actor.id),
+      name: String(actor.name ?? actor.id),
+      logId: logId || null,
+      advancementStatus,
+      advancementPending: advancementStatus === "pending",
+      advancementChosen,
+      advancementLabel,
+    });
+  }
+
+  rows.sort((a, b) => a.name.localeCompare(b.name));
+  return rows;
+}
+
+function _getInvokedValueNamesForLog(actor, log) {
+  if (!actor || !log) return [];
+
+  const names = [];
+  const seen = new Set();
+  const valueStates = log.system?.valueStates ?? {};
+
+  for (const valueId of Object.keys(valueStates)) {
+    const states = getValueStateArray(log, valueId);
+    if (!states.some((s) => isValueInvokedState(String(s)))) continue;
+
+    const id = String(valueId);
+    let name = String(actor.items.get(id)?.name ?? "").trim();
+    if (!name) {
+      name = String(getDirectiveTextForValueId(log, id) ?? "").trim();
+    }
+    if (!name) name = id;
+
+    const dedupeKey = name.toLowerCase();
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    names.push(name);
+  }
+
+  return names;
+}
+
+function _getCurrentMissionMainCharacterSummary(participantIds) {
+  const rows = [];
+  for (const userId of participantIds) {
+    const user = game.users?.get?.(userId);
+    const actor = user?.character ?? null;
+    if (!actor || actor.type !== "character") continue;
+
+    const logId = _readCurrentMissionLogIdFromActor(actor);
+    const log = logId ? actor.items.get(String(logId)) : null;
+    const callbackLink =
+      log?.system?.callbackLink ??
+      log?.getFlag?.(MODULE_ID, "callbackLink") ??
+      null;
+    const pendingMilestoneBenefit =
+      log?.system?.pendingMilestoneBenefit ??
+      log?.getFlag?.(MODULE_ID, "pendingMilestoneBenefit") ??
+      null;
+
+    const madeCallback =
+      hasUsedCallbackThisMission(userId) || Boolean(callbackLink?.fromLogId);
+    const milestoneId = callbackLink?.milestoneId
+      ? String(callbackLink.milestoneId)
+      : "";
+    const milestone = milestoneId ? actor.items.get(milestoneId) : null;
+    const callbackTargetLogId = callbackLink?.fromLogId
+      ? String(callbackLink.fromLogId)
+      : "";
+    const callbackTargetLog = callbackTargetLogId
+      ? actor.items.get(callbackTargetLogId)
+      : null;
+    const benefitChosen =
+      isPlainObject(pendingMilestoneBenefit) &&
+      pendingMilestoneBenefit.benefitChosen === true;
+
+    let callbackMilestoneStatus = "none";
+    if (madeCallback) {
+      callbackMilestoneStatus =
+        milestone || benefitChosen ? "chosen" : "pending";
+    }
+
+    const callbackMilestoneLabel = String(milestone?.name ?? "").trim();
+
+    rows.push({
+      userId: String(userId),
+      actorId: String(actor.id),
+      logId: logId ? String(logId) : null,
+      name: String(actor.name ?? user?.name ?? userId),
+      valuesUsed: _getInvokedValueNamesForLog(actor, log),
+      madeCallback,
+      callbackMilestoneStatus,
+      callbackMilestonePending: callbackMilestoneStatus === "pending",
+      callbackMilestoneChosen: callbackMilestoneStatus === "chosen",
+      callbackMilestoneLabel,
+      callbackTargetTitle: String(callbackTargetLog?.name ?? "").trim(),
+    });
+  }
+
+  rows.sort((a, b) => a.name.localeCompare(b.name));
+  return rows;
+}
+
+function _normalizeMainCharacterSummaryRows(rows) {
+  if (!Array.isArray(rows)) return [];
+
+  return rows
+    .map((row) => {
+      const valuesUsed = Array.isArray(row?.valuesUsed)
+        ? row.valuesUsed
+            .map((v) => String(v ?? "").trim())
+            .filter((v) => Boolean(v))
+        : [];
+
+      return {
+        userId: row?.userId ? String(row.userId) : null,
+        actorId: row?.actorId ? String(row.actorId) : null,
+        logId: row?.logId ? String(row.logId) : null,
+        name: String(row?.name ?? "").trim() || "(Unknown Character)",
+        valuesUsed,
+        madeCallback: row?.madeCallback === true,
+        callbackMilestoneStatus:
+          String(row?.callbackMilestoneStatus ?? "none") || "none",
+        callbackMilestonePending: row?.callbackMilestoneStatus === "pending",
+        callbackMilestoneChosen: row?.callbackMilestoneStatus === "chosen",
+        callbackMilestoneLabel: String(
+          row?.callbackMilestoneLabel ?? "",
+        ).trim(),
+        callbackTargetTitle: String(row?.callbackTargetTitle ?? "").trim(),
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function _normalizeSupportingSummaryRows(rows) {
+  if (!Array.isArray(rows)) return [];
+
+  return rows
+    .map((row) => {
+      const status = String(row?.advancementStatus ?? "none") || "none";
+      return {
+        actorId: row?.actorId ? String(row.actorId) : null,
+        name:
+          String(row?.name ?? "").trim() || "(Unknown Supporting Character)",
+        logId: row?.logId ? String(row.logId) : null,
+        advancementStatus:
+          status === "chosen" || status === "pending" ? status : "none",
+        advancementPending: status === "pending",
+        advancementChosen:
+          row?.advancementChosen === true || status === "chosen",
+        advancementLabel: String(row?.advancementLabel ?? "").trim(),
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function _buildSupportingSummaryFromStoredRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+
+  const source = _normalizeSupportingSummaryRows(rows);
+  const out = [];
+
+  for (const row of source) {
+    const actorId = String(row?.actorId ?? "");
+    const logId = String(row?.logId ?? "");
+    if (!actorId || !logId) {
+      out.push(row);
+      continue;
+    }
+
+    const actor = game.actors?.get?.(actorId) ?? null;
+    const logItem = actor?.items?.get?.(logId) ?? null;
+    const advFlag =
+      logItem?.getFlag?.(MODULE_ID, "pendingSupAdvancement") ?? null;
+
+    if (!isPlainObject(advFlag) || advFlag.pending !== true) {
+      out.push(row);
+      continue;
+    }
+
+    const milestoneId = advFlag.milestoneId ? String(advFlag.milestoneId) : "";
+    const milestone = milestoneId ? actor?.items?.get?.(milestoneId) : null;
+    const advancementChosen = advFlag.chosen === true;
+    const advancementStatus = advancementChosen ? "chosen" : "pending";
+    const advancementLabel = String(
+      milestone?.name ?? advFlag.chosenAction ?? row?.advancementLabel ?? "",
+    ).trim();
+
+    out.push({
+      ...row,
+      advancementStatus,
+      advancementPending: advancementStatus === "pending",
+      advancementChosen,
+      advancementLabel,
+    });
+  }
+
+  out.sort((a, b) =>
+    String(a?.name ?? "").localeCompare(String(b?.name ?? "")),
+  );
+  return out;
+}
+
+function _buildMainCharacterSummaryFromActorLogMap(actorLogMap) {
+  if (!isPlainObject(actorLogMap)) return [];
+
+  const rows = [];
+  for (const [actorIdRaw, logIdRaw] of Object.entries(actorLogMap)) {
+    const actorId = String(actorIdRaw ?? "");
+    const logId = String(logIdRaw ?? "");
+    if (!actorId) continue;
+
+    const actor = game.actors?.get?.(actorId) ?? null;
+    const log = actor && logId ? actor.items.get(logId) : null;
+    const callbackLink =
+      log?.system?.callbackLink ??
+      log?.getFlag?.(MODULE_ID, "callbackLink") ??
+      null;
+    const pendingMilestoneBenefit =
+      log?.system?.pendingMilestoneBenefit ??
+      log?.getFlag?.(MODULE_ID, "pendingMilestoneBenefit") ??
+      null;
+    const callbackTargetLog = callbackLink?.fromLogId
+      ? actor?.items.get(String(callbackLink.fromLogId))
+      : null;
+    const benefitChosen =
+      isPlainObject(pendingMilestoneBenefit) &&
+      pendingMilestoneBenefit.benefitChosen === true;
+
+    const madeCallback = Boolean(callbackLink?.fromLogId);
+    let callbackMilestoneStatus = "none";
+    if (madeCallback) {
+      callbackMilestoneStatus =
+        callbackLink?.milestoneId || benefitChosen ? "chosen" : "pending";
+    }
+
+    rows.push({
+      userId: null,
+      actorId,
+      logId: logId || null,
+      name: String(actor?.name ?? actorId),
+      valuesUsed: _getInvokedValueNamesForLog(actor, log),
+      madeCallback,
+      callbackMilestoneStatus,
+      callbackMilestonePending: callbackMilestoneStatus === "pending",
+      callbackMilestoneChosen: callbackMilestoneStatus === "chosen",
+      callbackMilestoneLabel: callbackLink?.milestoneId
+        ? String(actor?.items.get(String(callbackLink.milestoneId))?.name ?? "")
+        : "",
+      callbackTargetTitle: String(callbackTargetLog?.name ?? "").trim(),
+    });
+  }
+
+  rows.sort((a, b) => a.name.localeCompare(b.name));
+  return rows;
+}
+
+export function getActiveMissionCharacterSummary() {
+  const missionTitle = String(
+    game.settings.get(MODULE_ID, "missionTitle") ?? "",
+  ).trim();
+  const participantIds =
+    game.settings.get(MODULE_ID, "missionParticipants") ?? [];
+
+  const mainCharacters = _getCurrentMissionMainCharacterSummary(
+    Array.isArray(participantIds) ? participantIds : [],
+  );
+  const supportingCharacters =
+    _getIntroducedSupportingCharactersForMissionTitle(missionTitle);
+
+  return {
+    mainCharacters,
+    supportingCharacters,
+  };
+}
+
+export function getMissionCharacterSummaryForEntry(entry) {
+  const rawMain = _normalizeMainCharacterSummaryRows(entry?.mainCharacters);
+  const liveMain = _buildMainCharacterSummaryFromActorLogMap(
+    entry?.actorLogMap,
+  );
+  const rawSupporting = _normalizeSupportingSummaryRows(
+    entry?.introducedSupportingCharacters,
+  );
+  const liveSupporting = _buildSupportingSummaryFromStoredRows(
+    entry?.introducedSupportingCharacters,
+  );
+
+  const mergedMain = (() => {
+    if (liveMain.length === 0) return rawMain;
+    if (rawMain.length === 0) return liveMain;
+
+    const keyFor = (row) => {
+      const actorId = String(row?.actorId ?? "");
+      const logId = String(row?.logId ?? "");
+      return `${actorId}::${logId}`;
+    };
+
+    const liveByExact = new Map(liveMain.map((row) => [keyFor(row), row]));
+    const liveByActor = new Map(
+      liveMain
+        .filter((row) => String(row?.actorId ?? ""))
+        .map((row) => [String(row.actorId), row]),
+    );
+
+    const usedLiveKeys = new Set();
+    const merged = rawMain.map((row) => {
+      const exact = liveByExact.get(keyFor(row));
+      if (exact) {
+        usedLiveKeys.add(keyFor(exact));
+        return exact;
+      }
+
+      const byActor = liveByActor.get(String(row?.actorId ?? ""));
+      if (byActor) {
+        usedLiveKeys.add(keyFor(byActor));
+        return byActor;
+      }
+
+      return row;
+    });
+
+    for (const row of liveMain) {
+      const key = keyFor(row);
+      if (!usedLiveKeys.has(key)) merged.push(row);
+    }
+
+    merged.sort((a, b) =>
+      String(a?.name ?? "").localeCompare(String(b?.name ?? "")),
+    );
+    return merged;
+  })();
+
+  const mergedSupporting = (() => {
+    if (liveSupporting.length === 0) return rawSupporting;
+    if (rawSupporting.length === 0) return liveSupporting;
+
+    const keyFor = (row) => {
+      const actorId = String(row?.actorId ?? "");
+      const logId = String(row?.logId ?? "");
+      return `${actorId}::${logId}`;
+    };
+
+    const liveByExact = new Map(
+      liveSupporting.map((row) => [keyFor(row), row]),
+    );
+    const liveByActor = new Map(
+      liveSupporting
+        .filter((row) => String(row?.actorId ?? ""))
+        .map((row) => [String(row.actorId), row]),
+    );
+
+    const usedLiveKeys = new Set();
+    const merged = rawSupporting.map((row) => {
+      const exact = liveByExact.get(keyFor(row));
+      if (exact) {
+        usedLiveKeys.add(keyFor(exact));
+        return exact;
+      }
+
+      const byActor = liveByActor.get(String(row?.actorId ?? ""));
+      if (byActor) {
+        usedLiveKeys.add(keyFor(byActor));
+        return byActor;
+      }
+
+      return row;
+    });
+
+    for (const row of liveSupporting) {
+      const key = keyFor(row);
+      if (!usedLiveKeys.has(key)) merged.push(row);
+    }
+
+    merged.sort((a, b) =>
+      String(a?.name ?? "").localeCompare(String(b?.name ?? "")),
+    );
+    return merged;
+  })();
+
+  return {
+    mainCharacters: mergedMain,
+    supportingCharacters:
+      mergedSupporting.length > 0
+        ? mergedSupporting
+        : _getIntroducedSupportingCharactersForMissionTitle(entry?.title),
+  };
+}
+
 async function addMissionLogToUser(
   user,
   missionTitle,
@@ -1064,21 +1488,19 @@ export async function endCurrentMission() {
     (game.settings.get(MODULE_ID, "missionTitle") ?? "").trim() || "(untitled)";
   const participantIds =
     game.settings.get(MODULE_ID, "missionParticipants") ?? [];
+  const mainCharacters = _getCurrentMissionMainCharacterSummary(participantIds);
+  const introducedSupportingCharacters =
+    _getIntroducedSupportingCharactersForMissionTitle(missionTitle);
 
   // Gather per-character summary
   const summaryRows = [];
-  for (const userId of participantIds) {
-    const user = game.users?.get?.(userId);
-    if (!user) continue;
+  for (const row of mainCharacters) {
+    const actor = row.actorId ? game.actors?.get?.(row.actorId) : null;
+    const name = row.name;
+    const usedCallback = row.madeCallback === true;
 
-    const actor = user.character ?? null;
-    if (!actor || actor.type !== "character") continue;
-
-    // Callback status
-    const usedCallback = hasUsedCallbackThisMission(userId);
-
-    // Milestone/Arc earned: check the current mission log for pendingMilestoneBenefit
-    const currentLogId = getCurrentMissionLogForActor(actor);
+    // Milestone/Arc earned: check the current mission log for pendingMilestoneBenefit.
+    const currentLogId = actor ? getCurrentMissionLogForActor(actor) : null;
     const currentLog = currentLogId
       ? actor.items.get(String(currentLogId))
       : null;
@@ -1104,7 +1526,7 @@ export async function endCurrentMission() {
     }
 
     summaryRows.push({
-      name: actor.name ?? user.name ?? userId,
+      name,
       usedCallback,
       milestoneLabel,
     });
@@ -1200,6 +1622,8 @@ export async function endCurrentMission() {
   const _undoSnapshot = {
     title: missionTitle,
     participantIds: [...participantIds],
+    mainCharacters,
+    introducedSupportingCharacters,
     startDate: (game.settings.get(MODULE_ID, "missionStartDate") ?? "").trim(),
     directives: getMissionDirectives(),
     actorLogMap: {},

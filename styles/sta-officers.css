@@ -1330,6 +1330,14 @@ div.section.character-log li.row.entry .sta-current-mission-indicator {
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
+    gap: 0.2rem;
+}
+
+/* In sta-utils inline-edit mode, the hidden used-toggle anchor is only a
+   spacer. Remove it so action buttons sit next to the right-side edit icon. */
+div.section.milestones li.row.entry.sta-hide-log-used-toggle-gap a.value-used.control.toggle,
+div.section.character-log li.row.entry.sta-hide-log-used-toggle-gap a.value-used.control.toggle {
+  display: none !important;
 }
 
 /* Button order within .sta-log-inline-actions: Choose Arc → Write Log → Camera → Show Links */
@@ -1987,6 +1995,22 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
 
 .sta-officers-log .item-sheet .sta-log-link-controls select {
   width: 100%;
+}
+
+/* Talent sheet: compact NPC species requirement block (avoid STA .note 200px styles) */
+.item-sheet .sta-npc-species-req-container {
+  margin-top: 4px;
+}
+
+.item-sheet .row.sta-npc-species-row {
+  align-items: flex-start;
+}
+
+.item-sheet .sta-npc-species-req-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.25;
+  opacity: 0.85;
 }
 
 /* Log sheet: Arc controls horizontal layout */
@@ -5142,18 +5166,25 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
 
 .sta-mission-history-entry {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 0.5rem;
   padding: 0.35rem 0.5rem;
   background: color-mix(in srgb, currentColor 5%, transparent);
   border-radius: 3px;
 }
 
+.sta-mission-history-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
 .sta-mission-history-info {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
+  flex: 1;
   min-width: 0;
 }
 
@@ -5168,19 +5199,148 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
   opacity: 0.65;
 }
 
+.sta-mission-history-details {
+  margin-top: 0.2rem;
+}
+
+.sta-mission-history-details-summary {
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.sta-mission-history-details[open] .sta-mission-history-details-summary {
+  margin-bottom: 0.15rem;
+}
+
 .sta-mission-history-actions {
   display: flex;
-  gap: 0.3rem;
+  align-self: flex-start;
+  gap: 0.2rem;
   flex-shrink: 0;
 }
 
 .sta-mission-history-actions button {
-  padding: 0.2rem 0.5rem;
-  font-size: 0.8rem;
+  padding: 0.1rem 0.28rem;
+  min-height: 1.2rem;
+  line-height: 1;
+  font-size: 0.72rem;
+  border-radius: 3px;
+}
+
+.sta-mission-history-actions button i {
+  font-size: 0.72rem;
 }
 
 .sta-mission-history-actions button.sta-danger {
   color: #c44;
+}
+
+.sta-mission-character-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+}
+
+.sta-mission-character-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.sta-mission-character-group-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  opacity: 0.7;
+}
+
+.sta-mission-character-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.sta-mission-character-list.is-compact {
+  gap: 0.1rem;
+}
+
+.sta-mission-character-item {
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.sta-mission-character-item.is-entity-item {
+  padding: 0.28rem 0.4rem;
+  border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, currentColor 5%, transparent);
+}
+
+.sta-mission-character-name-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sta-open-log-btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1;
+  opacity: 0.75;
+}
+
+.sta-open-log-btn:hover,
+.sta-open-log-btn:focus-visible {
+  opacity: 1;
+}
+
+.sta-mission-values-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.4rem;
+  margin-top: 0.1rem;
+  margin-left: 0.15rem;
+}
+
+.sta-mission-values-label {
+  opacity: 0.78;
+  font-weight: 600;
+}
+
+.sta-mission-callback-badge {
+  font-size: 0.7rem;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 999px;
+  padding: 0.02rem 0.35rem;
+  opacity: 0.9;
+}
+
+.sta-mission-callback-badge.is-muted,
+.sta-mission-character-item .is-muted {
+  opacity: 0.55;
+}
+
+.sta-mission-pill-label {
+  display: inline-block;
+  font-size: 0.72rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  background: color-mix(in srgb, currentColor 6%, transparent);
 }
 
 /* ───────────────────────────────────────────────────────────────────────────── */

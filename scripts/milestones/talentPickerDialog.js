@@ -129,7 +129,10 @@ export function prepareTalentPickerContext(
   const speciesImgCounts = new Map();
   for (const talent of Array.isArray(talents) ? talents : []) {
     const cat = _deriveCategoryFromEntry(talent);
-    const requirementLabel = formatTalentRequirementLabel(talent?.talenttype);
+    const requirementLabel = formatTalentRequirementLabel(
+      talent?.talenttype,
+      talent,
+    );
     const meets = doesActorMeetTalentRequirements(actor, talent);
     const entry = {
       name: talent.name,
@@ -730,6 +733,42 @@ function _isNpcTalentFromDocument(document) {
   return values.some((value) => normalizeRequirementString(value) === "npc");
 }
 
+function _isStarshipTalentFromDocument(document) {
+  if (!document) return false;
+
+  const values = [
+    foundry.utils.getProperty(document, "system.type"),
+    foundry.utils.getProperty(document, "system.talenttype.type"),
+    foundry.utils.getProperty(document, "system.talenttype.typeenum"),
+  ];
+
+  return values.some((value) => {
+    const normalized = normalizeRequirementString(value);
+    return normalized === "starship" || normalized === "systems";
+  });
+}
+
+function _isNpcActor(actor) {
+  if (!actor) return false;
+
+  const actorType = normalizeRequirementString(actor?.type);
+  if (actorType === "npc") return true;
+
+  const npcType = normalizeRequirementString(
+    foundry.utils.getProperty(actor, "system.npcType"),
+  );
+  if (["minor", "notable", "incidental", "quick"].includes(npcType)) {
+    return true;
+  }
+
+  return Boolean(foundry.utils.getProperty(actor, "system.npc"));
+}
+
+function _isStarshipActor(actor) {
+  const actorType = normalizeRequirementString(actor?.type);
+  return actorType === "starship" || actorType === "smallcraft";
+}
+
 function _isCharacterCreationOnlyTalentDescription(rawDescription) {
   const html = String(rawDescription ?? "");
   if (!html) return false;
@@ -788,6 +827,7 @@ async function _collectTalentPickerEntries({
   priorityEntries = [],
   extraPriorityEntries = [],
   folderKind = "", // "crew" | "starship" | "" (no filtering)
+  actor = null,
 } = {}) {
   const packs = [];
   const addPack = (key) => {
@@ -823,6 +863,8 @@ async function _collectTalentPickerEntries({
   const wantedKind = String(folderKind ?? "")
     .trim()
     .toLowerCase();
+  const actorIsNpc = _isNpcActor(actor);
+  const actorIsStarship = _isStarshipActor(actor);
 
   for (const key of packs) {
     const pack = game.packs?.get?.(key) ?? null;
@@ -922,7 +964,11 @@ async function _collectTalentPickerEntries({
         customFolderFilterEnabled && customPackKeys.includes(packKey);
       const shouldFilterByFolder = isConsolidated || isCustomWithFolderFilter;
       const doc = await _getTalentDocumentByUuid(talent.uuid);
-      if (_isNpcTalentFromDocument(doc)) {
+      if (_isNpcTalentFromDocument(doc) && !actorIsNpc) {
+        return null;
+      }
+
+      if (_isStarshipTalentFromDocument(doc) && !actorIsStarship) {
         return null;
       }
 
@@ -1240,6 +1286,29 @@ const _inferRequiredSpeciesFromTalent = (talentEntry) => {
   return null;
 };
 
+const _getNpcSpeciesRequirement = (talentEntry) => {
+  const fromItemFlag = normalizeRequirementString(
+    foundry.utils.getProperty(
+      talentEntry,
+      `item.flags.${MODULE_ID}.npcRequirement.species`,
+    ),
+  );
+  if (fromItemFlag) return fromItemFlag;
+
+  const fromRootFlag = normalizeRequirementString(
+    foundry.utils.getProperty(
+      talentEntry,
+      `flags.${MODULE_ID}.npcRequirement.species`,
+    ),
+  );
+  if (fromRootFlag) return fromRootFlag;
+
+  const fromDescription = normalizeRequirementString(
+    talentEntry?.talenttype?.description,
+  );
+  return fromDescription || "";
+};
+
 const getLegacyHouse = (actor) => {
   const legacy = foundry.utils.getProperty(actor, "system.legacy");
   if (!legacy) return "";
@@ -1257,7 +1326,10 @@ const requirementTypeLabels = {
   species: "Species",
   house: "House",
   system: "System",
+  systems: "Starship",
   general: "General",
+  npc: "NPC",
+  starship: "Starship",
 };
 
 const humanizeRequirementValue = (value) => {
@@ -1270,7 +1342,7 @@ const humanizeRequirementValue = (value) => {
     .join(" ");
 };
 
-const formatTalentRequirementLabel = (talenttype) => {
+const formatTalentRequirementLabel = (talenttype, talentEntry = null) => {
   if (!talenttype) return "";
   const type = normalizeRequirementString(talenttype.typeenum);
   const description = String(talenttype.description ?? "").trim();
@@ -1308,6 +1380,16 @@ const formatTalentRequirementLabel = (talenttype) => {
       const label = humanizeRequirementValue(description) || typeLabel;
       return `${typeLabel}: ${label}`;
     }
+    case "npc": {
+      const requiredSpecies =
+        _getNpcSpeciesRequirement(talentEntry) ||
+        normalizeRequirementString(talenttype.description);
+      if (!requiredSpecies) return typeLabel;
+      return `${typeLabel}: ${humanizeRequirementValue(requiredSpecies)}`;
+    }
+    case "systems":
+    case "starship":
+      return typeLabel;
     default:
       return typeLabel;
   }
@@ -1343,6 +1425,8 @@ export function doesActorMeetTalentRequirements(actor, talentEntry) {
       }
       return true;
     case "system":
+    case "systems":
+    case "starship":
       return true;
     case "discipline": {
       const key = resolveDisciplineKey(description);
@@ -1373,6 +1457,16 @@ export function doesActorMeetTalentRequirements(actor, talentEntry) {
       if (!description) return true;
       const house = getLegacyHouse(actor);
       return house.includes(description);
+    }
+    case "npc": {
+      if (!_isNpcActor(actor)) return false;
+      const requiredSpecies = _getNpcSpeciesRequirement(talentEntry);
+      if (!requiredSpecies) return true;
+      return _actorHasSpecies(actor, requiredSpecies);
+    }
+    case "starship":
+    case "systems": {
+      return _isStarshipActor(actor);
     }
     default:
       // Last-resort species inference for talents with unrecognised requirement types.
