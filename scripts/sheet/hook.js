@@ -50,6 +50,7 @@ import { installCreationInPlayTab } from "../creation/creation-tab.mjs";
 import { isUnlinkedTokenActor } from "../core/utils.js";
 import { t } from "../core/i18n.js";
 import { installIntroducedCrewList } from "../ship/introducedCrewList.js";
+import { getGroupShipActorId } from "../missions/mission.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Handler: STA Tracker
@@ -284,6 +285,8 @@ function _installSupervisoryCheckbox(root, actor) {
   if (!klingonDiv) return;
 
   const isChecked = isSupervisoryChar(actor);
+  const introAdvancementUnlocked =
+    actor?.getFlag?.(MODULE_ID_FOR_HOOK, "introAdvancementUnlocked") === true;
 
   const row = document.createElement("div");
   row.className = "amiklingon sta-supervisory-char-row";
@@ -316,6 +319,46 @@ function _installSupervisoryCheckbox(root, actor) {
 
   row.appendChild(label);
   row.appendChild(cb);
+
+  // Keep this toggle next to the supervisory checkbox so GMs can manually
+  // control whether the first introduction should skip advancement.
+  const introLabel = document.createElement("label");
+  introLabel.htmlFor = "sta-intro-advancement-unlocked-cb";
+  introLabel.style.marginLeft = "12px";
+  introLabel.style.marginRight = "5px";
+  introLabel.title = t(
+    "sta-officers-log.supporting.introAdvancementUnlockedTooltip",
+  );
+  introLabel.textContent =
+    t("sta-officers-log.supporting.introAdvancementUnlocked") ||
+    "First Intro Advancement Used";
+
+  const introCb = document.createElement("input");
+  introCb.type = "checkbox";
+  introCb.id = "sta-intro-advancement-unlocked-cb";
+  introCb.className = "checkbox";
+  introCb.checked = introAdvancementUnlocked;
+  introCb.title = t(
+    "sta-officers-log.supporting.introAdvancementUnlockedTooltip",
+  );
+  introCb.addEventListener("change", async () => {
+    try {
+      await actor.setFlag(
+        MODULE_ID_FOR_HOOK,
+        "introAdvancementUnlocked",
+        introCb.checked,
+      );
+    } catch (err) {
+      console.error(
+        `${MODULE_ID_FOR_HOOK} | Failed to set intro advancement flag`,
+        err,
+      );
+      introCb.checked = !introCb.checked;
+    }
+  });
+
+  row.appendChild(introLabel);
+  row.appendChild(introCb);
 
   // Insert after the klingon row
   klingonDiv.insertAdjacentElement("afterend", row);
@@ -423,6 +466,10 @@ function handleStarshipSheetRender(app, root) {
 
   const actor = app.actor;
   if (!actor || actor.type !== "starship") return;
+
+  // Only show Introduced Crew on the configured Group Ship sheet.
+  const groupShipActorId = getGroupShipActorId();
+  if (!groupShipActorId || actor.id !== groupShipActorId) return;
 
   try {
     installIntroducedCrewList(root, actor);

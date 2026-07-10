@@ -94,6 +94,14 @@ export function isSupervisoryChar(actor) {
   return actor?.getFlag?.(MODULE_ID, "isSupervisoryChar") === true;
 }
 
+/**
+ * Returns true once this supporting character has consumed their first
+ * introduction (the one that skips advancement).
+ */
+function isIntroAdvancementUnlocked(actor) {
+  return actor?.getFlag?.(MODULE_ID, "introAdvancementUnlocked") === true;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Crew support helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -288,20 +296,21 @@ function _getIntroductionState(actor) {
     const state =
       actor.getFlag?.(MODULE_ID, "missionIntroductionState") ?? null;
     if (!state || typeof state !== "object") {
-      return { introduced: false, logId: null };
+      return { introduced: false, logId: null, noAdvancement: false };
     }
     const currentTitle = _getMissionTitle();
     // State is only valid for the stored mission title.
     // Both values may be empty string (no active mission) — that is intentional.
     if (String(state.missionTitle ?? "") !== currentTitle) {
-      return { introduced: false, logId: null };
+      return { introduced: false, logId: null, noAdvancement: false };
     }
     return {
       introduced: state.introduced === true,
       logId: state.logId ? String(state.logId) : null,
+      noAdvancement: state.noAdvancement === true,
     };
   } catch (_) {
-    return { introduced: false, logId: null };
+    return { introduced: false, logId: null, noAdvancement: false };
   }
 }
 
@@ -628,10 +637,12 @@ export function installIntroduceSupportingCharButton(root, actor) {
       }
     })();
 
-    const { logId } = _getIntroductionState(actor);
+    const { logId, noAdvancement: introducedNoAdvancement } =
+      _getIntroductionState(actor);
     const introLogItem = logId ? (actor.items.get(logId) ?? null) : null;
     const advFlag = introLogItem?.getFlag?.(MODULE_ID, "pendingSupAdvancement");
-    const advChosen = advFlag?.chosen === true;
+    const advChosen =
+      advFlag?.chosen === true || introducedNoAdvancement === true;
 
     const showUndo = Boolean(
       canEdit && introLogItem && (!advChosen || game.user?.isGM),
@@ -725,7 +736,8 @@ export function installIntroduceSupportingCharButton(root, actor) {
       const ship = getGroupShipActor();
       const crewIncrement = isSupervisoryChar(actor) ? 2 : 1;
       let crewAtMax = false;
-      let noAdvancement = false;
+      const introAdvancementUnlocked = isIntroAdvancementUnlocked(actor);
+      let noAdvancement = !introAdvancementUnlocked;
       if (ship) {
         const { value, max } = _getCrewSupportState(ship);
         // Prompt if adding crewIncrement would exceed max
@@ -770,7 +782,14 @@ export function installIntroduceSupportingCharButton(root, actor) {
           missionTitle: title,
           introduced: true,
           logId,
+          noAdvancement,
         });
+
+        // After the first introduction (which skips advancement), future
+        // introductions should use the normal advancement flow.
+        if (!introAdvancementUnlocked) {
+          await actor.setFlag(MODULE_ID, "introAdvancementUnlocked", true);
+        }
 
         // ── Increment crew support (only if GM didn't approve at/over max) ──
         if (ship && !crewAtMax) {

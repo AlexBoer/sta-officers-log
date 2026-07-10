@@ -1333,6 +1333,16 @@ div.section.character-log li.row.entry .sta-current-mission-indicator {
     gap: 0.2rem;
 }
 
+/* Development tab log rows: keep inline milestone/arc controls pinned to the
+   far right while preserving existing button order inside the group. */
+div.section.milestones li.row.entry .sta-log-inline-actions,
+div.section.character-log li.row.entry .sta-log-inline-actions,
+.sta-sup-advancement-logs li.row.entry .sta-log-inline-actions {
+  margin-left: auto;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+}
+
 /* In sta-utils inline-edit mode, the hidden used-toggle anchor is only a
    spacer. Remove it so action buttons sit next to the right-side edit icon. */
 div.section.milestones li.row.entry.sta-hide-log-used-toggle-gap a.value-used.control.toggle,
@@ -5423,4 +5433,122 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
   font-weight: bold;
   letter-spacing: 0;
   flex-shrink: 0;
+}
+
+/* =============================================================================
+   Officers Talent Sheet (.officers-talent-sheet)
+   ============================================================================= */
+
+.officers-talent-sheet .sta-talent-req-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.officers-talent-sheet .sta-talent-req-compact-summary {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.officers-talent-sheet .sta-talent-req-controls {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+
+.officers-talent-sheet .sta-talent-add-select {
+  flex: 1;
+}
+
+.officers-talent-sheet .sta-talent-req-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.officers-talent-sheet .sta-talent-req-row {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 0.45rem;
+}
+
+.officers-talent-sheet .sta-talent-req-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.officers-talent-sheet .sta-talent-req-row-summary {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 0.6rem;
+}
+
+.officers-talent-sheet .sta-talent-req-row-actions {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.officers-talent-sheet .sta-talent-req-row-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.officers-talent-sheet .sta-talent-req-clauses {
+  display: flex;
+  flex: 1 1 32rem;
+  gap: 0.35rem;
+  min-width: 20rem;
+  align-items: center;
+}
+
+.officers-talent-sheet .sta-talent-req-clause {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.officers-talent-sheet .sta-talent-req-clause > input[type="text"],
+.officers-talent-sheet .sta-talent-req-clause > select {
+  flex: 1;
+  min-width: 0;
+}
+
+.officers-talent-sheet .sta-talent-req-clause > input[type="number"] {
+  width: 3.5rem;
+}
+
+.officers-talent-sheet .sta-talent-req-op-toggle {
+  flex: 0 0 auto;
+  width: 3.1rem;
+  min-width: 3.1rem;
+  height: 1.8rem;
+  padding: 0 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+@media (max-width: 860px) {
+  .officers-talent-sheet .sta-talent-req-row-body {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .officers-talent-sheet .sta-talent-req-clauses {
+    min-width: 0;
+    width: 100%;
+  }
 }

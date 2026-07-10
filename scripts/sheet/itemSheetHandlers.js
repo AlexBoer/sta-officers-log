@@ -14,8 +14,7 @@ import { installInlineLogChainLinkControls } from "../log/logLinkControls.js";
 import { installLogMetaCollapsible } from "../log/logMetaCollapsible.js";
 import { installTraitScarCheckbox } from "../scars/scarFlags.js";
 import { installValueTraumaCheckbox } from "../values/trauma/traumaCheckbox.js";
-import { installTalentSecondRequirement } from "./talentSecondRequirement.js";
-import { installTalentNpcSpeciesRequirement } from "./talentNpcSpeciesRequirement.js";
+import { installTalentRequirementsEditor } from "./talentRequirementsEditor.js";
 import { installTalentStarshipType } from "./talentStarshipType.js";
 
 /**
@@ -66,9 +65,9 @@ export async function handleItemSheetRender(app, root) {
     } else if (item?.type === "value") {
       installValueTraumaCheckbox(root, item);
     } else if (item?.type === "talent") {
+      if (app?.constructor?.name === "OfficersTalentSheet") return;
       installTalentStarshipType(root, item);
-      installTalentSecondRequirement(root, item);
-      installTalentNpcSpeciesRequirement(root, item);
+      installTalentRequirementsEditor(root, item);
     }
   } catch (_) {
     // ignore

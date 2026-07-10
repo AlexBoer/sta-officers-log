@@ -54,6 +54,7 @@ import { registerOfficersLogDataModel } from "./data/logDataModel.js";
 import { registerOfficersTraitDataModel } from "./data/traitDataModel.js";
 import { registerOfficersCharacterDataModel } from "./data/characterDataModel.js";
 import { OfficersLogSheet } from "./sheet/OfficersLogSheet.mjs";
+import { OfficersTalentSheet } from "./sheet/OfficersTalentSheet.mjs";
 import {
   registerMigrationSetting,
   runLogFlagMigration,
@@ -378,9 +379,26 @@ Hooks.once("init", () => {
     );
     (foundry.applications.handlebars.loadTemplates ?? loadTemplates)([
       `modules/${MODULE_ID}/templates/officers-log-sheet.hbs`,
+      `modules/${MODULE_ID}/templates/officers-talent-sheet.hbs`,
     ]);
   } catch (err) {
     console.error(`${MODULE_ID} | failed to register OfficersLogSheet`, err);
+  }
+
+  // Register Officers Talent sheet as default for talent items.
+  try {
+    foundry.applications.apps.DocumentSheetConfig.registerSheet(
+      Item,
+      MODULE_ID,
+      OfficersTalentSheet,
+      {
+        types: ["talent"],
+        label: "Talent (Officers Log)",
+        makeDefault: true,
+      },
+    );
+  } catch (err) {
+    console.error(`${MODULE_ID} | failed to register OfficersTalentSheet`, err);
   }
 
   safeRegisterClientSettings();

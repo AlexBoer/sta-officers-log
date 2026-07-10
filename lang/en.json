@@ -157,6 +157,24 @@
     "talents": {
       "orLabel": "or",
       "noneLabel": "none",
+      "addButton": "Add",
+      "addRequirementCategory": "Add Requirement Category",
+      "sheet": {
+        "requirements": "Requirements",
+        "requiresPrefix": "Requires",
+        "noRequirements": "No requirements.",
+        "edit": "Edit",
+        "done": "Done",
+        "delete": "Delete"
+      },
+      "requirements": {
+        "category": {
+          "attribute": "Attributes",
+          "discipline": "Departments",
+          "species": "Species",
+          "type": "Type"
+        }
+      },
       "type": {
         "starship": "Starship"
       },
@@ -370,6 +388,8 @@
       "crewSupportMaxPending": "Crew Support would be exceeded — awaiting GM approval…",
       "supervisoryChar": "Supervisory Character",
       "supervisoryCharTooltip": "Supervisory characters contribute +2 Crew Support when introduced, instead of +1.",
+      "introAdvancementUnlocked": "First Introduction Used",
+      "introAdvancementUnlockedTooltip": "If unchecked, the next introduction skips advancement and then auto-checks this. If checked, introductions use normal advancement.",
       "addManualAdvancementTooltip": "Add a manual advancement.",
       "introducedCrewTitle": "Introduced Crew",
       "introducedCrewEmpty": "—"

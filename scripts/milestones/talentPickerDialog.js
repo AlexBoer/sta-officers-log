@@ -2,6 +2,13 @@ import { MODULE_ID } from "../core/constants.js";
 import { t, tf } from "../core/i18n.js";
 import { escapeHTML, isPlainObject } from "../core/utils.js";
 import {
+  getNormalizedTalentRequirements,
+  humanizeRequirementValue,
+  normalizeRequirementString,
+  resolveAttributeKey,
+  resolveDisciplineKey,
+} from "../core/talentRequirements.js";
+import {
   getTalentPickerCustomCompendiumKeys,
   getTalentPickerCustomFolderFilterEnabled,
 } from "../settings/pickerSettings.js";
@@ -1219,21 +1226,6 @@ const DISCIPLINE_NAME_TO_KEY = (() => {
   return map;
 })();
 
-const normalizeRequirementString = (value) =>
-  String(value ?? "")
-    .trim()
-    .toLowerCase();
-
-const resolveAttributeKey = (value) => {
-  if (!value) return null;
-  return ATTRIBUTE_NAME_TO_KEY.get(normalizeRequirementString(value)) ?? null;
-};
-
-const resolveDisciplineKey = (value) => {
-  if (!value) return null;
-  return DISCIPLINE_NAME_TO_KEY.get(normalizeRequirementString(value)) ?? null;
-};
-
 const getTraitNames = (actor) => {
   const items = actor?.items ?? [];
   return items
@@ -1322,7 +1314,7 @@ const getLegacyHouse = (actor) => {
 
 const requirementTypeLabels = {
   attribute: "Attribute",
-  discipline: "Discipline",
+  discipline: "Department",
   species: "Species",
   house: "House",
   system: "System",
@@ -1332,17 +1324,136 @@ const requirementTypeLabels = {
   starship: "Starship",
 };
 
-const humanizeRequirementValue = (value) => {
-  const raw = String(value ?? "").trim();
-  if (!raw) return "";
-  return raw
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+const formatRequirementClauseLabel = (category, clause) => {
+  const rawValue = String(clause?.value ?? "").trim();
+  if (!rawValue) return "";
+
+  if (category === "attribute") {
+    const key = resolveAttributeKey(rawValue);
+    const label =
+      (key && ATTRIBUTE_LABELS[key]) ||
+      humanizeRequirementValue(rawValue) ||
+      rawValue;
+    const min = Number.isFinite(Number(clause?.minimum))
+      ? Number(clause.minimum)
+      : null;
+    return min != null ? `${label} ${min}+` : label;
+  }
+
+  if (category === "discipline") {
+    const key = resolveDisciplineKey(rawValue);
+    const label =
+      (key && DISCIPLINE_LABELS[key]) ||
+      humanizeRequirementValue(rawValue) ||
+      rawValue;
+    const min = Number.isFinite(Number(clause?.minimum))
+      ? Number(clause.minimum)
+      : null;
+    return min != null ? `${label} ${min}+` : label;
+  }
+
+  if (category === "type") {
+    const norm = normalizeRequirementString(rawValue);
+    if (norm === "npc") return "NPC";
+    if (norm === "character") return "Character";
+    if (norm === "starship") return "Starship";
+  }
+
+  return humanizeRequirementValue(rawValue) || rawValue;
+};
+
+const formatRequirementCategoryLabel = (entry) => {
+  const category = normalizeRequirementString(entry?.category);
+  if (!category) return "";
+
+  const clauses = Array.isArray(entry?.clauses) ? entry.clauses : [];
+  const clauseLabels = clauses
+    .map((clause) => formatRequirementClauseLabel(category, clause))
+    .filter(Boolean);
+
+  if (!clauseLabels.length) return "";
+
+  const categoryLabel =
+    requirementTypeLabels[category] ?? humanizeRequirementValue(category);
+  const operator =
+    String(entry?.operator ?? "OR").toUpperCase() === "AND" ? "AND" : "OR";
+
+  return `${categoryLabel}: ${clauseLabels.join(` ${operator} `)}`;
+};
+
+const evaluateRequirementCategory = (actor, entry, talentEntry) => {
+  const category = normalizeRequirementString(entry?.category);
+  const clauses = Array.isArray(entry?.clauses)
+    ? entry.clauses.filter((clause) => String(clause?.value ?? "").trim())
+    : [];
+  if (!category || !clauses.length) return true;
+
+  const opIsAnd = String(entry?.operator ?? "OR").toUpperCase() === "AND";
+  const checks = clauses.map((clause) => {
+    const rawValue = String(clause?.value ?? "").trim();
+    const value = normalizeRequirementString(rawValue);
+
+    switch (category) {
+      case "attribute": {
+        const key = resolveAttributeKey(value);
+        if (!key) return false;
+        const actorValue =
+          getNumeric(actor, `system.attribute.${key}.value`) ??
+          getNumeric(actor, `system.attributes.${key}.value`);
+        if (actorValue == null) return false;
+        const minimum = Number.isFinite(Number(clause?.minimum))
+          ? Number(clause.minimum)
+          : null;
+        return minimum == null ? true : actorValue >= minimum;
+      }
+      case "discipline": {
+        const key = resolveDisciplineKey(value);
+        if (!key) return false;
+        const actorValue = getNumeric(actor, `system.disciplines.${key}.value`);
+        if (actorValue == null) return false;
+        const minimum = Number.isFinite(Number(clause?.minimum))
+          ? Number(clause.minimum)
+          : null;
+        return minimum == null ? true : actorValue >= minimum;
+      }
+      case "species":
+        return _actorHasSpecies(actor, value);
+      case "type": {
+        if (value === "npc") return _isNpcActor(actor);
+        if (value === "starship") return _isStarshipActor(actor);
+        if (value === "character") {
+          return !_isNpcActor(actor) && !_isStarshipActor(actor);
+        }
+        return false;
+      }
+      case "house": {
+        const house = getLegacyHouse(actor);
+        return house.includes(value);
+      }
+      default: {
+        const inferred = _inferRequiredSpeciesFromTalent(talentEntry);
+        if (inferred) return _actorHasSpecies(actor, inferred);
+        return true;
+      }
+    }
+  });
+
+  return opIsAnd ? checks.every(Boolean) : checks.some(Boolean);
 };
 
 const formatTalentRequirementLabel = (talenttype, talentEntry = null) => {
+  const normalizedRequirements = getNormalizedTalentRequirements(talentEntry, {
+    inferSpecies: _inferRequiredSpeciesFromTalent,
+  });
+  if (normalizedRequirements.length) {
+    const labels = normalizedRequirements
+      .map((entry) => formatRequirementCategoryLabel(entry))
+      .filter(Boolean);
+    if (labels.length) {
+      return labels.join(" ; ");
+    }
+  }
+
   if (!talenttype) return "";
   const type = normalizeRequirementString(talenttype.typeenum);
   const description = String(talenttype.description ?? "").trim();
@@ -1397,6 +1508,15 @@ const formatTalentRequirementLabel = (talenttype, talentEntry = null) => {
 
 export function doesActorMeetTalentRequirements(actor, talentEntry) {
   if (!actor) return true;
+  const normalizedRequirements = getNormalizedTalentRequirements(talentEntry, {
+    inferSpecies: _inferRequiredSpeciesFromTalent,
+  });
+  if (normalizedRequirements.length) {
+    return normalizedRequirements.every((entry) =>
+      evaluateRequirementCategory(actor, entry, talentEntry),
+    );
+  }
+
   const talenttype =
     talentEntry?.talenttype ?? talentEntry?.system?.talenttype ?? null;
   if (!talenttype) {
@@ -1425,8 +1545,6 @@ export function doesActorMeetTalentRequirements(actor, talentEntry) {
       }
       return true;
     case "system":
-    case "systems":
-    case "starship":
       return true;
     case "discipline": {
       const key = resolveDisciplineKey(description);
