@@ -6,3 +6,7 @@ src/ export-ignore
 .github/ export-ignore
 .gitignore export-ignore
 AI-AGENT-DOCS.md export-ignore
+# LevelDB compendium packs are binary - never apply EOL/text normalization
+packs/** binary
+packs/**/* binary
+
