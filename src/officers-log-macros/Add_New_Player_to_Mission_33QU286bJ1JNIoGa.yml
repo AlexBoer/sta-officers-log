@@ -1,0 +1,27 @@
+name: Add New Player to Mission
+type: script
+author: 9tilE9UXScsjcVen
+img: modules/sta-officers-log/assets/MacroIcons/addPlayer.webp
+scope: global
+command: |-
+  // Adds a new player to the current mission.
+
+  game.staofficerslog.promptAddParticipant();
+folder: null
+ownership:
+  default: 0
+  9tilE9UXScsjcVen: 3
+flags: {}
+_stats:
+  compendiumSource: null
+  duplicateSource: null
+  exportSource: null
+  coreVersion: '13.351'
+  systemId: sta
+  systemVersion: 2.4.6
+  createdTime: 1768895937842
+  modifiedTime: 1771243507611
+  lastModifiedBy: 9tilE9UXScsjcVen
+_id: 33QU286bJ1JNIoGa
+sort: 900000
+_key: '!macros!33QU286bJ1JNIoGa'

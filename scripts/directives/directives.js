@@ -223,10 +223,10 @@ export class DirectiveSettingsApp extends HandlebarsApplicationMixin(
 ) {
   static DEFAULT_OPTIONS = {
     id: `${MODULE_ID}-directive-settings`,
+    classes: ["officers-log-dialog", "sta-directives-dialog-app"],
     tag: "form",
     window: {
       title: "sta-officers-log.settings.directives.menuTitle",
-      contentClasses: ["standard-form"],
     },
     position: {
       width: 520,
@@ -269,6 +269,14 @@ export class DirectiveSettingsApp extends HandlebarsApplicationMixin(
     // Re-render the STA Tracker so the directives section updates.
     rerenderStaTracker();
   }
+}
+
+export function openDirectiveSettingsDialog() {
+  if (!game.user?.isGM) {
+    ui.notifications?.warn?.(t("sta-officers-log.common.gmOnly"));
+    return;
+  }
+  new DirectiveSettingsApp().render(true);
 }
 
 export function registerDirectiveSettings() {

@@ -1,0 +1,24 @@
+name: Creation in Play
+type: script
+_id: OAK1ND4D4PWpG1fb
+author: 9tilE9UXScsjcVen
+img: icons/svg/dice-target.svg
+scope: global
+command: game.staofficerslog.openCreationWizard();
+folder: null
+sort: 0
+ownership:
+  default: 0
+  9tilE9UXScsjcVen: 3
+flags: {}
+_stats:
+  coreVersion: '14.359'
+  systemId: sta
+  systemVersion: 2.5.3
+  createdTime: 1777525224987
+  modifiedTime: 1777525233953
+  lastModifiedBy: 9tilE9UXScsjcVen
+  compendiumSource: null
+  duplicateSource: null
+  exportSource: null
+_key: '!macros!OAK1ND4D4PWpG1fb'

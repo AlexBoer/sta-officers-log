@@ -2,6 +2,7 @@
 * text=auto
 
 packages/ export-ignore
+src/ export-ignore
 .github/ export-ignore
 .gitignore export-ignore
 AI-AGENT-DOCS.md export-ignore

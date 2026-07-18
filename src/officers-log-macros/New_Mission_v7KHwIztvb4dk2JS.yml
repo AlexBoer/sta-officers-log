@@ -1,0 +1,24 @@
+name: New Mission
+type: script
+author: 9tilE9UXScsjcVen
+img: modules/sta-officers-log/assets/MacroIcons/newMission.webp
+scope: global
+command: game.staofficerslog.promptNewMissionAndReset();
+folder: null
+ownership:
+  default: 0
+  9tilE9UXScsjcVen: 3
+flags: {}
+_stats:
+  compendiumSource: null
+  duplicateSource: null
+  exportSource: null
+  coreVersion: '13.351'
+  systemId: sta
+  systemVersion: 2.4.6
+  createdTime: 1768897038212
+  modifiedTime: 1771243515785
+  lastModifiedBy: 9tilE9UXScsjcVen
+_id: v7KHwIztvb4dk2JS
+sort: 600000
+_key: '!macros!v7KHwIztvb4dk2JS'

@@ -1,19 +1,35 @@
 <div class="sta-tracker-directives-section">
   <div class="sta-tracker-directives-header">
-    <span>{{localize "sta-officers-log.tracker.missionDirectives"}}</span>
+    <div class="sta-tracker-directives-header-title">
+      <button type="button" class="sta-tracker-directives-view-tab{{#if viewIsDirectives}} is-active{{/if}}" data-action="switchView" data-view="directives">
+        {{localize "sta-officers-log.tracker.directivesTab"}}
+      </button>
+      <button type="button" class="sta-tracker-directives-view-tab{{#if viewIsTraits}} is-active{{/if}}" data-action="switchView" data-view="traits">
+        {{localize "sta-officers-log.tracker.traitsTab"}}
+      </button>
+    </div>
     <div class="sta-tracker-directives-header-actions">
+      {{#if showUseDirective}}
       <button class="sta-tracker-use-directive-btn" type="button" title="{{localize "sta-officers-log.values.useDirectiveTooltip"}}" data-action="useDirective">
         <i class="fa-solid fa-flag"></i> {{localize "sta-officers-log.values.useDirective"}}
       </button>
+      {{/if}}
       {{#if isGM}}
+      {{#if showEditDirectives}}
       <button class="sta-tracker-directives-edit-btn" type="button" title="{{localize "sta-officers-log.tracker.editDirectives"}}" aria-label="{{localize "sta-officers-log.tracker.editDirectives"}}" data-action="toggleEdit">
         <i class="fas fa-pencil-alt" aria-hidden="true"></i>
       </button>
       {{/if}}
+      {{#if showEditSimpleTraits}}
+      <button class="sta-tracker-directives-edit-btn" type="button" title="{{localize "sta-officers-log.tracker.editTraits"}}" aria-label="{{localize "sta-officers-log.tracker.editTraits"}}" data-action="toggleSimpleTraitsEdit">
+        <i class="fas fa-pencil-alt" aria-hidden="true"></i>
+      </button>
+      {{/if}}
+      {{/if}}
     </div>
   </div>
 
-  <div class="sta-tracker-directives-display">
+  <div class="sta-tracker-directives-display" data-view="directives" {{#unless viewIsDirectives}}style="display:none"{{/unless}}>
     <ul class="sta-tracker-directives-list">
       {{#if hasDirectives}}
         {{#each directives}}
@@ -23,6 +39,55 @@
         <li class="sta-tracker-directive-item sta-tracker-directive-empty">{{localize "sta-officers-log.tracker.noDirectives"}}</li>
       {{/if}}
     </ul>
+  </div>
+
+  <div class="sta-tracker-directives-display" data-view="traits" {{#unless viewIsTraits}}style="display:none"{{/unless}}>
+    {{#if traitsSimpleMode}}
+    <div class="sta-tracker-simple-traits-display">
+      {{{simpleTraitsHtml}}}
+    </div>
+
+    <div class="sta-tracker-simple-traits-edit" style="display:none;">
+      <textarea class="sta-tracker-simple-traits-textarea" placeholder="{{localize "sta-officers-log.tracker.simpleTraitsPlaceholder"}}">{{simpleTraitsText}}</textarea>
+      <p class="sta-tracker-directives-hint">{{localize "sta-officers-log.tracker.simpleTraitsCharLimit"}}</p>
+      <button class="sta-tracker-directives-save-btn" type="button" data-action="saveSimpleTraits">{{localize "sta-officers-log.tracker.save"}}</button>
+    </div>
+    {{/if}}
+
+    {{#if traitsItemMode}}
+    <div class="sta-tracker-traits-group">
+      <div class="sta-tracker-traits-subheader">
+        <span>{{localize "sta-utils.launcher.traitsDialog.sceneTraits"}}</span>
+        <button
+          type="button"
+          class="sta-tracker-traits-add-btn"
+          data-action="createSceneTrait"
+          title="{{localize "sta-officers-log.tracker.createSceneTrait"}}"
+          aria-label="{{localize "sta-officers-log.tracker.createSceneTrait"}}"
+          {{#unless canCreateSceneTrait}}disabled{{/unless}}
+        >
+          <i class="fa-solid fa-plus" aria-hidden="true"></i>
+        </button>
+      </div>
+      {{{sceneTraitsHtml}}}
+    </div>
+    <div class="sta-tracker-traits-group">
+      <div class="sta-tracker-traits-subheader">
+        <span>{{localize "sta-utils.launcher.traitsDialog.worldTraits"}}</span>
+        <button
+          type="button"
+          class="sta-tracker-traits-add-btn"
+          data-action="createWorldTrait"
+          title="{{localize "sta-officers-log.tracker.createWorldTrait"}}"
+          aria-label="{{localize "sta-officers-log.tracker.createWorldTrait"}}"
+          {{#unless canCreateWorldTrait}}disabled{{/unless}}
+        >
+          <i class="fa-solid fa-plus" aria-hidden="true"></i>
+        </button>
+      </div>
+      {{{worldTraitsHtml}}}
+    </div>
+    {{/if}}
   </div>
 
   <div class="sta-tracker-directives-edit" style="display: none;">

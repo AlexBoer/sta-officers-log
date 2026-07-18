@@ -301,10 +301,14 @@ export async function promptUseDirective(actor) {
 
   if (!choice) return;
 
+  // Normalize positive sub-actions ("positive-crit", "positive-gain-talent") —
+  // directives have no dice-pool sub-flow, so all positive variants are equivalent.
+  const resolvedChoice = choice.startsWith("positive") ? "positive" : choice;
+
   const valueState =
-    choice === "positive"
+    resolvedChoice === "positive"
       ? "positive"
-      : choice === "challenge"
+      : resolvedChoice === "challenge"
         ? "challenged"
         : "negative";
 
@@ -341,7 +345,7 @@ export async function promptUseDirective(actor) {
       await spendDetermination(actor);
     } else {
       await gainDetermination(actor);
-      if (choice === "challenge") {
+      if (resolvedChoice === "challenge") {
         await setDirectiveChallenged(actor, directiveKey, true);
       }
     }
@@ -378,7 +382,7 @@ export async function promptUseDirective(actor) {
     return;
   }
 
-  if (choice === "positive") {
+  if (resolvedChoice === "positive") {
     await spendDetermination(actor);
     await applyLogUsage(currentLog);
 
@@ -420,7 +424,7 @@ export async function promptUseDirective(actor) {
         actorName: actor.name,
         directiveKey,
         directiveText: chosenText,
-        usage: choice,
+        usage: resolvedChoice,
         currentMissionLogId,
       },
     );

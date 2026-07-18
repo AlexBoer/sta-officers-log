@@ -1,16 +1,411 @@
 import { MODULE_ID } from "../core/constants.js";
-import { t } from "../core/i18n.js";
+import { t, tf } from "../core/i18n.js";
 import {
   DIRECTIVE_MAX_LEN,
   getMissionDirectives,
+  openDirectiveSettingsDialog,
+  rerenderStaTracker,
   setMissionDirectives,
 } from "../directives/directives.js";
 import { promptUseDirective } from "../directives/useDirectiveButton.js";
 import { hasActiveMission } from "../missions/mission.js";
 import { MissionManagerApp } from "../missions/MissionManagerApp.mjs";
+import {
+  areSimpleTraitsEnabled,
+  getSimpleTraits,
+  setSimpleTraits,
+  SIMPLE_TRAIT_MAX_LEN,
+} from "../settings/clientSettings.js";
 
 const TRACKER_BUTTONS_TEMPLATE = `modules/${MODULE_ID}/templates/tracker-buttons.hbs`;
 const TRACKER_DIRECTIVES_TEMPLATE = `modules/${MODULE_ID}/templates/tracker-directives.hbs`;
+const STA_UTILS_MODULE_ID = "sta-utils";
+let _traitTrackerRefreshHooksInstalled = false;
+let _lastTrackerDirectivesView = "directives";
+/** @type {foundry.applications.ux.ContextMenu|null} */
+let _trackerTraitContextMenu = null;
+let _sceneChangeTrackerRefreshHookInstalled = false;
+
+function _normalizeTrackerView(view) {
+  if (view === "sceneTraits" || view === "worldTraits") return "traits";
+  if (view === "traits") return "traits";
+  return "directives";
+}
+
+function _isV14OrNewer() {
+  const generation = Number(game.release?.generation ?? 0);
+  if (Number.isFinite(generation) && generation > 0) return generation >= 14;
+
+  const major = Number(String(game.version ?? "").split(".")[0] ?? 0);
+  return Number.isFinite(major) && major >= 14;
+}
+
+async function _confirmDeleteTrait(itemName) {
+  const title = t("sta-officers-log.tracker.deleteTraitTitle");
+  const content = tf("sta-officers-log.tracker.deleteTraitConfirm", {
+    name: String(itemName ?? ""),
+  });
+
+  const dialogV2 = foundry?.applications?.api?.DialogV2;
+  if (dialogV2?.confirm) {
+    return Boolean(
+      await dialogV2.confirm({
+        window: { title },
+        content: `<p>${_escapeHtml(content)}</p>`,
+      }),
+    );
+  }
+
+  return Boolean(
+    await Dialog.confirm({
+      title,
+      content: `<p>${_escapeHtml(content)}</p>`,
+    }),
+  );
+}
+
+function _escapeHtml(value) {
+  return foundry.utils.escapeHTML(String(value ?? ""));
+}
+
+function _getRectOverlapArea(a, b) {
+  const xOverlap = Math.max(
+    0,
+    Math.min(a.right, b.right) - Math.max(a.left, b.left),
+  );
+  const yOverlap = Math.max(
+    0,
+    Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top),
+  );
+  return xOverlap * yOverlap;
+}
+
+function _getViewportOverflowArea(rect, pad = 8) {
+  const vw = window.innerWidth || document.documentElement.clientWidth || 0;
+  const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+  const leftOverflow = Math.max(0, pad - rect.left);
+  const topOverflow = Math.max(0, pad - rect.top);
+  const rightOverflow = Math.max(0, rect.right - (vw - pad));
+  const bottomOverflow = Math.max(0, rect.bottom - (vh - pad));
+
+  return (
+    leftOverflow * Math.max(1, rect.height) +
+    rightOverflow * Math.max(1, rect.height) +
+    topOverflow * Math.max(1, rect.width) +
+    bottomOverflow * Math.max(1, rect.width)
+  );
+}
+
+function _getLeftUiCollisionRects() {
+  const roots = Array.from(
+    document.querySelectorAll("#ui-left #ui-left-column-1 > *"),
+  );
+
+  return roots
+    .map((el) => {
+      const style = window.getComputedStyle(el);
+      if (
+        style.display === "none" ||
+        style.visibility === "hidden" ||
+        Number(style.opacity || "1") <= 0
+      ) {
+        return null;
+      }
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) return null;
+      return r;
+    })
+    .filter(Boolean);
+}
+
+function _evaluateDirectivesPlacement(section, blockers) {
+  section.dataset.placement = "above";
+  const rect = section.getBoundingClientRect();
+  const overlapArea = blockers.reduce(
+    (sum, blocker) => sum + _getRectOverlapArea(rect, blocker),
+    0,
+  );
+  const overflowArea = _getViewportOverflowArea(rect, 8);
+  const score = overlapArea * 5 + overflowArea;
+  return { placement: "above", score, overlapArea, overflowArea };
+}
+
+function _layoutDirectivesSection(section) {
+  if (!(section instanceof HTMLElement)) return;
+
+  const viewportH =
+    window.innerHeight || document.documentElement.clientHeight || 900;
+  section.style.overflowY = "auto";
+  section.dataset.compact = "false";
+
+  const blockers = _getLeftUiCollisionRects();
+  const trackerContainer = section.closest(".tracker-container");
+  const trackerRect = trackerContainer?.getBoundingClientRect?.();
+  const aboveSpace = trackerRect
+    ? Math.max(0, Math.floor(trackerRect.top - 8))
+    : Math.floor(viewportH * 0.45);
+  const preferredMax = Math.max(
+    145,
+    Math.min(aboveSpace, Math.floor(viewportH * 0.4)),
+  );
+
+  section.dataset.placement = "above";
+  section.style.maxHeight = `${preferredMax}px`;
+  const best = _evaluateDirectivesPlacement(section, blockers);
+
+  const finalMax = Math.max(
+    145,
+    Math.min(aboveSpace, Math.floor(viewportH * 0.4)),
+  );
+  section.style.maxHeight = `${finalMax}px`;
+
+  const needsCompact = Boolean(
+    (best && best.score > 0) ||
+    section.scrollHeight > section.clientHeight + 2 ||
+    finalMax < 190,
+  );
+
+  if (!needsCompact) return;
+
+  section.dataset.compact = "true";
+  section.style.maxHeight = `${Math.max(130, Math.min(finalMax, Math.floor(viewportH * 0.32)))}px`;
+
+  _evaluateDirectivesPlacement(section, blockers);
+}
+
+function _closeTrackerTraitContextMenu() {
+  try {
+    if (_trackerTraitContextMenu?.element) {
+      _trackerTraitContextMenu.close();
+    }
+  } catch (_) {
+    // ignore
+  } finally {
+    _trackerTraitContextMenu = null;
+  }
+}
+
+function _installTrackerTraitContextMenu(section, root) {
+  if (!(section instanceof HTMLElement)) return;
+  if (!game.user?.isGM) return;
+
+  _closeTrackerTraitContextMenu();
+  const isV14OrNewer = _isV14OrNewer();
+
+  const resolveTargetElement = (target) =>
+    target instanceof HTMLElement
+      ? target
+      : target?.[0] instanceof HTMLElement
+        ? target[0]
+        : null;
+
+  const handleDeleteTraitClick = async (target) => {
+    try {
+      const element = resolveTargetElement(target);
+      const uuid = element?.dataset?.uuid;
+      if (!uuid) return;
+
+      const item = await fromUuid(uuid);
+      if (!item) return;
+
+      const confirmed = await _confirmDeleteTrait(item.name);
+      if (!confirmed) return;
+
+      await item.delete();
+      await installMissionDirectivesInStaTracker(root);
+    } catch (err) {
+      console.error(`${MODULE_ID} | delete trait failed`, err);
+      ui.notifications?.warn?.(t("sta-officers-log.tracker.deleteTraitFailed"));
+    }
+  };
+
+  /** @type {ContextMenuEntry[]} */
+  const menuItems = [
+    {
+      ...(isV14OrNewer
+        ? { label: t("sta-officers-log.tracker.deleteTrait") }
+        : { name: t("sta-officers-log.tracker.deleteTrait") }),
+      icon: '<i class="fa-solid fa-trash"></i>',
+      ...(isV14OrNewer
+        ? {
+            onClick: async (_event, target) => handleDeleteTraitClick(target),
+          }
+        : {
+            callback: async (target) => handleDeleteTraitClick(target),
+          }),
+    },
+  ];
+
+  _trackerTraitContextMenu = new foundry.applications.ux.ContextMenu(
+    section,
+    ".sta-tracker-trait-btn",
+    menuItems,
+    { fixed: true, jQuery: false },
+  );
+}
+
+function _isSceneOrWorldTraitActor(actor) {
+  if (!actor || actor.type !== "scenetraits") return false;
+
+  const scene = canvas?.scene;
+  const sceneProxyId = actor.getFlag(STA_UTILS_MODULE_ID, "proxyForSceneId");
+  const sceneTraitsActorId = scene?.getFlag(
+    STA_UTILS_MODULE_ID,
+    "sceneTraitsActorId",
+  );
+  if (scene && (sceneProxyId === scene.id || actor.id === sceneTraitsActorId)) {
+    return true;
+  }
+
+  if (actor.getFlag(STA_UTILS_MODULE_ID, "isWorldTraitActor") === true) {
+    return true;
+  }
+
+  const worldTraitUuid = game.settings.get(
+    STA_UTILS_MODULE_ID,
+    "worldTraitsActorUuid",
+  );
+  return Boolean(worldTraitUuid && actor.uuid === worldTraitUuid);
+}
+
+function _installTraitTrackerRefreshHooks() {
+  if (_traitTrackerRefreshHooksInstalled) return;
+  _traitTrackerRefreshHooksInstalled = true;
+
+  const maybeRefresh = (item) => {
+    try {
+      if (item?.type !== "trait") return;
+      const actor = item.parent;
+      if (!_isSceneOrWorldTraitActor(actor)) return;
+      rerenderStaTracker();
+    } catch (_) {
+      // best-effort tracker refresh
+    }
+  };
+
+  Hooks.on("createItem", (item) => maybeRefresh(item));
+  Hooks.on("updateItem", (item) => maybeRefresh(item));
+  Hooks.on("deleteItem", (item) => maybeRefresh(item));
+}
+
+function _installSceneChangeTrackerRefreshHook() {
+  if (_sceneChangeTrackerRefreshHookInstalled) return;
+  _sceneChangeTrackerRefreshHookInstalled = true;
+
+  Hooks.on("canvasReady", async () => {
+    try {
+      await game.staUtils?.ensureActiveSceneTraitsActor?.();
+    } catch (_) {
+      // Trait actor ensure is best-effort.
+    }
+
+    try {
+      await rerenderStaTracker();
+    } catch (_) {
+      // Tracker rerender is optional.
+    }
+  });
+}
+
+// Lazy-resolved helpers from sta-utils — avoids a hard import-time dependency.
+function _getSceneTraitActor() {
+  const scene = canvas?.scene;
+  if (!scene) return null;
+  return (
+    Array.from(game.actors ?? []).find(
+      (a) =>
+        a?.type === "scenetraits" &&
+        (a.getFlag(STA_UTILS_MODULE_ID, "proxyForSceneId") === scene.id ||
+          a.id === scene.getFlag(STA_UTILS_MODULE_ID, "sceneTraitsActorId")),
+    ) ?? null
+  );
+}
+
+async function _getWorldTraitActor() {
+  let actor = null;
+  try {
+    const uuid = game.settings.get(STA_UTILS_MODULE_ID, "worldTraitsActorUuid");
+    if (uuid) actor = (await fromUuid(uuid)) ?? null;
+  } catch (_) {
+    // setting read is best-effort
+  }
+  if (!actor) {
+    actor =
+      Array.from(game.actors ?? []).find(
+        (a) => a?.getFlag(STA_UTILS_MODULE_ID, "isWorldTraitActor") === true,
+      ) ?? null;
+  }
+  return actor;
+}
+
+function _getSceneTraitItems() {
+  const actor = _getSceneTraitActor();
+  if (!actor) return [];
+  return Array.from(actor.items ?? [])
+    .filter((item) => item?.type === "trait")
+    .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
+}
+
+async function _getWorldTraitItems() {
+  const actor = await _getWorldTraitActor();
+  if (!actor) return [];
+  return Array.from(actor.items ?? [])
+    .filter((item) => item?.type === "trait")
+    .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
+}
+
+async function _createTraitOnActor(actor, root) {
+  if (!actor) return;
+  const createData = {
+    name: t("sta-officers-log.tracker.newTraitDefaultName"),
+    type: "trait",
+  };
+
+  const [created] = await actor.createEmbeddedDocuments("Item", [createData]);
+  await installMissionDirectivesInStaTracker(root);
+  created?.sheet?.render(true);
+}
+
+function _listTraitItems(items, emptyLabel) {
+  if (!items.length) {
+    return `<ul class="sta-tracker-directives-list"><li class="sta-tracker-directive-item sta-tracker-directive-empty">${_escapeHtml(emptyLabel)}</li></ul>`;
+  }
+  const rows = items
+    .map((item) => {
+      const rawQty =
+        item?.system?.quantity?.value ?? item?.system?.quantity ?? null;
+      const qty =
+        rawQty === null || rawQty === undefined || rawQty === ""
+          ? null
+          : Number(rawQty);
+      const displayName =
+        Number.isFinite(qty) && qty >= 0 && qty !== 1
+          ? `${String(item?.name ?? "")} ${qty}`
+          : String(item?.name ?? "");
+
+      return (
+        `<li class="sta-tracker-directive-item">` +
+        `<button type="button" class="sta-tracker-trait-btn" data-action="openTraitSheet" data-uuid="${_escapeHtml(item.uuid)}">${_escapeHtml(displayName)}</button>` +
+        `</li>`
+      );
+    })
+    .join("");
+  return `<ul class="sta-tracker-directives-list">${rows}</ul>`;
+}
+
+function _listSimpleTraits(traits, emptyLabel) {
+  if (!traits.length) {
+    return `<ul class="sta-tracker-directives-list"><li class="sta-tracker-directive-item sta-tracker-directive-empty">${_escapeHtml(emptyLabel)}</li></ul>`;
+  }
+
+  const rows = traits
+    .map(
+      (trait) =>
+        `<li class="sta-tracker-directive-item">${_escapeHtml(trait)}</li>`,
+    )
+    .join("");
+  return `<ul class="sta-tracker-directives-list">${rows}</ul>`;
+}
 
 const TRACKER_INFO_CONFIG = [
   {
@@ -57,8 +452,13 @@ export async function installOfficersLogButtonsInStaTracker(app, root) {
 export async function installMissionDirectivesInStaTracker(root) {
   try {
     if (!(root instanceof HTMLElement)) return;
+    _installTraitTrackerRefreshHooks();
+    _installSceneChangeTrackerRefreshHook();
 
     const directives = getMissionDirectives();
+    const traitsSimpleMode = areSimpleTraitsEnabled();
+    const traitsItemMode = !traitsSimpleMode;
+    const simpleTraits = traitsSimpleMode ? getSimpleTraits() : [];
 
     // Find the tracker container to append to.
     const trackerContainer =
@@ -72,11 +472,41 @@ export async function installMissionDirectivesInStaTracker(root) {
     const existingSection = trackerContainer.querySelector?.(
       ".sta-tracker-directives-section",
     );
+    const activeView =
+      existingSection?.dataset?.view ||
+      trackerContainer.dataset?.staDirectivesView ||
+      _lastTrackerDirectivesView ||
+      "directives";
+    const normalizedView = _normalizeTrackerView(activeView);
+    _lastTrackerDirectivesView = normalizedView;
+    trackerContainer.dataset.staDirectivesView = normalizedView;
     if (existingSection) {
+      _closeTrackerTraitContextMenu();
       existingSection.remove();
     }
 
-    // Render the directives section from template
+    // Render the directives section from template.
+    // Resolve trait sources before stringifying so async world lookups work.
+    const sceneTraitActor = traitsItemMode ? _getSceneTraitActor() : null;
+    const worldTraitActor = traitsItemMode ? await _getWorldTraitActor() : null;
+    const sceneTraitItems = traitsItemMode
+      ? await Promise.resolve(_getSceneTraitItems())
+      : [];
+    const worldTraitItems = traitsItemMode
+      ? await Promise.resolve(_getWorldTraitItems())
+      : [];
+    const sceneTraitsHtml = traitsItemMode
+      ? _listTraitItems(sceneTraitItems, "No scene traits yet.")
+      : "";
+    const worldTraitsHtml = traitsItemMode
+      ? _listTraitItems(worldTraitItems, "No world traits yet.")
+      : "";
+    const simpleTraitsHtml = traitsSimpleMode
+      ? _listSimpleTraits(
+          simpleTraits,
+          t("sta-officers-log.tracker.noSimpleTraits"),
+        )
+      : "";
     const html = await foundry.applications.handlebars.renderTemplate(
       TRACKER_DIRECTIVES_TEMPLATE,
       {
@@ -84,6 +514,23 @@ export async function installMissionDirectivesInStaTracker(root) {
         directives,
         hasDirectives: directives.length > 0,
         directivesText: directives.join("\n"),
+        activeView: normalizedView,
+        viewIsDirectives: normalizedView === "directives",
+        viewIsTraits: normalizedView === "traits",
+        showUseDirective: normalizedView === "directives",
+        showEditDirectives: normalizedView === "directives",
+        showEditSimpleTraits:
+          normalizedView === "traits" &&
+          traitsSimpleMode &&
+          (game.user?.isGM ?? false),
+        traitsSimpleMode,
+        traitsItemMode,
+        simpleTraitsText: simpleTraits.join("\n"),
+        simpleTraitsHtml,
+        canCreateSceneTrait: Boolean(sceneTraitActor),
+        canCreateWorldTrait: Boolean(worldTraitActor),
+        sceneTraitsHtml,
+        worldTraitsHtml,
       },
     );
 
@@ -92,18 +539,46 @@ export async function installMissionDirectivesInStaTracker(root) {
     temp.innerHTML = html;
     const section = temp.firstElementChild;
     if (!section) return;
+    section.dataset.view = normalizedView;
     trackerContainer.appendChild(section);
+    _layoutDirectivesSection(section);
+    if (traitsItemMode) {
+      _installTrackerTraitContextMenu(section, root);
+    }
 
     // Attach event listeners
     const editButton = section.querySelector('[data-action="toggleEdit"]');
     const saveButton = section.querySelector('[data-action="saveDirectives"]');
+    const editSimpleTraitsButton = section.querySelector(
+      '[data-action="toggleSimpleTraitsEdit"]',
+    );
+    const saveSimpleTraitsButton = section.querySelector(
+      '[data-action="saveSimpleTraits"]',
+    );
     const useDirectiveButton = section.querySelector(
       '[data-action="useDirective"]',
     );
+    const viewTabs = section.querySelectorAll('[data-action="switchView"]');
+    const createSceneTraitButton = section.querySelector(
+      '[data-action="createSceneTrait"]',
+    );
+    const createWorldTraitButton = section.querySelector(
+      '[data-action="createWorldTrait"]',
+    );
+    const traitLinks = section.querySelectorAll(
+      '[data-action="openTraitSheet"]',
+    );
     const textarea = section.querySelector(".sta-tracker-directives-textarea");
+    const simpleTraitsTextarea = section.querySelector(
+      ".sta-tracker-simple-traits-textarea",
+    );
 
     editButton?.addEventListener("click", () => {
       toggleDirectivesEditMode(section, trackerContainer, root);
+    });
+
+    editSimpleTraitsButton?.addEventListener("click", () => {
+      toggleSimpleTraitsEditMode(section);
     });
 
     // "Use Directive" button – resolve the user's character and invoke the flow.
@@ -122,6 +597,75 @@ export async function installMissionDirectivesInStaTracker(root) {
       }
 
       await promptUseDirective(actor);
+    });
+
+    viewTabs.forEach((tab) => {
+      tab.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const nextView = _normalizeTrackerView(
+          tab.dataset.view || "directives",
+        );
+        section.dataset.view = nextView;
+        trackerContainer.dataset.staDirectivesView = nextView;
+        _lastTrackerDirectivesView = nextView;
+        installMissionDirectivesInStaTracker(root);
+      });
+
+      tab.addEventListener("contextmenu", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const tabView = tab.dataset.view || "directives";
+        if (tabView === "traits") {
+          const openTraitsDialog = game.staUtils?.openTraitsDialog;
+          if (typeof openTraitsDialog === "function") {
+            openTraitsDialog(traitsSimpleMode ? null : "sceneTraits");
+          } else {
+            ui.notifications?.warn?.("Traits dialog is unavailable.");
+          }
+          return;
+        }
+
+        if (tabView === "directives") {
+          openDirectiveSettingsDialog();
+        }
+      });
+    });
+
+    createSceneTraitButton?.addEventListener("click", async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      try {
+        await _createTraitOnActor(_getSceneTraitActor(), root);
+      } catch (err) {
+        console.error(`${MODULE_ID} | create scene trait failed`, err);
+        ui.notifications?.warn?.(
+          t("sta-officers-log.tracker.createTraitFailed"),
+        );
+      }
+    });
+
+    createWorldTraitButton?.addEventListener("click", async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      try {
+        await _createTraitOnActor(await _getWorldTraitActor(), root);
+      } catch (err) {
+        console.error(`${MODULE_ID} | create world trait failed`, err);
+        ui.notifications?.warn?.(
+          t("sta-officers-log.tracker.createTraitFailed"),
+        );
+      }
+    });
+
+    traitLinks.forEach((btn) => {
+      btn.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const item = await fromUuid(btn.dataset.uuid);
+        item?.sheet?.render(true);
+      });
     });
 
     // Prevent input that would exceed the max character limit per line.
@@ -164,6 +708,40 @@ export async function installMissionDirectivesInStaTracker(root) {
       }
     });
 
+    simpleTraitsTextarea?.addEventListener("keydown", (event) => {
+      if (
+        event.key === "Enter" ||
+        event.key === "Backspace" ||
+        event.key === "Delete" ||
+        event.key.startsWith("Arrow") ||
+        event.ctrlKey ||
+        event.metaKey
+      ) {
+        return;
+      }
+
+      if (event.key.length === 1) {
+        const lines = simpleTraitsTextarea.value.split("\n");
+        const cursorPos = simpleTraitsTextarea.selectionStart;
+
+        let charCount = 0;
+        let currentLineIndex = 0;
+        for (let i = 0; i < lines.length; i++) {
+          const lineEnd = charCount + lines[i].length;
+          if (cursorPos <= lineEnd) {
+            currentLineIndex = i;
+            break;
+          }
+          charCount += lines[i].length + 1;
+        }
+
+        const currentLine = lines[currentLineIndex] || "";
+        if (currentLine.length >= SIMPLE_TRAIT_MAX_LEN) {
+          event.preventDefault();
+        }
+      }
+    });
+
     saveButton?.addEventListener("click", async () => {
       if (!textarea) return;
 
@@ -177,6 +755,25 @@ export async function installMissionDirectivesInStaTracker(root) {
 
       // Notify other connected clients to refresh their tracker so
       // the updated directives appear for everyone.
+      try {
+        const { getModuleSocket } = await import("../core/socket.js");
+        const sock = getModuleSocket();
+        if (sock) await sock.executeForOthers("refreshTracker");
+      } catch (_) {
+        // socket broadcast is best-effort
+      }
+    });
+
+    saveSimpleTraitsButton?.addEventListener("click", async () => {
+      if (!simpleTraitsTextarea) return;
+
+      const newTraits = simpleTraitsTextarea.value
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+      await setSimpleTraits(newTraits);
+      await installMissionDirectivesInStaTracker(root);
+
       try {
         const { getModuleSocket } = await import("../core/socket.js");
         const sock = getModuleSocket();
@@ -296,6 +893,45 @@ function toggleDirectivesEditMode(section, trackerContainer, root) {
       textarea.focus();
     }
   }
+
+  _layoutDirectivesSection(section);
+}
+
+function toggleSimpleTraitsEditMode(section) {
+  const displayContainer = section.querySelector(
+    ".sta-tracker-simple-traits-display",
+  );
+  const editContainer = section.querySelector(
+    ".sta-tracker-simple-traits-edit",
+  );
+  const editButton = section.querySelector(
+    '[data-action="toggleSimpleTraitsEdit"]',
+  );
+
+  if (!displayContainer || !editContainer) return;
+
+  const isEditing = editContainer.style.display !== "none";
+
+  if (isEditing) {
+    displayContainer.style.display = "";
+    editContainer.style.display = "none";
+    if (editButton) {
+      editButton.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+      editButton.title = t("sta-officers-log.tracker.editTraits");
+    }
+  } else {
+    displayContainer.style.display = "none";
+    editContainer.style.display = "";
+    if (editButton) {
+      editButton.innerHTML = '<i class="fas fa-times"></i>';
+      editButton.title = t("sta-officers-log.tracker.cancelEdit");
+    }
+
+    const textarea = editContainer.querySelector("textarea");
+    if (textarea) textarea.focus();
+  }
+
+  _layoutDirectivesSection(section);
 }
 
 /**

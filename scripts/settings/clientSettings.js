@@ -15,6 +15,62 @@ export const WORLD_ENABLE_TRAUMA_RULES_SETTING = "enableTraumaRules";
 export const WORLD_ENABLE_SCAR_RULES_SETTING = "enableScarRules";
 export const WORLD_ENABLE_MISSION_LOG_JOURNALS_SETTING =
   "enableMissionLogJournals";
+export const WORLD_TRAITS_MODE_SETTING = "traitsMode";
+export const WORLD_SIMPLE_TRAITS_SETTING = "simpleTraits";
+export const TRAITS_MODE_ITEM = "item";
+export const TRAITS_MODE_SIMPLE = "simple";
+export const SIMPLE_TRAIT_MAX_LEN = 200;
+
+function _stripHtml(input) {
+  const raw = String(input ?? "");
+  try {
+    const div = document.createElement("div");
+    div.innerHTML = raw;
+    return String(div.textContent ?? "");
+  } catch (_err) {
+    return raw.replace(/<[^>]*>/g, " ");
+  }
+}
+
+export function sanitizeSimpleTraitText(input) {
+  let s = _stripHtml(input);
+  s = s.replace(/\s+/g, " ").trim();
+  if (!s) return "";
+  if (s.length > SIMPLE_TRAIT_MAX_LEN) s = s.slice(0, SIMPLE_TRAIT_MAX_LEN);
+  return s;
+}
+
+function _normalizeSimpleTraitsList(list) {
+  const arr = Array.isArray(list) ? list : [];
+  const cleaned = [];
+  const seen = new Set();
+
+  for (const x of arr) {
+    const s = sanitizeSimpleTraitText(x);
+    if (!s) continue;
+    const key = s.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cleaned.push(s);
+  }
+
+  return cleaned;
+}
+
+async function _refreshTraitsUi() {
+  try {
+    const { rerenderStaTracker } = await import("../directives/directives.js");
+    await rerenderStaTracker();
+  } catch (_) {
+    // tracker rerender is best-effort
+  }
+
+  try {
+    game.staUtils?.refreshTraitsDialog?.();
+  } catch (_) {
+    // traits dialog refresh is best-effort
+  }
+}
 
 export function registerClientSettings() {
   game.settings.register(MODULE_ID, CLIENT_SHEET_ENHANCEMENTS_SETTING, {
@@ -327,6 +383,36 @@ export function registerClientSettings() {
       }
     },
   });
+
+  game.settings.register(MODULE_ID, WORLD_TRAITS_MODE_SETTING, {
+    name: t("sta-officers-log.settings.traitsMode.name"),
+    hint: t("sta-officers-log.settings.traitsMode.hint"),
+    scope: "world",
+    config: true,
+    type: String,
+    choices: {
+      [TRAITS_MODE_ITEM]: t("sta-officers-log.settings.traitsMode.item"),
+      [TRAITS_MODE_SIMPLE]: t("sta-officers-log.settings.traitsMode.simple"),
+    },
+    default: TRAITS_MODE_ITEM,
+    restricted: true,
+    onChange: () => {
+      _refreshTraitsUi();
+    },
+  });
+
+  game.settings.register(MODULE_ID, WORLD_SIMPLE_TRAITS_SETTING, {
+    name: t("sta-officers-log.settings.simpleTraits.name"),
+    hint: t("sta-officers-log.settings.simpleTraits.hint"),
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
+    restricted: true,
+    onChange: () => {
+      _refreshTraitsUi();
+    },
+  });
 }
 
 /**
@@ -437,4 +523,34 @@ export function isLcarsModeEnabled() {
   } catch (_) {
     return false;
   }
+}
+
+export function getTraitsMode() {
+  try {
+    const mode = String(
+      game.settings.get(MODULE_ID, WORLD_TRAITS_MODE_SETTING) ??
+        TRAITS_MODE_ITEM,
+    );
+    return mode === TRAITS_MODE_SIMPLE ? TRAITS_MODE_SIMPLE : TRAITS_MODE_ITEM;
+  } catch (_) {
+    return TRAITS_MODE_ITEM;
+  }
+}
+
+export function areSimpleTraitsEnabled() {
+  return getTraitsMode() === TRAITS_MODE_SIMPLE;
+}
+
+export function getSimpleTraits() {
+  try {
+    const raw = game.settings.get(MODULE_ID, WORLD_SIMPLE_TRAITS_SETTING) ?? [];
+    return _normalizeSimpleTraitsList(raw);
+  } catch (_) {
+    return [];
+  }
+}
+
+export async function setSimpleTraits(list) {
+  const cleaned = _normalizeSimpleTraitsList(list);
+  await game.settings.set(MODULE_ID, WORLD_SIMPLE_TRAITS_SETTING, cleaned);
 }

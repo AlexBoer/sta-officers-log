@@ -1,0 +1,27 @@
+name: New Scene
+type: script
+command: >-
+  try { game.staofficerslog?.newScene?.(); } catch (err) {
+  console.error('sta-officers-log | New Scene macro failed', err);
+  ui.notifications?.error?.('New Scene failed; see console.'); }
+author: 9tilE9UXScsjcVen
+img: modules/sta-officers-log/assets/MacroIcons/newScene.webp
+scope: global
+folder: null
+ownership:
+  default: 0
+  9tilE9UXScsjcVen: 3
+flags: {}
+_stats:
+  compendiumSource: null
+  duplicateSource: null
+  exportSource: null
+  coreVersion: '13.351'
+  systemId: sta
+  systemVersion: 2.4.6
+  createdTime: 1768897061819
+  modifiedTime: 1771243525604
+  lastModifiedBy: 9tilE9UXScsjcVen
+_id: 9RjF78Tum75Bs9Oc
+sort: 400000
+_key: '!macros!9RjF78Tum75Bs9Oc'

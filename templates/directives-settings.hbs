@@ -1,15 +1,29 @@
-<section class="sta-settings-form">
-  <p class="hint">{{localize "sta-officers-log.settings.directives.editorHint"}}</p>
-
-  <div class="form-group">
-    <label>{{localize "sta-officers-log.settings.directives.editorLabel"}}</label>
-    <div class="form-fields">
-      <textarea name="directivesText" rows="10" style="width:100%" spellcheck="true" placeholder="{{localize "sta-officers-log.settings.directives.editorPlaceholder"}}">{{directivesText}}</textarea>
-    </div>
-    <p class="hint">{{localize "sta-officers-log.settings.directives.editorRules" max=maxLen}}</p>
+<section class="sta-directives-dialog-inner">
+  <div class="sta-directives-dialog-tabs" role="tablist" aria-label="{{localize "sta-officers-log.settings.directives.editorLabel"}}">
+    <button type="button" class="sta-directives-dialog-tab is-active" role="tab" aria-selected="true" tabindex="-1">
+      <i class="fa-solid fa-flag" aria-hidden="true"></i>
+      {{localize "sta-officers-log.settings.directives.editorLabel"}}
+    </button>
   </div>
 
-  <footer class="form-footer">
-    <button type="submit" class="dialog-button"><i class="fa-solid fa-save"></i> {{localize "sta-officers-log.settings.directives.save"}}</button>
-  </footer>
+  <div class="sta-directives-dialog-panel" role="tabpanel">
+    <p class="sta-directives-dialog-hint">{{localize "sta-officers-log.settings.directives.editorHint"}}</p>
+
+    <textarea
+      class="sta-directives-dialog-textarea"
+      name="directivesText"
+      rows="10"
+      spellcheck="true"
+      placeholder="{{localize "sta-officers-log.settings.directives.editorPlaceholder"}}"
+    >{{directivesText}}</textarea>
+
+    <p class="sta-directives-dialog-rules">{{localize "sta-officers-log.settings.directives.editorRules" max=maxLen}}</p>
+
+    <footer class="sta-directives-dialog-footer">
+      <button type="submit" class="sta-directives-dialog-save-btn">
+        <i class="fa-solid fa-save" aria-hidden="true"></i>
+        {{localize "sta-officers-log.settings.directives.save"}}
+      </button>
+    </footer>
+  </div>
 </section>

@@ -6,6 +6,11 @@ export {
   CLIENT_CHARACTER_MILESTONE_MAX_HEIGHT_SETTING,
   WORLD_ENABLE_TRAUMA_RULES_SETTING,
   WORLD_ENABLE_SCAR_RULES_SETTING,
+  WORLD_TRAITS_MODE_SETTING,
+  WORLD_SIMPLE_TRAITS_SETTING,
+  TRAITS_MODE_ITEM,
+  TRAITS_MODE_SIMPLE,
+  SIMPLE_TRAIT_MAX_LEN,
   CLIENT_ENABLE_LCARS_MODE_SETTING,
   registerClientSettings,
   areSheetEnhancementsEnabled,
@@ -14,6 +19,11 @@ export {
   getCharacterMilestoneMaxHeightSetting,
   areTraumaRulesEnabled,
   areScarRulesEnabled,
+  getTraitsMode,
+  areSimpleTraitsEnabled,
+  sanitizeSimpleTraitText,
+  getSimpleTraits,
+  setSimpleTraits,
   isLcarsModeEnabled,
 } from "./clientSettings.js";
 

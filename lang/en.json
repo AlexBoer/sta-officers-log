@@ -72,6 +72,16 @@
         "save": "Save",
         "saved": "Mission directives saved."
       },
+      "traitsMode": {
+        "name": "Traits Source Mode",
+        "hint": "Choose whether Traits come from Scene/Campaign trait items or from a plain text list edited in the Tracker.",
+        "item": "Item Traits (scene + campaign)",
+        "simple": "Simple Traits (plain text list)"
+      },
+      "simpleTraits": {
+        "name": "Simple Traits",
+        "hint": "Internal list for Simple Traits mode. Edit this from the Traits tab in the STA Tracker."
+      },
       "acclaimSurvey": {
         "enabledName": "Enable Reputation Survey",
         "enabledHint": "When enabled, the Roll Reputation button on character sheets opens a survey dialog instead of the default Reputation roll.",
@@ -141,6 +151,20 @@
     },
     "tracker": {
       "missionDirectives": "Mission Directives",
+      "directivesTab": "Directives",
+      "traitsTab": "Traits",
+      "createSceneTrait": "Create scene trait",
+      "createWorldTrait": "Create campaign trait",
+      "newTraitDefaultName": "New Trait",
+      "createTraitFailed": "Could not create trait item.",
+      "deleteTrait": "Delete Trait",
+      "deleteTraitTitle": "Delete Trait",
+      "deleteTraitConfirm": "Delete trait \"{name}\"?",
+      "deleteTraitFailed": "Could not delete trait item.",
+      "editTraits": "Edit Traits",
+      "noSimpleTraits": "No traits set.",
+      "simpleTraitsPlaceholder": "Enter one trait per line...",
+      "simpleTraitsCharLimit": "Each trait has a 200 character limit.",
       "noDirectives": "No directives set.",
       "editDirectives": "Edit Directives",
       "cancelEdit": "Cancel Edit",
