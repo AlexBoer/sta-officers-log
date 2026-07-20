@@ -56,7 +56,7 @@ function _anchorTrackerBottomEdge(trackerContainer) {
   if (!playerList) return;
 
   const trackerRect = trackerContainer.getBoundingClientRect();
-  const playerRect = playerList.getBoundingClientRect();
+  const playerRect  = playerList.getBoundingClientRect();
 
   const GAP = 4; // px gap between tracker bottom and player list top
   const delta = trackerRect.bottom - (playerRect.top - GAP);
