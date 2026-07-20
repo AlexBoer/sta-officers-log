@@ -1,0 +1,44 @@
+<section class="sta-settings-form sta-award-editor">
+  <h3 class="sta-award-editor-title">{{editorTitle}}</h3>
+  <p class="hint">{{editorHint}}</p>
+
+  <div class="sta-award-editor-toolbar">
+    <button type="button" class="dialog-button" data-action="create-award">
+      <i class="fa-solid fa-plus"></i>
+      {{createLabel}}
+    </button>
+  </div>
+
+  {{#if hasAwards}}
+    <div class="sta-award-grid">
+      {{#each awards}}
+        <article class="sta-award-card" role="button" tabindex="0" data-action="edit-award" data-index="{{index}}">
+          <header class="sta-award-card-header">
+            <span class="sta-award-card-name">{{name}}</span>
+            <span class="sta-award-card-cost">{{costLabel}}</span>
+          </header>
+          <p class="sta-award-card-desc">{{descriptionPreview}}</p>
+          <div class="sta-award-card-meta">
+            {{#if isBuiltIn}}
+              <span class="sta-award-card-badge">{{localize "sta-officers-log.settings.customSpendOptions.builtInBadge"}}</span>
+            {{else}}
+              <span class="sta-award-card-badge is-custom">{{localize "sta-officers-log.settings.customSpendOptions.customBadge"}}</span>
+            {{/if}}
+          </div>
+          <button type="button" class="sta-award-card-remove sta-danger" data-action="remove-award" data-index="{{index}}" title="{{localize "sta-officers-log.settings.customSpendOptions.removeAward"}}">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </article>
+      {{/each}}
+    </div>
+  {{else}}
+    <p class="hint">{{emptyLabel}}</p>
+  {{/if}}
+
+  <footer class="form-footer">
+    <button type="button" class="dialog-button" data-action="close-award-editor">
+      <i class="fa-solid fa-xmark"></i>
+      {{closeLabel}}
+    </button>
+  </footer>
+</section>

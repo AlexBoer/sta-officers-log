@@ -2,7 +2,7 @@
   <div class="sta-tracker-directives-header">
     <div class="sta-tracker-directives-header-title">
       <button type="button" class="sta-tracker-directives-view-tab{{#if viewIsDirectives}} is-active{{/if}}" data-action="switchView" data-view="directives">
-        {{localize "sta-officers-log.tracker.directivesTab"}}
+        {{klingonText (localize "sta-officers-log.tracker.directivesTab")}}
       </button>
       <button type="button" class="sta-tracker-directives-view-tab{{#if viewIsTraits}} is-active{{/if}}" data-action="switchView" data-view="traits">
         {{localize "sta-officers-log.tracker.traitsTab"}}
@@ -10,13 +10,13 @@
     </div>
     <div class="sta-tracker-directives-header-actions">
       {{#if showUseDirective}}
-      <button class="sta-tracker-use-directive-btn" type="button" title="{{localize "sta-officers-log.values.useDirectiveTooltip"}}" data-action="useDirective">
-        <i class="fa-solid fa-flag"></i> {{localize "sta-officers-log.values.useDirective"}}
+      <button class="sta-tracker-use-directive-btn" type="button" title="{{klingonText (localize "sta-officers-log.values.useDirectiveTooltip")}}" data-action="useDirective">
+        <i class="fa-solid fa-flag"></i> {{klingonText (localize "sta-officers-log.values.useDirective")}}
       </button>
       {{/if}}
       {{#if isGM}}
       {{#if showEditDirectives}}
-      <button class="sta-tracker-directives-edit-btn" type="button" title="{{localize "sta-officers-log.tracker.editDirectives"}}" aria-label="{{localize "sta-officers-log.tracker.editDirectives"}}" data-action="toggleEdit">
+      <button class="sta-tracker-directives-edit-btn" type="button" title="{{klingonText (localize "sta-officers-log.tracker.editDirectives")}}" aria-label="{{klingonText (localize "sta-officers-log.tracker.editDirectives")}}" data-action="toggleEdit">
         <i class="fas fa-pencil-alt" aria-hidden="true"></i>
       </button>
       {{/if}}
@@ -36,7 +36,7 @@
         <li class="sta-tracker-directive-item">{{this}}</li>
         {{/each}}
       {{else}}
-        <li class="sta-tracker-directive-item sta-tracker-directive-empty">{{localize "sta-officers-log.tracker.noDirectives"}}</li>
+        <li class="sta-tracker-directive-item sta-tracker-directive-empty">{{klingonText (localize "sta-officers-log.tracker.noDirectives")}}</li>
       {{/if}}
     </ul>
   </div>
@@ -91,8 +91,8 @@
   </div>
 
   <div class="sta-tracker-directives-edit" style="display: none;">
-    <textarea class="sta-tracker-directives-textarea" placeholder="{{localize "sta-officers-log.tracker.directivesPlaceholder"}}">{{directivesText}}</textarea>
-    <p class="sta-tracker-directives-hint">{{localize "sta-officers-log.tracker.directivesCharLimit"}}</p>
+    <textarea class="sta-tracker-directives-textarea" placeholder="{{klingonText (localize "sta-officers-log.tracker.directivesPlaceholder")}}">{{directivesText}}</textarea>
+    <p class="sta-tracker-directives-hint">{{klingonText (localize "sta-officers-log.tracker.directivesCharLimit")}}</p>
     <button class="sta-tracker-directives-save-btn" type="button" data-action="saveDirectives">{{localize "sta-officers-log.tracker.save"}}</button>
   </div>
 </div>

@@ -61,6 +61,15 @@ export function registerMissionSettings() {
     default: [],
   });
 
+  game.settings.register(MODULE_ID, "missionActorParticipants", {
+    name: "Current Mission Actor Participants",
+    hint: "Internal list of actorIds participating in the current mission.",
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
+  });
+
   game.settings.register(MODULE_ID, "missionStartDate", {
     name: "Current Mission Start Date",
     hint: "ISO date (YYYY-MM-DD) of the current mission's in-game start date. Set automatically when a new mission begins if sta-utils is active.",
@@ -368,6 +377,28 @@ export function hasActiveMission() {
   } catch (_) {
     return false;
   }
+}
+
+export function getMissionActorParticipants() {
+  try {
+    const ids = game.settings.get(MODULE_ID, "missionActorParticipants") ?? [];
+    if (!Array.isArray(ids)) return [];
+    return ids.map((id) => String(id ?? "")).filter((id) => Boolean(id));
+  } catch (_) {
+    return [];
+  }
+}
+
+export async function setMissionActorParticipants(actorIds) {
+  const uniqueIds = Array.from(
+    new Set(
+      (Array.isArray(actorIds) ? actorIds : [])
+        .map((id) => String(id ?? ""))
+        .filter((id) => Boolean(id)),
+    ),
+  );
+
+  await game.settings.set(MODULE_ID, "missionActorParticipants", uniqueIds);
 }
 
 /**
@@ -910,10 +941,12 @@ function _getInvokedValueNamesForLog(actor, log) {
 
 function _getCurrentMissionMainCharacterSummary(participantIds) {
   const rows = [];
+  const seenActorIds = new Set();
   for (const userId of participantIds) {
     const user = game.users?.get?.(userId);
     const actor = user?.character ?? null;
     if (!actor || actor.type !== "character") continue;
+    seenActorIds.add(String(actor.id));
 
     const logId = _readCurrentMissionLogIdFromActor(actor);
     const log = logId ? actor.items.get(String(logId)) : null;
@@ -961,6 +994,59 @@ function _getCurrentMissionMainCharacterSummary(participantIds) {
       callbackMilestonePending: callbackMilestoneStatus === "pending",
       callbackMilestoneChosen: callbackMilestoneStatus === "chosen",
       callbackMilestoneLabel,
+      callbackTargetTitle: String(callbackTargetLog?.name ?? "").trim(),
+    });
+  }
+
+  const actorParticipantIds = getMissionActorParticipants();
+  for (const actorId of actorParticipantIds) {
+    const actor = game.actors?.get?.(actorId) ?? null;
+    if (!actor || actor.type !== "character") continue;
+    if (seenActorIds.has(String(actor.id))) continue;
+    seenActorIds.add(String(actor.id));
+
+    const logId = _readCurrentMissionLogIdFromActor(actor);
+    const log = logId ? actor.items.get(String(logId)) : null;
+    const callbackLink =
+      log?.system?.callbackLink ??
+      log?.getFlag?.(MODULE_ID, "callbackLink") ??
+      null;
+    const pendingMilestoneBenefit =
+      log?.system?.pendingMilestoneBenefit ??
+      log?.getFlag?.(MODULE_ID, "pendingMilestoneBenefit") ??
+      null;
+    const milestoneId = callbackLink?.milestoneId
+      ? String(callbackLink.milestoneId)
+      : "";
+    const milestone = milestoneId ? actor.items.get(milestoneId) : null;
+    const callbackTargetLogId = callbackLink?.fromLogId
+      ? String(callbackLink.fromLogId)
+      : "";
+    const callbackTargetLog = callbackTargetLogId
+      ? actor.items.get(callbackTargetLogId)
+      : null;
+    const benefitChosen =
+      isPlainObject(pendingMilestoneBenefit) &&
+      pendingMilestoneBenefit.benefitChosen === true;
+
+    const madeCallback = Boolean(callbackLink?.fromLogId);
+    let callbackMilestoneStatus = "none";
+    if (madeCallback) {
+      callbackMilestoneStatus =
+        milestone || benefitChosen ? "chosen" : "pending";
+    }
+
+    rows.push({
+      userId: null,
+      actorId: String(actor.id),
+      logId: logId ? String(logId) : null,
+      name: String(actor.name ?? actor.id),
+      valuesUsed: _getInvokedValueNamesForLog(actor, log),
+      madeCallback,
+      callbackMilestoneStatus,
+      callbackMilestonePending: callbackMilestoneStatus === "pending",
+      callbackMilestoneChosen: callbackMilestoneStatus === "chosen",
+      callbackMilestoneLabel: String(milestone?.name ?? "").trim(),
       callbackTargetTitle: String(callbackTargetLog?.name ?? "").trim(),
     });
   }
@@ -1255,12 +1341,11 @@ export function getMissionCharacterSummaryForEntry(entry) {
   };
 }
 
-async function addMissionLogToUser(
-  user,
+async function addMissionLogToActor(
+  actor,
   missionTitle,
   { customDate = null } = {},
 ) {
-  const actor = user?.character;
   if (!actor || actor.type !== "character") return null;
 
   const baseName = missionTitle?.trim() || "New Mission";
@@ -1293,6 +1378,39 @@ async function addMissionLogToUser(
   const [created] = await actor.createEmbeddedDocuments("Item", [itemData]);
 
   return created?.id ?? null;
+}
+
+async function addMissionLogToUser(
+  user,
+  missionTitle,
+  { customDate = null } = {},
+) {
+  const actor = user?.character;
+  return addMissionLogToActor(actor, missionTitle, { customDate });
+}
+
+function _getCurrentMissionParticipantActorIds() {
+  const participantIds =
+    game.settings.get(MODULE_ID, "missionParticipants") ?? [];
+  const ids = new Set(getMissionActorParticipants());
+
+  for (const userId of participantIds) {
+    const actor = _getAssignedCharacterActorForUserId(userId);
+    if (!actor || actor.type !== "character") continue;
+    ids.add(String(actor.id));
+  }
+
+  return ids;
+}
+
+async function _refreshMissionViews() {
+  await rerenderStaTracker();
+  try {
+    const sock = getModuleSocket();
+    if (sock) await sock.executeForOthers("refreshTracker");
+  } catch (_) {
+    // ignore
+  }
 }
 
 export async function addParticipantToCurrentMission(
@@ -1349,6 +1467,119 @@ export async function addParticipantToCurrentMission(
   );
 }
 
+export async function addActorToCurrentMission(
+  actorId,
+  { createLog = true, openLog = false } = {},
+) {
+  if (!game.user?.isGM) {
+    return ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
+  }
+
+  const actor = game.actors?.get?.(String(actorId)) ?? null;
+  if (!actor || actor.type !== "character") {
+    return ui.notifications.warn(
+      t("sta-officers-log.notifications.invalidActor"),
+    );
+  }
+
+  const currentActorIds = _getCurrentMissionParticipantActorIds();
+  if (currentActorIds.has(String(actor.id))) {
+    return ui.notifications.warn(
+      t("sta-officers-log.notifications.actorAlreadyInMission"),
+    );
+  }
+
+  const actorParticipants = new Set(getMissionActorParticipants());
+  actorParticipants.add(String(actor.id));
+  await setMissionActorParticipants(Array.from(actorParticipants));
+
+  const title = (game.settings.get(MODULE_ID, "missionTitle") ?? "").trim();
+  const missionTitle = title || "New Mission";
+  let logId = null;
+
+  if (createLog) {
+    const customDate = await _computeMissionStartIsoDate();
+    logId = await addMissionLogToActor(actor, missionTitle, { customDate });
+    if (logId) {
+      await setCurrentMissionLogForActor(actor, logId);
+    }
+  }
+
+  ui.notifications.info(
+    tf("sta-officers-log.notifications.characterAddedToMission", {
+      name: actor.name ?? actor.id,
+    }),
+  );
+
+  await _refreshMissionViews();
+
+  if (openLog && logId) {
+    const logItem = actor.items.get(String(logId));
+    logItem?.sheet?.render?.(true);
+  }
+
+  return { actor, logId };
+}
+
+export async function removeParticipantFromCurrentMission({
+  userId = null,
+  actorId = null,
+  deleteLog = false,
+} = {}) {
+  if (!game.user?.isGM) {
+    return ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
+  }
+
+  const normalizedUserId = userId ? String(userId) : "";
+  const normalizedActorId = actorId ? String(actorId) : "";
+  const actorFromUser = normalizedUserId
+    ? _getAssignedCharacterActorForUserId(normalizedUserId)
+    : null;
+  const actor =
+    actorFromUser ??
+    (normalizedActorId
+      ? (game.actors?.get?.(normalizedActorId) ?? null)
+      : null);
+
+  if (normalizedUserId) {
+    const participants =
+      game.settings.get(MODULE_ID, "missionParticipants") ?? [];
+    await game.settings.set(
+      MODULE_ID,
+      "missionParticipants",
+      participants
+        .map((id) => String(id ?? ""))
+        .filter((id) => Boolean(id) && id !== normalizedUserId),
+    );
+  }
+
+  if (actor?.id) {
+    const actorParticipants = getMissionActorParticipants().filter(
+      (id) => id !== String(actor.id),
+    );
+    await setMissionActorParticipants(actorParticipants);
+
+    const logId = _readCurrentMissionLogIdFromActor(actor);
+    if (deleteLog && logId && actor.items.get(String(logId))) {
+      try {
+        await actor.deleteEmbeddedDocuments("Item", [String(logId)]);
+      } catch (err) {
+        console.warn(`${MODULE_ID} | Failed to delete mission log`, err);
+      }
+    }
+    await setCurrentMissionLogForActor(actor, null);
+  }
+
+  ui.notifications.info(
+    tf("sta-officers-log.notifications.characterRemovedFromMission", {
+      name: actor?.name ?? normalizedUserId ?? normalizedActorId,
+    }),
+  );
+
+  await _refreshMissionViews();
+  return true;
+}
+
 // This function is exposed to the api so a macro can be used to add players to a mission after it's already started.
 export async function promptAddParticipant() {
   if (!game.user.isGM)
@@ -1397,6 +1628,89 @@ export async function promptAddParticipant() {
 
   await addParticipantToCurrentMission(result.userId, {
     createLog: Boolean(result.createLog),
+  });
+}
+
+export async function promptAddCharacter({ historyIndex = null } = {}) {
+  if (!game.user?.isGM) {
+    return ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
+  }
+
+  const isHistory = Number.isInteger(historyIndex);
+  const existingActorIds = new Set();
+  let historyEntry = null;
+
+  if (isHistory) {
+    const history = getMissionHistory();
+    historyEntry = history[historyIndex] ?? null;
+    if (!historyEntry) return;
+
+    for (const actorId of Object.keys(historyEntry.actorLogMap ?? {})) {
+      existingActorIds.add(String(actorId));
+    }
+    for (const row of historyEntry.mainCharacters ?? []) {
+      if (!row?.actorId) continue;
+      existingActorIds.add(String(row.actorId));
+    }
+  } else {
+    for (const actorId of _getCurrentMissionParticipantActorIds()) {
+      existingActorIds.add(String(actorId));
+    }
+  }
+
+  const allCharacters = Array.from(game.actors ?? [])
+    .filter((actor) => actor?.type === "character")
+    .sort((a, b) => String(a?.name ?? "").localeCompare(String(b?.name ?? "")));
+
+  const available = allCharacters
+    .filter((actor) => !existingActorIds.has(String(actor.id)))
+    .map((actor, idx) => ({
+      id: String(actor.id),
+      name: String(actor.name ?? actor.id),
+      isSelected: idx === 0,
+    }));
+
+  const already = allCharacters
+    .filter((actor) => existingActorIds.has(String(actor.id)))
+    .map((actor) => ({
+      id: String(actor.id),
+      name: String(actor.name ?? actor.id),
+    }));
+
+  if (!available.length) {
+    return ui.notifications.warn(
+      t("sta-officers-log.notifications.actorAlreadyInMission"),
+    );
+  }
+
+  const content = await foundry.applications.handlebars.renderTemplate(
+    `modules/${MODULE_ID}/templates/add-character.hbs`,
+    { available, already },
+  );
+
+  const result = await foundry.applications.api.DialogV2.input({
+    classes: ["sta-officers-log"],
+    window: { title: t("sta-officers-log.dialog.addCharacter.title") },
+    modal: false,
+    rejectClose: false,
+    content,
+    ok: { label: t("sta-officers-log.dialog.addCharacter.ok") },
+    cancel: { label: t("sta-officers-log.dialog.addCharacter.cancel") },
+  });
+
+  if (!result) return;
+
+  if (isHistory) {
+    await addActorToMissionHistoryEntry(historyIndex, result.actorId, {
+      createLog: Boolean(result.createLog),
+      openLog: Boolean(result.openLog),
+    });
+    return;
+  }
+
+  await addActorToCurrentMission(result.actorId, {
+    createLog: Boolean(result.createLog),
+    openLog: Boolean(result.openLog),
   });
 }
 
@@ -1622,6 +1936,7 @@ export async function endCurrentMission() {
   const _undoSnapshot = {
     title: missionTitle,
     participantIds: [...participantIds],
+    actorParticipantIds: [...getMissionActorParticipants()],
     mainCharacters,
     introducedSupportingCharacters,
     startDate: (game.settings.get(MODULE_ID, "missionStartDate") ?? "").trim(),
@@ -1635,6 +1950,12 @@ export async function endCurrentMission() {
       const _lid = _readCurrentMissionLogIdFromActor(_a);
       if (_lid) _undoSnapshot.actorLogMap[_a.id] = String(_lid);
     }
+  }
+  for (const _actorId of _undoSnapshot.actorParticipantIds) {
+    const _a = game.actors?.get?.(_actorId) ?? null;
+    if (!_a || _a.type !== "character") continue;
+    const _lid = _readCurrentMissionLogIdFromActor(_a);
+    if (_lid) _undoSnapshot.actorLogMap[_a.id] = String(_lid);
   }
   try {
     await game.settings.set(MODULE_ID, "lastEndedMission", _undoSnapshot);
@@ -1708,6 +2029,7 @@ export async function endCurrentMission() {
   // Clear mission state
   await game.settings.set(MODULE_ID, "missionTitle", "");
   await game.settings.set(MODULE_ID, "missionParticipants", []);
+  await setMissionActorParticipants([]);
   await game.settings.set(MODULE_ID, "missionStartDate", "");
   await setMissionDirectives([]);
 
@@ -1777,6 +2099,170 @@ export async function removeMissionFromHistory(index) {
   }
 }
 
+async function _persistMissionHistoryEntry(index, entry) {
+  const history = getMissionHistory();
+  if (index < 0 || index >= history.length) return false;
+  history[index] = entry;
+  await game.settings.set(MODULE_ID, "missionHistory", history);
+  return true;
+}
+
+export async function addActorToMissionHistoryEntry(
+  index,
+  actorId,
+  { createLog = true, openLog = false } = {},
+) {
+  if (!game.user?.isGM) {
+    return ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
+  }
+
+  const history = getMissionHistory();
+  const source = history[index];
+  if (!source) return false;
+
+  const actor = game.actors?.get?.(String(actorId)) ?? null;
+  if (!actor || actor.type !== "character") {
+    return ui.notifications.warn(
+      t("sta-officers-log.notifications.invalidActor"),
+    );
+  }
+
+  const actorKey = String(actor.id);
+  const hasActorInMap = Object.prototype.hasOwnProperty.call(
+    source.actorLogMap ?? {},
+    actorKey,
+  );
+  const hasActorInRows = (source.mainCharacters ?? []).some(
+    (row) => String(row?.actorId ?? "") === actorKey,
+  );
+  if (hasActorInMap || hasActorInRows) {
+    return ui.notifications.warn(
+      t("sta-officers-log.notifications.actorAlreadyInMission"),
+    );
+  }
+
+  const entry = {
+    ...source,
+    actorLogMap: { ...(source.actorLogMap ?? {}) },
+    mainCharacters: Array.isArray(source.mainCharacters)
+      ? [...source.mainCharacters]
+      : [],
+  };
+
+  let logId = null;
+  if (createLog) {
+    const customDate = String(entry.startDate ?? "").trim() || null;
+    const missionTitle = String(entry.title ?? "").trim() || "New Mission";
+    logId = await addMissionLogToActor(actor, missionTitle, { customDate });
+  }
+
+  entry.actorLogMap[actorKey] = logId ? String(logId) : null;
+  entry.mainCharacters.push({
+    userId: null,
+    actorId: actorKey,
+    logId: logId ? String(logId) : null,
+    name: String(actor.name ?? actor.id),
+    valuesUsed: [],
+    madeCallback: false,
+    callbackMilestoneStatus: "none",
+    callbackMilestonePending: false,
+    callbackMilestoneChosen: false,
+    callbackMilestoneLabel: "",
+    callbackTargetTitle: "",
+  });
+
+  const persisted = await _persistMissionHistoryEntry(index, entry);
+  if (!persisted) return false;
+
+  ui.notifications.info(
+    tf("sta-officers-log.notifications.characterAddedToMission", {
+      name: actor.name ?? actor.id,
+    }),
+  );
+
+  if (openLog && logId) {
+    const logItem = actor.items.get(String(logId));
+    logItem?.sheet?.render?.(true);
+  }
+
+  return { actor, logId };
+}
+
+export async function removeCharacterFromMissionHistoryEntry(
+  index,
+  { actorId = null, userId = null, deleteLog = false } = {},
+) {
+  if (!game.user?.isGM) {
+    return ui.notifications.warn(t("sta-officers-log.common.gmOnly"));
+  }
+
+  const history = getMissionHistory();
+  const source = history[index];
+  if (!source) return false;
+
+  const resolvedActorId = actorId
+    ? String(actorId)
+    : String(_getAssignedCharacterActorForUserId(userId)?.id ?? "");
+  if (!resolvedActorId) return false;
+
+  const entry = {
+    ...source,
+    actorLogMap: { ...(source.actorLogMap ?? {}) },
+    mainCharacters: Array.isArray(source.mainCharacters)
+      ? [...source.mainCharacters]
+      : [],
+    participantIds: Array.isArray(source.participantIds)
+      ? [...source.participantIds]
+      : [],
+  };
+
+  const existingRow = entry.mainCharacters.find(
+    (row) => String(row?.actorId ?? "") === resolvedActorId,
+  );
+  const logIdFromMap = entry.actorLogMap[resolvedActorId]
+    ? String(entry.actorLogMap[resolvedActorId])
+    : null;
+  const logId = logIdFromMap || String(existingRow?.logId ?? "") || null;
+
+  delete entry.actorLogMap[resolvedActorId];
+  entry.mainCharacters = entry.mainCharacters.filter(
+    (row) => String(row?.actorId ?? "") !== resolvedActorId,
+  );
+
+  if (userId) {
+    const userKey = String(userId);
+    entry.participantIds = entry.participantIds.filter(
+      (id) => String(id ?? "") !== userKey,
+    );
+  }
+
+  if (deleteLog && logId) {
+    const actor = game.actors?.get?.(resolvedActorId) ?? null;
+    if (actor?.items?.get?.(String(logId))) {
+      try {
+        await actor.deleteEmbeddedDocuments("Item", [String(logId)]);
+      } catch (err) {
+        console.warn(`${MODULE_ID} | Failed to delete mission log`, err);
+      }
+    }
+  }
+
+  const persisted = await _persistMissionHistoryEntry(index, entry);
+  if (!persisted) return false;
+
+  const actorName =
+    game.actors?.get?.(resolvedActorId)?.name ??
+    existingRow?.name ??
+    resolvedActorId;
+  ui.notifications.info(
+    tf("sta-officers-log.notifications.characterRemovedFromMission", {
+      name: actorName,
+    }),
+  );
+
+  return true;
+}
+
 /**
  * Shared restore logic: applies a snapshot object back to world settings and
  * actor fields, then re-renders the tracker.
@@ -1785,14 +2271,23 @@ export async function removeMissionFromHistory(index) {
  * @param {{ notify?: boolean }} [options]
  */
 async function _restoreFromSnapshot(snapshot, { notify = true } = {}) {
-  const { title, participantIds, startDate, directives, actorLogMap } =
-    snapshot;
+  const {
+    title,
+    participantIds,
+    actorParticipantIds,
+    startDate,
+    directives,
+    actorLogMap,
+  } = snapshot;
 
   await game.settings.set(MODULE_ID, "missionTitle", title);
   await game.settings.set(
     MODULE_ID,
     "missionParticipants",
     Array.isArray(participantIds) ? participantIds : [],
+  );
+  await setMissionActorParticipants(
+    Array.isArray(actorParticipantIds) ? actorParticipantIds : [],
   );
   if (startDate) {
     await game.settings.set(MODULE_ID, "missionStartDate", startDate);
@@ -2056,6 +2551,7 @@ export async function promptNewMissionAndReset() {
 
   await game.settings.set(MODULE_ID, "missionTitle", newTitle);
   await game.settings.set(MODULE_ID, "missionParticipants", selectedUserIds);
+  await setMissionActorParticipants([]);
   // Clear any pending undo snapshot — the new mission supersedes the old one.
   try {
     await game.settings.set(MODULE_ID, "lastEndedMission", {});

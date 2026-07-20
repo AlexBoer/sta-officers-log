@@ -1,5 +1,6 @@
 ﻿import { CallbackRequestApp } from "./callback/CallbackRequestApp.js";
 import { MODULE_ID, t, tf, initSocket } from "./core/index.js";
+import { applyKlingonMode } from "./core/i18n.js";
 import {
   addParticipantToCurrentMission,
   endCurrentMission,
@@ -198,7 +199,10 @@ function safeInstallMissionLogJournalHooks() {
   }
 }
 
+let _chatHooksInstalled = false;
+
 function safeInstallChatHooks() {
+  if (_chatHooksInstalled) return;
   try {
     installCreateChatMessageHook();
   } catch (err) {
@@ -213,6 +217,8 @@ function safeInstallChatHooks() {
       err,
     );
   }
+
+  _chatHooksInstalled = true;
 }
 
 function safeRegisterSettings() {
@@ -285,6 +291,18 @@ function safeRegisterClientSettings() {
     registerClientSettings();
   } catch (err) {
     console.error(`${MODULE_ID} | failed to register client settings`, err);
+  }
+}
+
+function safeRegisterTemplateHelpers() {
+  try {
+    if (globalThis.Handlebars?.registerHelper) {
+      globalThis.Handlebars.registerHelper("klingonText", (value) =>
+        applyKlingonMode(value),
+      );
+    }
+  } catch (err) {
+    console.error(`${MODULE_ID} | failed to register template helpers`, err);
   }
 }
 
@@ -402,6 +420,7 @@ Hooks.once("init", () => {
   }
 
   safeRegisterClientSettings();
+  safeRegisterTemplateHelpers();
   safeRegisterSettings();
 
   // Pre-load creation tab template so it renders synchronously on sheet renders.
@@ -415,6 +434,7 @@ Hooks.once("init", () => {
   // Hooks moved out of main.js
   safeInstallUiHooks();
   safeInstallMissionLogJournalHooks();
+  safeInstallChatHooks();
 });
 
 Hooks.once("ready", () => {
@@ -473,9 +493,6 @@ Hooks.once("ready", () => {
     console.error(`${MODULE_ID} | promptUnaddedActivePlayers failed`, err);
   }
 
-  // Hooks moved out of main.js
-  safeInstallChatHooks();
-
   // Sync mission log journals on load (GM only, when setting is enabled).
   try {
     if (game.user.isGM && isMissionLogJournalsEnabled()) {
@@ -512,6 +529,7 @@ Hooks.on("userConnected", (user, active) => {
 // This should be rare, but it prevents a "everything is undefined" failure mode.
 if (game?.ready) {
   safeRegisterClientSettings();
+  safeRegisterTemplateHelpers();
   safeRegisterSettings();
   safeInstallUiHooks();
   safeInstallChatHooks();

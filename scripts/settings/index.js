@@ -12,6 +12,7 @@ export {
   TRAITS_MODE_SIMPLE,
   SIMPLE_TRAIT_MAX_LEN,
   CLIENT_ENABLE_LCARS_MODE_SETTING,
+  CLIENT_STA_TRACKER_SCALE_SETTING,
   registerClientSettings,
   areSheetEnhancementsEnabled,
   shouldShowLogUsedToggle,
@@ -25,6 +26,7 @@ export {
   getSimpleTraits,
   setSimpleTraits,
   isLcarsModeEnabled,
+  getStaTrackerScaleSetting,
 } from "./clientSettings.js";
 
 export {

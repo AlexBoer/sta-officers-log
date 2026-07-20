@@ -1,4 +1,5 @@
 export const MODULE_ID = "sta-officers-log";
+export const WORLD_ENABLE_KLINGON_MODE_SETTING = "enableKlingonMode";
 
 // STA system default icon handling
 export const STA_DEFAULT_ICON_FALLBACK =

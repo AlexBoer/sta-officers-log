@@ -9,7 +9,7 @@
  */
 
 import { MODULE_ID } from "../core/constants.js";
-import { t } from "../core/i18n.js";
+import { applyKlingonMode, t } from "../core/i18n.js";
 
 export const ACCLAIM_POSITIVE_QUESTIONS_SETTING = "acclaimPositiveQuestions";
 export const ACCLAIM_NEGATIVE_QUESTIONS_SETTING = "acclaimNegativeQuestions";
@@ -65,10 +65,12 @@ export function getAcclaimPositiveQuestions() {
     const raw =
       game.settings.get(MODULE_ID, ACCLAIM_POSITIVE_QUESTIONS_SETTING) ?? [];
     const arr = Array.isArray(raw) ? raw : [];
-    const result = arr.map((s) => String(s)).filter(Boolean);
-    return result.length > 0 ? result : [...DEFAULT_POSITIVE_QUESTIONS];
+    const result = arr.map((s) => applyKlingonMode(String(s))).filter(Boolean);
+    return result.length > 0
+      ? result
+      : DEFAULT_POSITIVE_QUESTIONS.map((s) => applyKlingonMode(s));
   } catch (_) {
-    return [...DEFAULT_POSITIVE_QUESTIONS];
+    return DEFAULT_POSITIVE_QUESTIONS.map((s) => applyKlingonMode(s));
   }
 }
 
@@ -82,10 +84,12 @@ export function getAcclaimNegativeQuestions() {
     const raw =
       game.settings.get(MODULE_ID, ACCLAIM_NEGATIVE_QUESTIONS_SETTING) ?? [];
     const arr = Array.isArray(raw) ? raw : [];
-    const result = arr.map((s) => String(s)).filter(Boolean);
-    return result.length > 0 ? result : [...DEFAULT_NEGATIVE_QUESTIONS];
+    const result = arr.map((s) => applyKlingonMode(String(s))).filter(Boolean);
+    return result.length > 0
+      ? result
+      : DEFAULT_NEGATIVE_QUESTIONS.map((s) => applyKlingonMode(s));
   } catch (_) {
-    return [...DEFAULT_NEGATIVE_QUESTIONS];
+    return DEFAULT_NEGATIVE_QUESTIONS.map((s) => applyKlingonMode(s));
   }
 }
 

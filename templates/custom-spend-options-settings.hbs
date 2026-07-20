@@ -1,31 +1,37 @@
 <section class="sta-settings-form">
-  <p class="hint">{{localize "sta-officers-log.settings.customSpendOptions.editorHint"}}</p>
+  <p class="hint">{{klingonText (localize "sta-officers-log.settings.customSpendOptions.editorHint")}}</p>
 
   <div class="form-group">
-    <label>{{localize "sta-officers-log.settings.customSpendOptions.awardsLabel"}}</label>
-    <p class="hint">{{localize "sta-officers-log.settings.customSpendOptions.awardsHint"}}</p>
     <div class="form-fields">
-      <textarea name="customAwardsText" rows="5" style="width:100%" spellcheck="true" placeholder="{{localize "sta-officers-log.settings.customSpendOptions.awardsPlaceholder"}}">{{customAwardsText}}</textarea>
+      <button type="button" class="dialog-button" data-action="open-award-editor">
+        <i class="fa-solid fa-cards-blank"></i>
+        {{klingonText (localize "sta-officers-log.settings.customSpendOptions.openAwardEditor")}}
+      </button>
     </div>
+    <p class="hint">{{klingonText awardEditorHint}}</p>
   </div>
 
   <div class="form-group">
-    <label>{{localize "sta-officers-log.settings.customSpendOptions.acclaimLabel"}}</label>
-    <p class="hint">{{localize "sta-officers-log.settings.customSpendOptions.acclaimHint"}}</p>
     <div class="form-fields">
-      <textarea name="customAcclaimText" rows="5" style="width:100%" spellcheck="true" placeholder="{{localize "sta-officers-log.settings.customSpendOptions.acclaimPlaceholder"}}">{{customAcclaimText}}</textarea>
+      <button type="button" class="dialog-button" data-action="open-acclaim-editor">
+        <i class="fa-solid fa-cards-blank"></i>
+        {{klingonText (localize "sta-officers-log.settings.customSpendOptions.openAcclaimEditor")}}
+      </button>
     </div>
+    <p class="hint">{{klingonText acclaimEditorHint}}</p>
   </div>
 
   <div class="form-group">
-    <label>{{localize "sta-officers-log.settings.customSpendOptions.reprimandLabel"}}</label>
-    <p class="hint">{{localize "sta-officers-log.settings.customSpendOptions.reprimandHint"}}</p>
     <div class="form-fields">
-      <textarea name="customReprimandText" rows="5" style="width:100%" spellcheck="true" placeholder="{{localize "sta-officers-log.settings.customSpendOptions.reprimandPlaceholder"}}">{{customReprimandText}}</textarea>
+      <button type="button" class="dialog-button" data-action="open-reprimand-editor">
+        <i class="fa-solid fa-cards-blank"></i>
+        {{klingonText (localize "sta-officers-log.settings.customSpendOptions.openReprimandEditor")}}
+      </button>
     </div>
+    <p class="hint">{{klingonText reprimandEditorHint}}</p>
   </div>
 
   <footer class="form-footer">
-    <button type="submit" class="dialog-button"><i class="fa-solid fa-save"></i> {{localize "sta-officers-log.settings.customSpendOptions.save"}}</button>
+    <button type="submit" class="dialog-button"><i class="fa-solid fa-xmark"></i> {{klingonText (localize "sta-officers-log.settings.customSpendOptions.close")}}</button>
   </footer>
 </section>

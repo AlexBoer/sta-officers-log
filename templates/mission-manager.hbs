@@ -14,6 +14,9 @@
             <button type="button" data-action="add-players">
               <i class="fas fa-user-plus"></i> {{labels.addPlayers}}
             </button>
+            <button type="button" data-action="add-character">
+              <i class="fas fa-user-astronaut"></i> {{labels.addCharacter}}
+            </button>
             <button type="button" data-action="end-mission">
               <i class="fas fa-stop-circle"></i> {{labels.endMission}}
             </button>
@@ -54,6 +57,13 @@
                         <span class="sta-mission-callback-badge">{{../labels.callbackMade}}</span>
                       {{else}}
                         <span class="sta-mission-callback-badge is-muted">{{../labels.callbackNotMade}}</span>
+                      {{/if}}
+                      {{#if ../isGM}}
+                        <button type="button" class="sta-danger sta-remove-char-btn" data-action="remove-character"
+                          data-actor-id="{{this.actorId}}" data-user-id="{{this.userId}}"
+                          title="{{../labels.removeCharacter}}">
+                          <i class="fas fa-user-minus"></i>
+                        </button>
                       {{/if}}
                     </div>
                     <div class="sta-mission-values-row">
@@ -169,6 +179,10 @@
                     <i class="fas fa-undo"></i>
                     <span>{{../labels.reactivate}}</span>
                   </button>
+                  <button type="button" data-action="add-character-history" data-index="{{this.index}}"
+                    title="{{../labels.addCharacter}}">
+                    <i class="fas fa-user-astronaut"></i>
+                  </button>
                   <button type="button" class="sta-danger" data-action="remove-entry" data-index="{{this.index}}"
                     title="{{../labels.remove}}">
                     <i class="fas fa-times"></i>
@@ -212,6 +226,13 @@
                                 <span class="sta-mission-callback-badge">{{../../labels.callbackMade}}</span>
                               {{else}}
                                 <span class="sta-mission-callback-badge is-muted">{{../../labels.callbackNotMade}}</span>
+                              {{/if}}
+                              {{#if ../../isGM}}
+                                <button type="button" class="sta-danger sta-remove-char-btn" data-action="remove-character-history"
+                                  data-index="{{../index}}" data-actor-id="{{this.actorId}}" data-user-id="{{this.userId}}"
+                                  title="{{../../labels.removeCharacter}}">
+                                  <i class="fas fa-user-minus"></i>
+                                </button>
                               {{/if}}
                             </div>
                             <div class="sta-mission-values-row">

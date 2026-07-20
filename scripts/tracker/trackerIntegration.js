@@ -26,6 +26,46 @@ let _lastTrackerDirectivesView = "directives";
 let _trackerTraitContextMenu = null;
 let _sceneChangeTrackerRefreshHookInstalled = false;
 
+/**
+ * Find the Foundry player list element, trying v13 and v12 selectors.
+ * @returns {HTMLElement|null}
+ */
+function _getPlayerListElement() {
+  return (
+    document.querySelector("#player-list") ??
+    document.querySelector("#players") ??
+    null
+  );
+}
+
+/**
+ * Position the tracker so its bottom edge sits just above the player list.
+ * Measures live DOM positions, so it adapts to any scale and to the player
+ * list being expanded or collapsed.
+ *
+ * @param {HTMLElement} trackerContainer
+ */
+function _anchorTrackerBottomEdge(trackerContainer) {
+  if (!(trackerContainer instanceof HTMLElement)) return;
+
+  // Clear any previous offset so getBoundingClientRect reflects natural flow.
+  trackerContainer.style.removeProperty("position");
+  trackerContainer.style.removeProperty("top");
+
+  const playerList = _getPlayerListElement();
+  if (!playerList) return;
+
+  const trackerRect = trackerContainer.getBoundingClientRect();
+  const playerRect = playerList.getBoundingClientRect();
+
+  const GAP = 4; // px gap between tracker bottom and player list top
+  const delta = trackerRect.bottom - (playerRect.top - GAP);
+  if (Math.abs(delta) < 1) return; // already in position
+
+  trackerContainer.style.position = "relative";
+  trackerContainer.style.top = `${-delta}px`;
+}
+
 function _normalizeTrackerView(view) {
   if (view === "sceneTraits" || view === "worldTraits") return "traits";
   if (view === "traits") return "traits";
@@ -343,6 +383,10 @@ function _getSceneTraitItems() {
   if (!actor) return [];
   return Array.from(actor.items ?? [])
     .filter((item) => item?.type === "trait")
+    .filter(
+      (item) =>
+        (item.getFlag(STA_UTILS_MODULE_ID, "visible") ?? true) !== false,
+    )
     .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
 }
 
@@ -351,14 +395,37 @@ async function _getWorldTraitItems() {
   if (!actor) return [];
   return Array.from(actor.items ?? [])
     .filter((item) => item?.type === "trait")
+    .filter(
+      (item) =>
+        (item.getFlag(STA_UTILS_MODULE_ID, "visible") ?? true) !== false,
+    )
     .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
+}
+
+async function _ensureObserverOwnership(actor) {
+  if (!actor) return;
+  const observer = Number(CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OBSERVER ?? 2);
+  const current = Number(actor?.ownership?.default ?? 0);
+  if (Number.isFinite(current) && current >= observer) return;
+
+  await actor.update({
+    ownership: {
+      ...(actor.ownership ?? {}),
+      default: observer,
+    },
+  });
 }
 
 async function _createTraitOnActor(actor, root) {
   if (!actor) return;
+  await _ensureObserverOwnership(actor);
+  const observer = Number(CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OBSERVER ?? 2);
   const createData = {
     name: t("sta-officers-log.tracker.newTraitDefaultName"),
     type: "trait",
+    ownership: {
+      default: observer,
+    },
   };
 
   const [created] = await actor.createEmbeddedDocuments("Item", [createData]);
@@ -542,6 +609,7 @@ export async function installMissionDirectivesInStaTracker(root) {
     section.dataset.view = normalizedView;
     trackerContainer.appendChild(section);
     _layoutDirectivesSection(section);
+    _anchorTrackerBottomEdge(trackerContainer);
     if (traitsItemMode) {
       _installTrackerTraitContextMenu(section, root);
     }

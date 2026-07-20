@@ -311,6 +311,139 @@
 }
 
 /* =============================================================================
+ * Award Editor / Custom Spend Settings
+ * ============================================================================= */
+
+.sta-award-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.sta-award-editor-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+
+.sta-award-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.sta-award-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  align-items: stretch;
+  text-align: left;
+  padding: 0.8rem 0.85rem 0.72rem;
+  border: 1px solid rgba(241, 164, 60, 0.22);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(241, 164, 60, 0.08), rgba(0, 0, 0, 0.18)),
+    rgba(0, 0, 0, 0.28);
+  color: inherit;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+.sta-award-card:hover,
+.sta-award-card:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(241, 164, 60, 0.45);
+  background:
+    linear-gradient(180deg, rgba(241, 164, 60, 0.12), rgba(0, 0, 0, 0.14)),
+    rgba(0, 0, 0, 0.32);
+}
+
+.sta-award-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-right: 1.9rem;
+}
+
+.sta-award-card-name {
+  min-width: 0;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.sta-award-card-cost {
+  flex: 0 0 auto;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(241, 164, 60, 0.14);
+  color: #f0b872;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.sta-award-card-desc {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.78);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sta-award-card-meta {
+  display: flex;
+  justify-content: flex-start;
+  gap: 0.35rem;
+}
+
+.sta-award-card-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.sta-award-card-badge.is-custom {
+  border-color: rgba(108, 196, 255, 0.28);
+  background: rgba(108, 196, 255, 0.08);
+  color: #9ddcff;
+}
+
+.sta-award-card-remove {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  width: 1.45rem;
+  height: 1.45rem;
+  min-width: 1.45rem;
+  min-height: 1.45rem;
+  padding: 0;
+  border-radius: 999px;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.sta-award-card-remove:hover,
+.sta-award-card-remove:focus-visible {
+  opacity: 1;
+}
+
+.sta-award-editor-dialog .form-group textarea {
+  min-height: 9rem;
+}
+
+/* =============================================================================
  * STA SYSTEM TRACKER (injected buttons)
  * ============================================================================= */
 
@@ -417,7 +550,7 @@
 
 /* STA system tracker: widen container slightly */
 .tracker-container[data-application-part="tracker"] {
-  --sta-tracker-scale-factor: 0.85;
+  --sta-tracker-scale-factor: var(--sta-officers-tracker-scale-factor, 0.85);
   --sta-tracker-scale: calc(var(--ui-scale, 1) * var(--sta-tracker-scale-factor));
   --sta-tracker-width: calc(150px * var(--sta-tracker-scale));
   width: calc(235px * var(--sta-tracker-scale));
@@ -5431,7 +5564,7 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
 
 .sta-mission-manager-active {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
   flex-wrap: wrap;
@@ -5443,8 +5576,27 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
 }
 
 .sta-mission-manager-active-actions {
-  display: flex;
-  gap: 0.4rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.sta-mission-manager-active-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  min-height: 1.75rem;
+  padding: 0.18rem 0.35rem;
+  font-size: 0.76rem;
+  line-height: 1.08;
+  text-align: center;
+  white-space: normal;
+}
+
+.sta-mission-manager-active-actions button i {
+  font-size: 0.72rem;
 }
 
 .sta-mission-manager-none {
@@ -5577,7 +5729,9 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
 }
 
 .sta-mission-character-item.is-entity-item {
+  position: relative;
   padding: 0.28rem 0.4rem;
+  padding-right: 1.55rem;
   border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
   border-radius: 4px;
   background: color-mix(in srgb, currentColor 5%, transparent);
@@ -5606,6 +5760,29 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
 
 .sta-open-log-btn:hover,
 .sta-open-log-btn:focus-visible {
+  opacity: 1;
+}
+
+.sta-remove-char-btn {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.22rem;
+  width: 1rem;
+  height: 1rem;
+  min-height: 1rem;
+  min-width: 1rem;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 0.58rem;
+  opacity: 0.78;
+}
+
+.sta-remove-char-btn:hover,
+.sta-remove-char-btn:focus-visible {
   opacity: 1;
 }
 

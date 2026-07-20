@@ -8,7 +8,7 @@
  */
 
 import { MODULE_ID } from "../core/constants.js";
-import { t } from "../core/i18n.js";
+import { applyKlingonMode, isKlingonModeEnabled, t } from "../core/i18n.js";
 import { isAcclaimSurveyEnabled } from "./acclaimSurvey.js";
 import {
   getCustomAwards,
@@ -20,185 +20,27 @@ import {
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-/**
- * STA 2e Acclaim Spending Options
- * From the Star Trek Adventures 2nd Edition Core Rulebook.
- */
-const ACCLAIM_OPTIONS = [
-  {
-    action: "commendAnother",
-    labelKey: "sta-officers-log.reputationSpend.acclaimCommendAnother",
-    descKey: "sta-officers-log.reputationSpend.acclaimCommendAnotherDesc",
-    cost: 1,
-  },
-  {
-    action: "elevation",
-    labelKey: "sta-officers-log.reputationSpend.acclaimElevation",
-    descKey: "sta-officers-log.reputationSpend.acclaimElevationDesc",
-    cost: 3,
-  },
-  {
-    action: "gainFavor",
-    labelKey: "sta-officers-log.reputationSpend.acclaimGainFavor",
-    descKey: "sta-officers-log.reputationSpend.acclaimGainFavorDesc",
-    cost: 1,
-  },
-  {
-    action: "increaseReputation",
-    labelKey: "sta-officers-log.reputationSpend.acclaimIncreaseReputation",
-    descKey: "sta-officers-log.reputationSpend.acclaimIncreaseReputationDesc",
-    cost: 0, // variable — handled in dialog
-  },
-  {
-    action: "promotion",
-    labelKey: "sta-officers-log.reputationSpend.acclaimPromotion",
-    descKey: "sta-officers-log.reputationSpend.acclaimPromotionDesc",
-    cost: 3,
-  },
-  {
-    action: "status",
-    labelKey: "sta-officers-log.reputationSpend.acclaimStatus",
-    descKey: "sta-officers-log.reputationSpend.acclaimStatusDesc",
-    cost: 3,
-  },
-  // ---- Awards ----
-  {
-    action: "awardPikeMedal",
-    labelKey: "sta-officers-log.reputationSpend.awardPikeMedal",
-    descKey: "sta-officers-log.reputationSpend.awardPikeMedalDesc",
-    cost: 4,
-    isAward: true,
-  },
-  {
-    action: "awardCochraneMedal",
-    labelKey: "sta-officers-log.reputationSpend.awardCochraneMedal",
-    descKey: "sta-officers-log.reputationSpend.awardCochraneMedalDesc",
-    cost: 3,
-    isAward: true,
-  },
-  {
-    action: "awardGrankiteOrder",
-    labelKey: "sta-officers-log.reputationSpend.awardGrankiteOrder",
-    descKey: "sta-officers-log.reputationSpend.awardGrankiteOrderDesc",
-    cost: 3,
-    isAward: true,
-  },
-  {
-    action: "awardKaragiteOrder",
-    labelKey: "sta-officers-log.reputationSpend.awardKaragiteOrder",
-    descKey: "sta-officers-log.reputationSpend.awardKaragiteOrderDesc",
-    cost: 3,
-    isAward: true,
-  },
-  {
-    action: "awardLegionOfHonor",
-    labelKey: "sta-officers-log.reputationSpend.awardLegionOfHonor",
-    descKey: "sta-officers-log.reputationSpend.awardLegionOfHonorDesc",
-    cost: 4,
-    isAward: true,
-  },
-  {
-    action: "awardPalmLeaf",
-    labelKey: "sta-officers-log.reputationSpend.awardPalmLeaf",
-    descKey: "sta-officers-log.reputationSpend.awardPalmLeafDesc",
-    cost: 3,
-    isAward: true,
-  },
-  {
-    action: "awardStarCross",
-    labelKey: "sta-officers-log.reputationSpend.awardStarCross",
-    descKey: "sta-officers-log.reputationSpend.awardStarCrossDesc",
-    cost: 3,
-    isAward: true,
-  },
-  {
-    action: "awardConspicuousGallantry",
-    labelKey: "sta-officers-log.reputationSpend.awardConspicuousGallantry",
-    descKey: "sta-officers-log.reputationSpend.awardConspicuousGallantryDesc",
-    cost: 2,
-    isAward: true,
-  },
-  {
-    action: "awardDecorationGallantry",
-    labelKey: "sta-officers-log.reputationSpend.awardDecorationGallantry",
-    descKey: "sta-officers-log.reputationSpend.awardDecorationGallantryDesc",
-    cost: 2,
-    isAward: true,
-  },
-  {
-    action: "awardMedalOfHonor",
-    labelKey: "sta-officers-log.reputationSpend.awardMedalOfHonor",
-    descKey: "sta-officers-log.reputationSpend.awardMedalOfHonorDesc",
-    cost: 5,
-    isAward: true,
-  },
-  {
-    action: "awardSurgeonsDecoration",
-    labelKey: "sta-officers-log.reputationSpend.awardSurgeonsDecoration",
-    descKey: "sta-officers-log.reputationSpend.awardSurgeonsDecorationDesc",
-    cost: 3,
-    isAward: true,
-  },
-];
-
-/**
- * STA 2e Reprimand Spending Options
- * From the Star Trek Adventures 2nd Edition Core Rulebook.
- */
-const REPRIMAND_OPTIONS = [
-  {
-    action: "courtMartial",
-    labelKey: "sta-officers-log.reputationSpend.reprimandCourtMartial",
-    descKey: "sta-officers-log.reputationSpend.reprimandCourtMartialDesc",
-    cost: 5,
-  },
-  {
-    action: "demotion",
-    labelKey: "sta-officers-log.reputationSpend.reprimandDemotion",
-    descKey: "sta-officers-log.reputationSpend.reprimandDemotionDesc",
-    cost: 3,
-  },
-  {
-    action: "detention",
-    labelKey: "sta-officers-log.reputationSpend.reprimandDetention",
-    descKey: "sta-officers-log.reputationSpend.reprimandDetentionDesc",
-    cost: 2,
-  },
-  {
-    action: "gainAntipathy",
-    labelKey: "sta-officers-log.reputationSpend.reprimandGainAntipathy",
-    descKey: "sta-officers-log.reputationSpend.reprimandGainAntipathyDesc",
-    cost: 1,
-  },
-  {
-    action: "reduceReputation",
-    labelKey: "sta-officers-log.reputationSpend.reprimandReduceReputation",
-    descKey: "sta-officers-log.reputationSpend.reprimandReduceReputationDesc",
-    cost: 0, // variable — handled in dialog
-  },
-  {
-    action: "shameByAssociation",
-    labelKey: "sta-officers-log.reputationSpend.reprimandShameByAssociation",
-    descKey: "sta-officers-log.reputationSpend.reprimandShameByAssociationDesc",
-    cost: 2,
-  },
-  {
-    action: "status",
-    labelKey: "sta-officers-log.reputationSpend.reprimandStatus",
-    descKey: "sta-officers-log.reputationSpend.reprimandStatusDesc",
-    cost: 3,
-  },
-  {
-    action: "strippedOfAward",
-    labelKey: "sta-officers-log.reputationSpend.reprimandStrippedOfAward",
-    descKey: "sta-officers-log.reputationSpend.reprimandStrippedOfAwardDesc",
-    cost: 1,
-  },
-];
-
 /* ------------------------------------------------------------------ */
 /*  Outcome detection                                                  */
 /* ------------------------------------------------------------------ */
+
+function _applyKlingonModeToElementText(root) {
+  if (!(root instanceof HTMLElement) || !isKlingonModeEnabled()) return;
+
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const textNodes = [];
+  let node = walker.nextNode();
+  while (node) {
+    textNodes.push(node);
+    node = walker.nextNode();
+  }
+
+  for (const textNode of textNodes) {
+    const original = textNode.textContent ?? "";
+    const next = applyKlingonMode(original);
+    if (next !== original) textNode.textContent = next;
+  }
+}
 
 /**
  * Parse the outcome text in a reputation-roll chat card to determine
@@ -306,8 +148,8 @@ function _resolveActor(message) {
 function _buildSpendContent(type, rollAmount, savedAmount, totalBudget, actor) {
   const isAcclaim = type === "acclaim";
   const options = isAcclaim
-    ? [...ACCLAIM_OPTIONS, ...getCustomAcclaimOptions(), ...getCustomAwards()]
-    : [...REPRIMAND_OPTIONS, ...getCustomReprimandOptions()];
+    ? [...getCustomAcclaimOptions(), ...getCustomAwards()]
+    : [...getCustomReprimandOptions()];
   const headerKey = isAcclaim
     ? "sta-officers-log.reputationSpend.acclaimHeader"
     : "sta-officers-log.reputationSpend.reprimandHeader";
@@ -354,8 +196,8 @@ function _buildSpendContent(type, rollAmount, savedAmount, totalBudget, actor) {
       rows += `<h4 class="sta-spend-subheader">${customHeaderText}</h4>`;
     }
 
-    const label = opt.isCustom ? opt.label : t(opt.labelKey) || opt.action;
-    const desc = opt.isCustom ? opt.desc : t(opt.descKey) || "";
+    const label = opt.label || t(opt.labelKey) || opt.action;
+    const desc = opt.desc || t(opt.descKey) || "";
     const costLabel = t("sta-officers-log.reputationSpend.cost") || "Cost";
     // Variable-cost options show "1+" to hint at variability
     const isVariable =
@@ -379,10 +221,13 @@ function _buildSpendContent(type, rollAmount, savedAmount, totalBudget, actor) {
   }
 
   const headerText =
-    t(headerKey) || (isAcclaim ? "Spend Acclaim" : "Spend Reprimands");
+    t(headerKey) ||
+    applyKlingonMode(isAcclaim ? "Spend Acclaim" : "Spend Reprimands");
   const typeLabel = isAcclaim
-    ? t("sta-officers-log.reputationSpend.acclaimLabel") || "Acclaim"
-    : t("sta-officers-log.reputationSpend.reprimandLabel") || "Reprimands";
+    ? t("sta-officers-log.reputationSpend.acclaimLabel") ||
+      applyKlingonMode("Acclaim")
+    : t("sta-officers-log.reputationSpend.reprimandLabel") ||
+      applyKlingonMode("Reprimands");
   const availableText =
     t("sta-officers-log.reputationSpend.available") || "Available";
 
@@ -440,7 +285,8 @@ export async function openSpendDialog(type, amount, actor) {
     ? "sta-officers-log.reputationSpend.acclaimTitle"
     : "sta-officers-log.reputationSpend.reprimandTitle";
   const title =
-    t(titleKey) || (isAcclaim ? "Spend Acclaim" : "Spend Reprimands");
+    t(titleKey) ||
+    applyKlingonMode(isAcclaim ? "Spend Acclaim" : "Spend Reprimands");
 
   // Include any saved/accumulated acclaim or reprimands from the character sheet
   const savedAmount = isAcclaim
@@ -457,8 +303,8 @@ export async function openSpendDialog(type, amount, actor) {
   );
 
   const options = isAcclaim
-    ? [...ACCLAIM_OPTIONS, ...getCustomAcclaimOptions(), ...getCustomAwards()]
-    : [...REPRIMAND_OPTIONS, ...getCustomReprimandOptions()];
+    ? [...getCustomAcclaimOptions(), ...getCustomAwards()]
+    : [...getCustomReprimandOptions()];
 
   const confirmLabel =
     t("sta-officers-log.reputationSpend.confirm") || "Confirm";
@@ -939,6 +785,8 @@ export function installReputationSpendHook() {
     // Parse outcome
     const outcome = _parseOutcome(card);
     if (outcome.type === "nochange" || outcome.amount <= 0) return;
+
+    _applyKlingonModeToElementText(card);
 
     // Don't add buttons twice
     if (card.querySelector(".sta-spend-btn")) return;

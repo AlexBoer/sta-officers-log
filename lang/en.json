@@ -98,22 +98,47 @@
         "saved": "Reputation survey questions saved."
       },
       "customSpendOptions": {
-        "name": "Custom Awards & Spend Options",
-        "label": "Edit Custom Options",
-        "hint": "Define custom awards, acclaim spend options, and reprimand spend options.",
-        "menuTitle": "Custom Awards & Spend Options",
-        "editorHint": "Enter one option per line using the format: Name | Cost | Description. Cost defaults to 1 if omitted.",
-        "awardsLabel": "Custom Awards",
-        "awardsHint": "These appear under a 'Custom Awards' subheader in the Spend Acclaim dialog.",
+        "name": "Awards & Spend Options",
+        "label": "Edit Awards & Spend Options",
+        "hint": "Edit awards, acclaim spend options, and reprimand spend options.",
+        "menuTitle": "Awards & Spend Options",
+        "editorHint": "Open the Award Editor to add, edit, or remove awards. Acclaim and reprimand spend options below still use one line per option.",
+        "awardEditorHint": "Open the Award Creation dialog to add, edit, or remove awards.",
+        "acclaimEditorHint": "Open the Acclaim Spend Editor to add, edit, or remove options.",
+        "reprimandEditorHint": "Open the Reprimand Spend Editor to add, edit, or remove options.",
+        "openAwardEditor": "Open Award Editor",
+        "openAcclaimEditor": "Open Acclaim Editor",
+        "openReprimandEditor": "Open Reprimand Editor",
+        "awardEditorTitle": "Award Creation",
+        "createAwardTitle": "Create Award",
+        "editAwardTitle": "Edit Award",
+        "createAward": "Create Award",
+        "closeAwardEditor": "Close",
+        "awardNameLabel": "Award Name",
+        "awardCostLabel": "Cost",
+        "awardDescriptionLabel": "Description",
+        "awardSave": "Save Award",
+        "awardCancel": "Cancel",
+        "awardNameRequired": "Award name is required.",
+        "awardSaved": "Award saved.",
+        "awardRemoved": "Award removed.",
+        "removeAward": "Remove Award",
+        "removeAwardConfirm": "Remove this award?",
+        "builtInBadge": "Built-in",
+        "customBadge": "Custom",
+        "noAwards": "No awards have been created yet.",
+        "awardsLabel": "Awards",
+        "awardsHint": "These appear under the Awards subheader in the Spend Acclaim dialog.",
         "awardsPlaceholder": "e.g. Medal of Exploration | 3 | Awarded for charting new territories.",
-        "acclaimLabel": "Custom Acclaim Spend Options",
-        "acclaimHint": "These appear under a 'Custom' subheader in the Spend Acclaim dialog.",
+        "acclaimLabel": "Acclaim Spend Options",
+        "acclaimHint": "These appear in the Spend Acclaim dialog.",
         "acclaimPlaceholder": "e.g. Call in a Specialist | 2 | Request a specialist NPC for the next mission.",
-        "reprimandLabel": "Custom Reprimand Spend Options",
-        "reprimandHint": "These appear under a 'Custom' subheader in the Spend Reprimands dialog.",
+        "reprimandLabel": "Reprimand Spend Options",
+        "reprimandHint": "These appear in the Spend Reprimands dialog.",
         "reprimandPlaceholder": "e.g. Transfer | 3 | Reassigned to a different posting.",
+        "close": "Close",
         "save": "Save",
-        "saved": "Custom spend options saved."
+        "saved": "Awards and spend options saved."
       },
       "enableTraumaRules": {
         "name": "Enable Trauma Rules",
@@ -130,6 +155,14 @@
       "enableLcarsMode": {
         "name": "LCARS Mode",
         "hint": "Apply LCARS-inspired styling (black & orange theme) to all Officer's Log dialogs and popups. Matches the visual style used by STA Utils."
+      },
+      "enableKlingonMode": {
+        "name": "Klingon Mode",
+        "hint": "Replace select Officer's Log text with Klingon-themed terms such as Glory, Shame, and Dictate."
+      },
+      "staTrackerScale": {
+        "name": "STA Tracker Scale",
+        "hint": "Per-user scale for the STA tracker and directives panel. Increase to make tracker UI larger on this client only."
       }
     },
     "tools": {
@@ -224,8 +257,12 @@
       "invalidUser": "Invalid user.",
       "userNoCharacter": "{user} has no assigned character.",
       "allPlayersAlreadyInMission": "All non-GM users are already in the mission.",
+      "actorAlreadyInMission": "That character is already in the mission.",
+      "invalidActor": "Invalid character actor.",
       "addedToMission": "{user} added to mission.",
       "addedToMissionLogCreated": "{user} added to mission (log created).",
+      "characterAddedToMission": "Added {name} to the mission.",
+      "characterRemovedFromMission": "Removed {name} from the mission.",
       "allDeterminationReset": "All Determination reset.",
       "allStressReset": "All Stress reset.",
       "allShipReadinessReset": "All ship shields/reserve power reset.",
@@ -393,7 +430,7 @@
         "title": "Choose Supporting Character Advancement",
         "pickType": "Choose an advancement for this supporting character:",
         "attr": "Increase Attribute",
-        "disc": "Increase Discipline",
+        "disc": "Increase Department",
         "focus": "Add Focus",
         "talent": "Add Talent",
         "value": "Add Value",
@@ -519,13 +556,13 @@
         "chooseType": "Choose a benefit:",
         "arcChooseType": "Choose an Arc benefit:",
         "increaseAttribute": "Increase an Attribute (+1)",
-        "increaseDiscipline": "Increase a Discipline (+1)",
+        "increaseDiscipline": "Increase a Department (+1)",
         "addFocus": "Add a Focus",
         "addTalent": "Add a Talent",
         "giveToSupportingCharacter": "Give the benefit to a Supporting Character",
         "changeShipStats": "Change your Ship stats",
         "arcIncreaseAttribute": "Increase an Attribute (+1, max 12)",
-        "arcIncreaseDiscipline": "Increase a Discipline (+1, max 5)",
+        "arcIncreaseDiscipline": "Increase a Department (+1, max 5)",
         "arcAddValue": "Add a new Value",
         "arcIncreaseShipSystem": "Increase a Ship System",
         "arcIncreaseShipDepartment": "Increase a Ship Department",
@@ -535,7 +572,7 @@
         "arcRemoveTraumaRenameLabel": "Rename the Trauma",
         "arcRemoveTraumaRenamePlaceholder": "Enter a new name for the Value",
         "pickAttribute": "Attribute",
-        "pickDiscipline": "Discipline",
+        "pickDiscipline": "Department",
         "arcPickShipSystem": "Ship System",
         "arcPickShipDepartment": "Ship Department",
         "nameLabel": "Name",
@@ -634,6 +671,23 @@
         "createLog": "Create mission log for this player",
         "ok": "Add",
         "cancel": "Cancel"
+      },
+      "addCharacter": {
+        "title": "Add Character to Mission",
+        "characterLabel": "Character",
+        "hint": "Characters marked “already in mission” cannot be selected.",
+        "alreadyInMission": "already in mission",
+        "createLog": "Create mission log for this character",
+        "openLog": "Open log after adding",
+        "ok": "Add",
+        "cancel": "Cancel"
+      },
+      "removeCharacter": {
+        "title": "Remove Character",
+        "body": "Remove this character from the mission?",
+        "deleteLog": "Also delete this character's mission log (cannot be undone)",
+        "ok": "Remove",
+        "cancel": "Cancel"
       },      "unaddedPlayers": {
         "title": "Active Players Not in Mission",
         "hint": "The following player(s) are online but not part of the current mission. Would you like to add them?",
@@ -680,8 +734,10 @@
         "endMission": "End Mission",
         "newMission": "New Mission",
         "addPlayers": "Add Players",
+        "addCharacter": "Add Character",
         "reactivate": "Reactivate",
         "remove": "Remove",
+        "removeCharacter": "Remove Character",
         "participants": "participants",
         "mainCharacters": "Main Characters",
         "supportingCharacters": "Introduced Supporting Characters",
@@ -1000,6 +1056,15 @@
       "statePositive": "Positive",
       "stateNegative": "Negative",
       "stateChallenged": "Challenged"
+    },
+    "sta": {
+      "actor": {
+        "character": {
+          "discipline": {
+            "title": "Departments"
+          }
+        }
+      }
     }
   }
 }

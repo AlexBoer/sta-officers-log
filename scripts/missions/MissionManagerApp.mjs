@@ -18,6 +18,9 @@ import {
   reactivateMissionFromHistory,
   promptNewMissionAndReset,
   promptAddParticipant,
+  promptAddCharacter,
+  removeParticipantFromCurrentMission,
+  removeCharacterFromMissionHistoryEntry,
 } from "./mission.js";
 import {
   isMissionLogJournalsEnabled,
@@ -205,6 +208,85 @@ export class MissionManagerApp extends Base {
       "add-players": async function () {
         if (!game.user?.isGM) return;
         await promptAddParticipant();
+        this.render();
+      },
+      "add-character": async function () {
+        if (!game.user?.isGM) return;
+        await promptAddCharacter();
+        this.render();
+      },
+      "remove-character": async function (_event, target) {
+        if (!game.user?.isGM) return;
+        const actorId = String(target.dataset.actorId ?? "").trim();
+        const userId = String(target.dataset.userId ?? "").trim();
+
+        const content = `<p>${t(`${MODULE_ID}.dialog.removeCharacter.body`)}</p>
+          <div class="form-group">
+            <label class="checkbox">
+              <input type="checkbox" name="deleteLog" />
+              ${t(`${MODULE_ID}.dialog.removeCharacter.deleteLog`)}
+            </label>
+          </div>`;
+
+        const result = await foundry.applications.api.DialogV2.input({
+          classes: ["sta-officers-log"],
+          window: { title: t(`${MODULE_ID}.dialog.removeCharacter.title`) },
+          content,
+          ok: { label: t(`${MODULE_ID}.dialog.removeCharacter.ok`) },
+          cancel: { label: t(`${MODULE_ID}.dialog.removeCharacter.cancel`) },
+          modal: false,
+          rejectClose: false,
+        });
+
+        if (!result) return;
+
+        await removeParticipantFromCurrentMission({
+          userId: userId || null,
+          actorId: actorId || null,
+          deleteLog: Boolean(result.deleteLog),
+        });
+        this.render();
+      },
+      "add-character-history": async function (_event, target) {
+        if (!game.user?.isGM) return;
+        const index = parseInt(target.dataset.index, 10);
+        if (!Number.isInteger(index)) return;
+        await promptAddCharacter({ historyIndex: index });
+        this.render();
+      },
+      "remove-character-history": async function (_event, target) {
+        if (!game.user?.isGM) return;
+        const index = parseInt(target.dataset.index, 10);
+        if (!Number.isInteger(index)) return;
+
+        const actorId = String(target.dataset.actorId ?? "").trim();
+        const userId = String(target.dataset.userId ?? "").trim();
+
+        const content = `<p>${t(`${MODULE_ID}.dialog.removeCharacter.body`)}</p>
+          <div class="form-group">
+            <label class="checkbox">
+              <input type="checkbox" name="deleteLog" />
+              ${t(`${MODULE_ID}.dialog.removeCharacter.deleteLog`)}
+            </label>
+          </div>`;
+
+        const result = await foundry.applications.api.DialogV2.input({
+          classes: ["sta-officers-log"],
+          window: { title: t(`${MODULE_ID}.dialog.removeCharacter.title`) },
+          content,
+          ok: { label: t(`${MODULE_ID}.dialog.removeCharacter.ok`) },
+          cancel: { label: t(`${MODULE_ID}.dialog.removeCharacter.cancel`) },
+          modal: false,
+          rejectClose: false,
+        });
+
+        if (!result) return;
+
+        await removeCharacterFromMissionHistoryEntry(index, {
+          actorId: actorId || null,
+          userId: userId || null,
+          deleteLog: Boolean(result.deleteLog),
+        });
         this.render();
       },
       "open-main-log": async function (event, target) {
@@ -396,9 +478,7 @@ export class MissionManagerApp extends Base {
         endedDateStr: entry.endedAt
           ? new Date(entry.endedAt).toLocaleDateString()
           : "",
-        participantCount: Array.isArray(entry.participantIds)
-          ? entry.participantIds.length
-          : 0,
+        participantCount: mainCharacters.length,
         directives: Array.isArray(entry.directives)
           ? entry.directives
               .map((d) => String(d ?? "").trim())
@@ -435,8 +515,12 @@ export class MissionManagerApp extends Base {
         endMission: t(`${MODULE_ID}.dialog.manageMissions.endMission`),
         newMission: t(`${MODULE_ID}.dialog.manageMissions.newMission`),
         addPlayers: t(`${MODULE_ID}.dialog.manageMissions.addPlayers`),
+        addCharacter: t(`${MODULE_ID}.dialog.manageMissions.addCharacter`),
         reactivate: t(`${MODULE_ID}.dialog.manageMissions.reactivate`),
         remove: t(`${MODULE_ID}.dialog.manageMissions.remove`),
+        removeCharacter: t(
+          `${MODULE_ID}.dialog.manageMissions.removeCharacter`,
+        ),
         participants: t(`${MODULE_ID}.dialog.manageMissions.participants`),
         mainCharacters: t(`${MODULE_ID}.dialog.manageMissions.mainCharacters`),
         supportingCharacters: t(

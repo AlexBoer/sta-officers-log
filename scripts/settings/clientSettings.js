@@ -1,4 +1,7 @@
-import { MODULE_ID } from "../core/constants.js";
+import {
+  MODULE_ID,
+  WORLD_ENABLE_KLINGON_MODE_SETTING,
+} from "../core/constants.js";
 import { t } from "../core/i18n.js";
 
 export const CLIENT_SHEET_ENHANCEMENTS_SETTING = "enableSheetEnhancements";
@@ -11,6 +14,7 @@ export const CLIENT_SUP_ADVANCEMENT_MAX_HEIGHT_SETTING =
   "supAdvancementMaxHeight";
 export const CLIENT_ENABLE_FLOWCHART_VIEW_SETTING = "enableFlowchartView";
 export const CLIENT_ENABLE_LCARS_MODE_SETTING = "enableLcarsMode";
+export const CLIENT_STA_TRACKER_SCALE_SETTING = "staTrackerScale";
 export const WORLD_ENABLE_TRAUMA_RULES_SETTING = "enableTraumaRules";
 export const WORLD_ENABLE_SCAR_RULES_SETTING = "enableScarRules";
 export const WORLD_ENABLE_MISSION_LOG_JOURNALS_SETTING =
@@ -20,6 +24,27 @@ export const WORLD_SIMPLE_TRAITS_SETTING = "simpleTraits";
 export const TRAITS_MODE_ITEM = "item";
 export const TRAITS_MODE_SIMPLE = "simple";
 export const SIMPLE_TRAIT_MAX_LEN = 200;
+export const DEFAULT_STA_TRACKER_SCALE = 0.85;
+
+function _normalizeTrackerScale(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return DEFAULT_STA_TRACKER_SCALE;
+  return Math.min(1.75, Math.max(0.5, n));
+}
+
+function _applyTrackerScaleToCss(value) {
+  try {
+    const root = document?.documentElement;
+    if (!root?.style) return;
+    const scale = _normalizeTrackerScale(value);
+    root.style.setProperty(
+      "--sta-officers-tracker-scale-factor",
+      String(scale),
+    );
+  } catch (_) {
+    // document may not be available yet
+  }
+}
 
 function _stripHtml(input) {
   const raw = String(input ?? "");
@@ -69,6 +94,20 @@ async function _refreshTraitsUi() {
     game.staUtils?.refreshTraitsDialog?.();
   } catch (_) {
     // traits dialog refresh is best-effort
+  }
+}
+
+function _rerenderOpenApplications() {
+  try {
+    for (const app of Object.values(ui?.windows ?? {})) {
+      try {
+        app.render?.(true);
+      } catch (_) {
+        // application may have closed
+      }
+    }
+  } catch (_) {
+    // best-effort refresh only
   }
 }
 
@@ -273,6 +312,27 @@ export function registerClientSettings() {
     },
   });
 
+  game.settings.register(MODULE_ID, CLIENT_STA_TRACKER_SCALE_SETTING, {
+    name: t("sta-officers-log.settings.staTrackerScale.name"),
+    hint: t("sta-officers-log.settings.staTrackerScale.hint"),
+    scope: "client",
+    config: true,
+    type: Number,
+    default: DEFAULT_STA_TRACKER_SCALE,
+    range: {
+      min: 0.5,
+      max: 1.75,
+      step: 0.05,
+    },
+    onChange: (value) => {
+      _applyTrackerScaleToCss(value);
+    },
+  });
+
+  _applyTrackerScaleToCss(
+    game.settings.get(MODULE_ID, CLIENT_STA_TRACKER_SCALE_SETTING),
+  );
+
   // Client setting: LCARS Mode — apply LCARS-inspired styling to all module dialogs
   // Hidden from the settings UI when sta-utils is active (sta-utils owns the toggle).
   game.settings.register(MODULE_ID, CLIENT_ENABLE_LCARS_MODE_SETTING, {
@@ -306,6 +366,19 @@ export function registerClientSettings() {
       } catch (_) {
         // safe to fail silently
       }
+    },
+  });
+
+  game.settings.register(MODULE_ID, WORLD_ENABLE_KLINGON_MODE_SETTING, {
+    name: t("sta-officers-log.settings.enableKlingonMode.name"),
+    hint: t("sta-officers-log.settings.enableKlingonMode.hint"),
+    scope: "world",
+    config: true,
+    requiresReload: true,
+    type: Boolean,
+    default: false,
+    onChange: () => {
+      _rerenderOpenApplications();
     },
   });
 
@@ -522,6 +595,16 @@ export function isLcarsModeEnabled() {
     );
   } catch (_) {
     return false;
+  }
+}
+
+export function getStaTrackerScaleSetting() {
+  try {
+    return _normalizeTrackerScale(
+      game.settings.get(MODULE_ID, CLIENT_STA_TRACKER_SCALE_SETTING),
+    );
+  } catch (_) {
+    return DEFAULT_STA_TRACKER_SCALE;
   }
 }
 
