@@ -27,7 +27,7 @@ export const CUSTOM_ACCLAIM_OPTIONS_SETTING = "customAcclaimOptions";
 export const CUSTOM_REPRIMAND_OPTIONS_SETTING = "customReprimandOptions";
 export const CUSTOM_SPEND_OPTIONS_VERSION_SETTING = "customSpendOptionsVersion";
 
-const CURRENT_SPEND_OPTIONS_VERSION = 2;
+const CURRENT_SPEND_OPTIONS_VERSION = 3;
 
 const DEFAULT_AWARD_ACTIONS = [
   "awardPikeMedal",
@@ -90,6 +90,32 @@ function _makeCustomAction(prefix, name, index) {
       ? foundry.utils.randomID().slice(0, 6)
       : String(Date.now()).slice(-6);
   return `${prefix}_${index}_${base || "option"}_${suffix}`;
+}
+
+function _looksLikeLocalizationKey(value) {
+  return /^sta-officers-log\./i.test(String(value ?? "").trim());
+}
+
+function _getDefaultOptionMap(defaults) {
+  return new Map(
+    defaults.map((option) => [String(option?.action ?? "").trim(), option]),
+  );
+}
+
+function _normalizeBuiltInOption(option, defaultOption) {
+  if (!defaultOption) return option;
+
+  const normalized = { ...option };
+  if (!normalized.name || _looksLikeLocalizationKey(normalized.name)) {
+    normalized.name = defaultOption.name;
+  }
+  if (
+    !normalized.description ||
+    _looksLikeLocalizationKey(normalized.description)
+  ) {
+    normalized.description = defaultOption.description;
+  }
+  return normalized;
 }
 
 /* ------------------------------------------------------------------ */
@@ -360,10 +386,14 @@ function _isMigrated() {
   return _getStoredVersion() >= CURRENT_SPEND_OPTIONS_VERSION;
 }
 
-function _normalizeStoredOptions(stored, fallbackPrefix) {
+function _normalizeStoredOptions(stored, fallbackPrefix, defaults = []) {
+  const defaultOptionMap = _getDefaultOptionMap(defaults);
   return _cloneOptions(stored)
     .map((option, index) => ({
-      ...option,
+      ..._normalizeBuiltInOption(
+        option,
+        defaultOptionMap.get(String(option?.action ?? "").trim()),
+      ),
       action:
         option.action || _makeCustomAction(fallbackPrefix, option.name, index),
     }))
@@ -400,7 +430,11 @@ function _getEffectiveOptions(key, defaultsFn, fallbackPrefix) {
 
   if (stored.length === 0) return defaults;
 
-  const normalizedStored = _normalizeStoredOptions(stored, fallbackPrefix);
+  const normalizedStored = _normalizeStoredOptions(
+    stored,
+    fallbackPrefix,
+    defaults,
+  );
 
   if (_hasAnyDefaultActions(normalizedStored, defaults)) {
     return normalizedStored;
@@ -411,6 +445,50 @@ function _getEffectiveOptions(key, defaultsFn, fallbackPrefix) {
   }
 
   return [...defaults, ...normalizedStored];
+}
+
+async function _migrateStoredOptions(key, defaultsFn, fallbackPrefix) {
+  const stored = _getStoredOptions(key);
+  if (stored.length === 0) return false;
+
+  const defaults = defaultsFn();
+  const normalizedStored = _normalizeStoredOptions(
+    stored,
+    fallbackPrefix,
+    defaults,
+  );
+
+  if (foundry.utils.isEqual(stored, normalizedStored)) return false;
+
+  await game.settings.set(MODULE_ID, key, normalizedStored);
+  return true;
+}
+
+export async function migrateCustomSpendOptions() {
+  if (!game.user?.isGM) return;
+  if (_getStoredVersion() >= CURRENT_SPEND_OPTIONS_VERSION) return;
+
+  await _migrateStoredOptions(
+    CUSTOM_AWARDS_SETTING,
+    getDefaultAwardsOptions,
+    "customAward",
+  );
+  await _migrateStoredOptions(
+    CUSTOM_ACCLAIM_OPTIONS_SETTING,
+    getDefaultAcclaimOptions,
+    "customAcclaim",
+  );
+  await _migrateStoredOptions(
+    CUSTOM_REPRIMAND_OPTIONS_SETTING,
+    getDefaultReprimandOptions,
+    "customReprimand",
+  );
+
+  await game.settings.set(
+    MODULE_ID,
+    CUSTOM_SPEND_OPTIONS_VERSION_SETTING,
+    CURRENT_SPEND_OPTIONS_VERSION,
+  );
 }
 
 /* ------------------------------------------------------------------ */

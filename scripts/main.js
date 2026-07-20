@@ -47,7 +47,10 @@ import {
   makeDirectiveValueIdFromText,
 } from "./directives/directives.js";
 import { registerAcclaimSurveySettings } from "./acclaim/acclaimSurvey.js";
-import { registerCustomSpendOptionsSettings } from "./acclaim/customSpendOptions.js";
+import {
+  migrateCustomSpendOptions,
+  registerCustomSpendOptionsSettings,
+} from "./acclaim/customSpendOptions.js";
 import { useValue } from "./values/useValue.js";
 import { CreationWizardApp } from "./creation/creation-wizard-app.mjs";
 import { preloadCreationTabTemplate } from "./creation/creation-tab.mjs";
@@ -453,6 +456,16 @@ Hooks.once("ready", () => {
     }
   } catch (err) {
     console.error(`${MODULE_ID} | data migration startup failed`, err);
+  }
+
+  try {
+    if (game.user.isGM) {
+      migrateCustomSpendOptions().catch((err) => {
+        console.error(`${MODULE_ID} | spend options migration failed`, err);
+      });
+    }
+  } catch (err) {
+    console.error(`${MODULE_ID} | spend options migration startup failed`, err);
   }
 
   try {
