@@ -56,7 +56,7 @@ function _anchorTrackerBottomEdge(trackerContainer) {
   if (!playerList) return;
 
   const trackerRect = trackerContainer.getBoundingClientRect();
-  const playerRect  = playerList.getBoundingClientRect();
+  const playerRect = playerList.getBoundingClientRect();
 
   const GAP = 4; // px gap between tracker bottom and player list top
   const delta = trackerRect.bottom - (playerRect.top - GAP);
@@ -287,15 +287,8 @@ function _installTrackerTraitContextMenu(section, root) {
 function _isSceneOrWorldTraitActor(actor) {
   if (!actor || actor.type !== "scenetraits") return false;
 
-  const scene = canvas?.scene;
-  const sceneProxyId = actor.getFlag(STA_UTILS_MODULE_ID, "proxyForSceneId");
-  const sceneTraitsActorId = scene?.getFlag(
-    STA_UTILS_MODULE_ID,
-    "sceneTraitsActorId",
-  );
-  if (scene && (sceneProxyId === scene.id || actor.id === sceneTraitsActorId)) {
-    return true;
-  }
+  const sceneTraitActor = _getSceneTraitActor();
+  if (actor.id === sceneTraitActor?.id) return true;
 
   if (actor.getFlag(STA_UTILS_MODULE_ID, "isWorldTraitActor") === true) {
     return true;
@@ -326,6 +319,28 @@ function _installTraitTrackerRefreshHooks() {
   Hooks.on("createItem", (item) => maybeRefresh(item));
   Hooks.on("updateItem", (item) => maybeRefresh(item));
   Hooks.on("deleteItem", (item) => maybeRefresh(item));
+
+  Hooks.on("createActor", (actor) => {
+    if (actor?.type !== "scenetraits") return;
+    rerenderStaTracker();
+  });
+
+  Hooks.on("deleteActor", (actor) => {
+    if (actor?.type !== "scenetraits") return;
+    rerenderStaTracker();
+  });
+
+  Hooks.on("updateScene", (scene, changes) => {
+    if (scene?.id !== canvas?.scene?.id) return;
+    if (
+      !foundry.utils.hasProperty(
+        changes,
+        `flags.${STA_UTILS_MODULE_ID}.sceneTraitsActorId`,
+      )
+    )
+      return;
+    rerenderStaTracker();
+  });
 }
 
 function _installSceneChangeTrackerRefreshHook() {
@@ -351,17 +366,36 @@ function _installSceneChangeTrackerRefreshHook() {
 function _getSceneTraitActor() {
   const scene = canvas?.scene;
   if (!scene) return null;
+
+  const sharedResolver = game.staUtils?.getSceneTraitsActor;
+  if (typeof sharedResolver === "function") {
+    return sharedResolver() ?? null;
+  }
+
+  const configuredActorId = scene.getFlag(
+    STA_UTILS_MODULE_ID,
+    "sceneTraitsActorId",
+  );
+  if (configuredActorId) {
+    const configuredActor = game.actors.get(configuredActorId);
+    if (configuredActor) return configuredActor;
+  }
+
   return (
     Array.from(game.actors ?? []).find(
       (a) =>
         a?.type === "scenetraits" &&
-        (a.getFlag(STA_UTILS_MODULE_ID, "proxyForSceneId") === scene.id ||
-          a.id === scene.getFlag(STA_UTILS_MODULE_ID, "sceneTraitsActorId")),
+        a.getFlag(STA_UTILS_MODULE_ID, "proxyForSceneId") === scene.id,
     ) ?? null
   );
 }
 
 async function _getWorldTraitActor() {
+  const sharedResolver = game.staUtils?.getWorldTraitsActor;
+  if (typeof sharedResolver === "function") {
+    return (await sharedResolver()) ?? null;
+  }
+
   let actor = null;
   try {
     const uuid = game.settings.get(STA_UTILS_MODULE_ID, "worldTraitsActorUuid");
@@ -379,24 +413,32 @@ async function _getWorldTraitActor() {
 }
 
 function _getSceneTraitItems() {
+  const sharedList = game.staUtils?.getSceneTraitItems;
+  if (typeof sharedList === "function") return sharedList();
+
   const actor = _getSceneTraitActor();
   if (!actor) return [];
   return Array.from(actor.items ?? [])
     .filter((item) => item?.type === "trait")
     .filter(
       (item) =>
+        game.user?.isGM ||
         (item.getFlag(STA_UTILS_MODULE_ID, "visible") ?? true) !== false,
     )
     .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
 }
 
 async function _getWorldTraitItems() {
+  const sharedList = game.staUtils?.getWorldTraitItems;
+  if (typeof sharedList === "function") return sharedList();
+
   const actor = await _getWorldTraitActor();
   if (!actor) return [];
   return Array.from(actor.items ?? [])
     .filter((item) => item?.type === "trait")
     .filter(
       (item) =>
+        game.user?.isGM ||
         (item.getFlag(STA_UTILS_MODULE_ID, "visible") ?? true) !== false,
     )
     .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? "")));
@@ -594,8 +636,8 @@ export async function installMissionDirectivesInStaTracker(root) {
         traitsItemMode,
         simpleTraitsText: simpleTraits.join("\n"),
         simpleTraitsHtml,
-        canCreateSceneTrait: Boolean(sceneTraitActor),
-        canCreateWorldTrait: Boolean(worldTraitActor),
+        canCreateSceneTrait: Boolean(game.user?.isGM && sceneTraitActor),
+        canCreateWorldTrait: Boolean(game.user?.isGM && worldTraitActor),
         sceneTraitsHtml,
         worldTraitsHtml,
       },

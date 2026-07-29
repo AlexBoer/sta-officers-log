@@ -4277,7 +4277,6 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
 
 /* Default dialogs should size to content unless a specific dialog sets a height. */
 .application.dialog.sta-officers-log {
-  height: auto;
   min-height: fit-content;
 }
 

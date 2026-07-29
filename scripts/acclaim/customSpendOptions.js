@@ -458,7 +458,8 @@ async function _migrateStoredOptions(key, defaultsFn, fallbackPrefix) {
     defaults,
   );
 
-  if (foundry.utils.isEqual(stored, normalizedStored)) return false;
+  const optionsEqual = foundry.utils.equals ?? foundry.utils.objectsEqual;
+  if (optionsEqual(stored, normalizedStored)) return false;
 
   await game.settings.set(MODULE_ID, key, normalizedStored);
   return true;
