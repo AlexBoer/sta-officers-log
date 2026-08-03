@@ -41,27 +41,34 @@ export function setupMissionLogContextMenu({
   closeStaOfficersLogContextMenu();
 
   /** @type {ContextMenuEntry[]} */
+  const handleSelect = async (target) => {
+    try {
+      // target is the element that was right-clicked (matches the selector)
+      const element =
+        target instanceof HTMLElement
+          ? target
+          : target?.[0] instanceof HTMLElement
+            ? target[0]
+            : null;
+      if (element) {
+        await onSelect?.(element);
+      }
+    } catch (err) {
+      console.error(`${MODULE_ID} | context menu action failed`, err);
+    }
+  };
   const menuItems = [
-    {
-      name: String(label ?? ""),
-      icon: "",
-      callback: async (target) => {
-        try {
-          // target is the element that was right-clicked (matches the selector)
-          const element =
-            target instanceof HTMLElement
-              ? target
-              : target?.[0] instanceof HTMLElement
-                ? target[0]
-                : null;
-          if (element) {
-            await onSelect?.(element);
-          }
-        } catch (err) {
-          console.error(`${MODULE_ID} | context menu action failed`, err);
+    game.release.generation >= 14
+      ? {
+          label: String(label ?? ""),
+          icon: "",
+          onClick: (_event, target) => handleSelect(target),
         }
-      },
-    },
+      : {
+          name: String(label ?? ""),
+          icon: "",
+          callback: handleSelect,
+        },
   ];
 
   _staContextMenu = new foundry.applications.ux.ContextMenu(
@@ -70,4 +77,27 @@ export function setupMissionLogContextMenu({
     menuItems,
     { fixed: true, jQuery: false },
   );
+
+  container.querySelectorAll(selector).forEach((row) => {
+    row.querySelector(".sta-officers-log-row-menu")?.remove();
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "sta-officers-log-row-menu";
+    button.title = game.i18n.localize("sta-officers-log.logs.moreActions");
+    button.setAttribute("aria-label", button.title);
+    button.innerHTML = '<i class="fa-solid fa-ellipsis-vertical"></i>';
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const bounds = button.getBoundingClientRect();
+      row.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          clientX: event.clientX || bounds.right,
+          clientY: event.clientY || bounds.bottom,
+        }),
+      );
+    });
+    row.appendChild(button);
+  });
 }

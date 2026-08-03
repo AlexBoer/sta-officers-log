@@ -500,7 +500,8 @@
     },
     "logs": {
       "currentMissionIndicator": "Current mission log",
-      "makeCurrentMissionLog": "Make Current Mission Log"
+      "makeCurrentMissionLog": "Make Current Mission Log",
+      "moreActions": "More actions"
     },
     "dialog": {
       "useValueTest": {
