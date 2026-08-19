@@ -135,6 +135,9 @@ export function prepareTalentPickerContext(
   const groupsMap = new Map();
   const speciesImgCounts = new Map();
   for (const talent of Array.isArray(talents) ? talents : []) {
+    const talentType = normalizeRequirementString(talent?.talenttype?.typeenum);
+    if (talentType === "role" || talentType === "speciesability") continue;
+
     const cat = _deriveCategoryFromEntry(talent);
     const requirementLabel = formatTalentRequirementLabel(
       talent?.talenttype,

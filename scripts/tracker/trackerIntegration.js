@@ -108,6 +108,25 @@ function _escapeHtml(value) {
   return foundry.utils.escapeHTML(String(value ?? ""));
 }
 
+async function _getTraitDescriptionTooltip(item) {
+  let rawDescription =
+    foundry.utils.getProperty(item, "system.description.value") ??
+    foundry.utils.getProperty(item, "system.description") ??
+    "";
+  if (typeof rawDescription !== "string") {
+    rawDescription = rawDescription?.value ?? "";
+  }
+  rawDescription = String(rawDescription).trim();
+  if (!rawDescription) return "";
+
+  return foundry.applications.ux.TextEditor.enrichHTML(rawDescription, {
+    async: true,
+    documents: true,
+    rolls: true,
+    secrets: false,
+  });
+}
+
 function _getRectOverlapArea(a, b) {
   const xOverlap = Math.max(
     0,
@@ -445,29 +464,29 @@ async function _getWorldTraitItems() {
 }
 
 async function _ensureObserverOwnership(actor) {
-  if (!actor) return;
+  if (!actor || actor.pack || !actor.isOwner) return;
   const observer = Number(CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OBSERVER ?? 2);
   const current = Number(actor?.ownership?.default ?? 0);
   if (Number.isFinite(current) && current >= observer) return;
 
-  await actor.update({
-    ownership: {
-      ...(actor.ownership ?? {}),
-      default: observer,
-    },
-  });
+  try {
+    await actor.update({
+      ownership: {
+        ...(actor.ownership ?? {}),
+        default: observer,
+      },
+    });
+  } catch (err) {
+    console.warn(`${MODULE_ID} | Failed to set observer ownership`, err);
+  }
 }
 
 async function _createTraitOnActor(actor, root) {
   if (!actor) return;
   await _ensureObserverOwnership(actor);
-  const observer = Number(CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OBSERVER ?? 2);
   const createData = {
     name: t("sta-officers-log.tracker.newTraitDefaultName"),
     type: "trait",
-    ownership: {
-      default: observer,
-    },
   };
 
   const [created] = await actor.createEmbeddedDocuments("Item", [createData]);
@@ -475,30 +494,36 @@ async function _createTraitOnActor(actor, root) {
   created?.sheet?.render(true);
 }
 
-function _listTraitItems(items, emptyLabel) {
+async function _listTraitItems(items, emptyLabel) {
   if (!items.length) {
     return `<ul class="sta-tracker-directives-list"><li class="sta-tracker-directive-item sta-tracker-directive-empty">${_escapeHtml(emptyLabel)}</li></ul>`;
   }
-  const rows = items
-    .map((item) => {
-      const rawQty =
-        item?.system?.quantity?.value ?? item?.system?.quantity ?? null;
-      const qty =
-        rawQty === null || rawQty === undefined || rawQty === ""
-          ? null
-          : Number(rawQty);
-      const displayName =
-        Number.isFinite(qty) && qty >= 0 && qty !== 1
-          ? `${String(item?.name ?? "")} ${qty}`
-          : String(item?.name ?? "");
+  const rows = (
+    await Promise.all(
+      items.map(async (item) => {
+        const rawQty =
+          item?.system?.quantity?.value ?? item?.system?.quantity ?? null;
+        const qty =
+          rawQty === null || rawQty === undefined || rawQty === ""
+            ? null
+            : Number(rawQty);
+        const displayName =
+          Number.isFinite(qty) && qty >= 0 && qty !== 1
+            ? `${String(item?.name ?? "")} ${qty}`
+            : String(item?.name ?? "");
+        const descriptionTooltip = await _getTraitDescriptionTooltip(item);
+        const tooltipAttributes = descriptionTooltip
+          ? ` data-tooltip="${_escapeHtml(descriptionTooltip)}" data-tooltip-direction="UP"`
+          : "";
 
-      return (
-        `<li class="sta-tracker-directive-item">` +
-        `<button type="button" class="sta-tracker-trait-btn" data-action="openTraitSheet" data-uuid="${_escapeHtml(item.uuid)}">${_escapeHtml(displayName)}</button>` +
-        `</li>`
-      );
-    })
-    .join("");
+        return (
+          `<li class="sta-tracker-directive-item">` +
+          `<button type="button" class="sta-tracker-trait-btn" data-action="openTraitSheet" data-uuid="${_escapeHtml(item.uuid)}"${tooltipAttributes}>${_escapeHtml(displayName)}</button>` +
+          `</li>`
+        );
+      }),
+    )
+  ).join("");
   return `<ul class="sta-tracker-directives-list">${rows}</ul>`;
 }
 
@@ -605,10 +630,10 @@ export async function installMissionDirectivesInStaTracker(root) {
       ? await Promise.resolve(_getWorldTraitItems())
       : [];
     const sceneTraitsHtml = traitsItemMode
-      ? _listTraitItems(sceneTraitItems, "No scene traits yet.")
+      ? await _listTraitItems(sceneTraitItems, "No scene traits yet.")
       : "";
     const worldTraitsHtml = traitsItemMode
-      ? _listTraitItems(worldTraitItems, "No world traits yet.")
+      ? await _listTraitItems(worldTraitItems, "No world traits yet.")
       : "";
     const simpleTraitsHtml = traitsSimpleMode
       ? _listSimpleTraits(

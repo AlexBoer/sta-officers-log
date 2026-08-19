@@ -180,7 +180,9 @@ function buildLegacyRequirements(talentEntry, options = {}) {
     ];
   }
 
-  if (type === "species") {
+  // "speciesability" mirrors "species" for requirement matching — it is a
+  // species-locked talent gained at creation (excluded from advancement pickers).
+  if (type === "species" || type === "speciesability") {
     const inferred = description || inferSpecies?.(talentEntry) || "";
     if (!inferred) return [];
     return [
