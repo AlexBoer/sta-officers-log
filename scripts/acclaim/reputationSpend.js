@@ -795,8 +795,8 @@ export function installReputationSpendHook() {
     const actor = _resolveActor(message);
     if (!actor) return;
 
-    // Only show spend buttons to the user who rolled or the GM
-    if (!message.isAuthor && !game.user.isGM) return;
+    // Show the spend button to everyone who can see the roll message, so a
+    // GM-made roll can still be spent by the players at the table.
 
     const isAcclaim = outcome.type === "acclaim";
     const btnLabel = isAcclaim

@@ -319,18 +319,10 @@ function _attachCountingLogic(html) {
       );
     }
 
-    // Enable/disable the Roll Acclaim button based on whether all questions
-    // have an answer selected
-    const totalQuestions = html.querySelectorAll(
-      ".sta-acclaim-question",
-    ).length;
-    const answeredQuestions = html.querySelectorAll(
-      'input[type="radio"]:checked',
-    ).length;
+    // Unanswered questions count the same as "No" for roll math, so don't
+    // block rolling behind a strict completion gate.
     const rollBtn = html.querySelector('button[data-action="roll"]');
-    if (rollBtn) {
-      rollBtn.disabled = answeredQuestions < totalQuestions;
-    }
+    if (rollBtn) rollBtn.disabled = false;
   };
 
   const onChange = (ev) => {
