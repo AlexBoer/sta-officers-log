@@ -216,6 +216,7 @@
       "noneLabel": "none",
       "addButton": "Add",
       "addRequirementCategory": "Add Requirement Category",
+      "conditionPlaceholder": "Describe the condition…",
       "sheet": {
         "requirements": "Requirements",
         "requiresPrefix": "Requires",
@@ -228,12 +229,21 @@
         "category": {
           "attribute": "Attributes",
           "discipline": "Departments",
+          "systems": "Systems",
           "species": "Species",
-          "type": "Type"
+          "house": "House",
+          "condition": "Condition"
         }
       },
       "type": {
-        "starship": "Starship"
+        "label": "Talent Type",
+        "starship": "Starship",
+        "general": "General",
+        "character": "Character",
+        "speciesAbility": "Species Ability",
+        "role": "Role",
+        "award": "Award",
+        "hint": "Choosing Species Ability adds a Species requirement below that you can fill in."
       },
       "npcSpeciesTitle": "Requires Species (optional)",
       "npcSpeciesPlaceholder": "Any NPC species",

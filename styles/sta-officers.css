@@ -5929,6 +5929,13 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
   white-space: nowrap;
 }
 
+.officers-talent-sheet .sta-talent-req-condition-summary {
+  font-weight: 600;
+  margin-top: 0.3rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .officers-talent-sheet .sta-talent-req-controls {
   display: flex;
   gap: 0.4rem;
@@ -5938,6 +5945,37 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
 
 .officers-talent-sheet .sta-talent-add-select {
   flex: 1;
+}
+
+.officers-talent-sheet .sta-talent-type-row,
+.officers-talent-sheet .sta-talent-type-species {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.officers-talent-sheet .sta-talent-type-label {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.officers-talent-sheet .sta-talent-type-row .sta-talent-type-select,
+.officers-talent-sheet .sta-talent-type-species input[type="text"] {
+  flex: 1;
+}
+
+.officers-talent-sheet .sta-talent-type-hint {
+  margin: 0 0 0.6rem;
+  font-size: 0.85em;
+  opacity: 0.75;
+}
+
+.officers-talent-sheet .sta-talent-req-condition {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  resize: vertical;
 }
 
 .officers-talent-sheet .sta-talent-req-list {

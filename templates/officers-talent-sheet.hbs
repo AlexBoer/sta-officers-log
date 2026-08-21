@@ -25,8 +25,21 @@
           {{/if}}
         </button>
       </div>
+      {{#each conditionSummaries as |cond|}}
+      <div class="sta-talent-req-condition-summary">{{cond}}</div>
+      {{/each}}
 
       {{#unless compactMode}}
+      <div class="sta-talent-type-row">
+        <label class="sta-talent-type-label">{{localize "sta-officers-log.talents.type.label"}}</label>
+        <select class="sta-talent-type-select">
+          {{#each talentTypeOptions as |opt|}}
+          <option value="{{opt.value}}" {{#if opt.selected}}selected{{/if}}>{{opt.label}}</option>
+          {{/each}}
+        </select>
+      </div>
+      <p class="sta-talent-type-hint">{{localize "sta-officers-log.talents.type.hint"}}</p>
+
       <div class="sta-talent-req-controls">
         <select class="sta-talent-add-select">
           <option value="">{{localize "sta-officers-log.talents.addRequirementCategory"}}</option>
@@ -60,6 +73,12 @@
                   <option value="{{opt.value}}" {{#if opt.selected}}selected{{/if}}>{{opt.label}}</option>
                   {{/each}}
                 </select>
+                {{else if row.clauseA.isLongText}}
+                <textarea class="sta-talent-req-condition"
+                          data-field="value"
+                          data-clause-index="0"
+                          rows="2"
+                          placeholder="{{localize 'sta-officers-log.talents.conditionPlaceholder'}}">{{row.clauseA.value}}</textarea>
                 {{else}}
                 <input type="text"
                        data-field="value"
@@ -95,6 +114,12 @@
                   <option value="{{opt.value}}" {{#if opt.selected}}selected{{/if}}>{{opt.label}}</option>
                   {{/each}}
                 </select>
+                {{else if row.clauseB.isLongText}}
+                <textarea class="sta-talent-req-condition"
+                          data-field="value"
+                          data-clause-index="1"
+                          rows="2"
+                          placeholder="{{localize 'sta-officers-log.talents.conditionPlaceholder'}}">{{row.clauseB.value}}</textarea>
                 {{else}}
                 <input type="text"
                        data-field="value"

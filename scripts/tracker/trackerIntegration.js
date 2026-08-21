@@ -38,40 +38,6 @@ function _getPlayerListElement() {
   );
 }
 
-/**
- * Position the tracker so its bottom edge sits just above the player list.
- * Measures live DOM positions, so it adapts to any scale and to the player
- * list being expanded or collapsed.
- *
- * @param {HTMLElement} trackerContainer
- */
-function _anchorTrackerBottomEdge(trackerContainer) {
-  if (!(trackerContainer instanceof HTMLElement)) return;
-
-  // Clear any previous offset so getBoundingClientRect reflects natural flow.
-  trackerContainer.style.removeProperty("position");
-  trackerContainer.style.removeProperty("top");
-
-  const playerList = _getPlayerListElement();
-  if (!playerList) return;
-
-  const trackerRect = trackerContainer.getBoundingClientRect();
-  const playerRect = playerList.getBoundingClientRect();
-  const viewportH =
-    window.innerHeight || document.documentElement.clientHeight || 0;
-  const maxReasonableOffset = Math.max(
-    48,
-    Math.min(viewportH * 0.35, trackerRect.height + 32),
-  );
-
-  const GAP = 4; // px gap between tracker bottom and player list top
-  const delta = trackerRect.bottom - (playerRect.top - GAP);
-  if (Math.abs(delta) < 1 || Math.abs(delta) > maxReasonableOffset) return;
-
-  trackerContainer.style.position = "relative";
-  trackerContainer.style.top = `${-delta}px`;
-}
-
 function _normalizeTrackerView(view) {
   if (view === "sceneTraits" || view === "worldTraits") return "traits";
   if (view === "traits") return "traits";
@@ -682,7 +648,6 @@ export async function installMissionDirectivesInStaTracker(root) {
     section.dataset.view = normalizedView;
     trackerContainer.appendChild(section);
     _layoutDirectivesSection(section);
-    _anchorTrackerBottomEdge(trackerContainer);
     if (traitsItemMode) {
       _installTrackerTraitContextMenu(section, root);
     }

@@ -1,6 +1,5 @@
 import { MODULE_ID } from "../core/constants.js";
 import {
-  deriveLegacyRequirementUpdate,
   getNormalizedTalentRequirements,
   normalizeRequirementString,
   TALENT_REQUIREMENTS_FLAG_KEY,
@@ -22,14 +21,24 @@ const CATEGORY_OPTIONS = [
     fallback: "Departments",
   },
   {
+    value: "systems",
+    labelKey: "sta-officers-log.talents.requirements.category.systems",
+    fallback: "Systems",
+  },
+  {
     value: "species",
     labelKey: "sta-officers-log.talents.requirements.category.species",
     fallback: "Species",
   },
   {
-    value: "type",
-    labelKey: "sta-officers-log.talents.requirements.category.type",
-    fallback: "Type",
+    value: "house",
+    labelKey: "sta-officers-log.talents.requirements.category.house",
+    fallback: "House",
+  },
+  {
+    value: "condition",
+    labelKey: "sta-officers-log.talents.requirements.category.condition",
+    fallback: "Condition",
   },
 ];
 
@@ -51,11 +60,65 @@ const DISCIPLINE_OPTIONS = [
   { value: "security", label: "Security" },
 ];
 
-const TYPE_OPTIONS = [
-  { value: "npc", label: "NPC" },
-  { value: "character", label: "Character" },
-  { value: "starship", label: "Starship" },
+const SYSTEM_OPTIONS = [
+  { value: "communications", label: "Communications" },
+  { value: "computers", label: "Computers" },
+  { value: "engines", label: "Engines" },
+  { value: "sensors", label: "Sensors" },
+  { value: "structure", label: "Structure" },
+  { value: "weapons", label: "Weapons" },
 ];
+
+const HOUSE_OPTIONS = [
+  { value: "leaders", label: "Leaders" },
+  { value: "warriors", label: "Warriors" },
+  { value: "spacefarers", label: "Spacefarers" },
+  { value: "engineers", label: "Engineers" },
+  { value: "scientists", label: "Scientists" },
+  { value: "physicians", label: "Physicians" },
+];
+
+// Talent Type dropdown (system.talenttype.typeenum). Types are independent tags;
+// requirements are configured separately below. Only Species Ability auto-adds a
+// backing requirement (see TYPE_TO_REQUIREMENT_CATEGORY).
+const TALENT_TYPE_OPTIONS = [
+  {
+    value: "general",
+    key: "sta.item.talent.type.general",
+    fallback: "General",
+  },
+  {
+    value: "character",
+    key: "sta-officers-log.talents.type.character",
+    fallback: "Character",
+  },
+  {
+    value: "starship",
+    key: "sta-officers-log.talents.type.starship",
+    fallback: "Starship",
+  },
+  {
+    value: "speciesability",
+    key: "sta-officers-log.talents.type.speciesAbility",
+    fallback: "Species Ability",
+  },
+  { value: "npc", key: "sta.item.talent.type.npc", fallback: "NPC" },
+  {
+    value: "role",
+    key: "sta-officers-log.talents.type.role",
+    fallback: "Role",
+  },
+  {
+    value: "award",
+    key: "sta-officers-log.talents.type.award",
+    fallback: "Award",
+  },
+];
+
+// Talent types that auto-insert a backing requirement when chosen.
+const TYPE_TO_REQUIREMENT_CATEGORY = {
+  speciesability: "species",
+};
 
 const DEFAULT_ENTRY_BY_CATEGORY = {
   attribute: {
@@ -74,15 +137,28 @@ const DEFAULT_ENTRY_BY_CATEGORY = {
       { value: "", minimum: 0 },
     ],
   },
+  systems: {
+    category: "systems",
+    operator: "OR",
+    clauses: [
+      { value: "communications", minimum: 0 },
+      { value: "", minimum: 0 },
+    ],
+  },
   species: {
     category: "species",
     operator: "OR",
     clauses: [{ value: "", minimum: 0 }],
   },
-  type: {
-    category: "type",
+  house: {
+    category: "house",
     operator: "OR",
-    clauses: [{ value: "npc", minimum: 0 }],
+    clauses: [{ value: "leaders", minimum: 0 }],
+  },
+  condition: {
+    category: "condition",
+    operator: "OR",
+    clauses: [{ value: "", minimum: 0 }],
   },
 };
 
@@ -95,7 +171,9 @@ const normalizeOp = (value) =>
   String(value ?? "OR").toUpperCase() === "AND" ? "AND" : "OR";
 
 const isNumericCategory = (category) =>
-  category === "attribute" || category === "discipline";
+  category === "attribute" ||
+  category === "discipline" ||
+  category === "systems";
 
 const maxClausesForCategory = (category) =>
   isNumericCategory(category) ? 2 : 1;
@@ -106,9 +184,13 @@ const cloneDefaultEntry = (category) =>
 const getOptionSet = (category) => {
   if (category === "attribute") return ATTRIBUTE_OPTIONS;
   if (category === "discipline") return DISCIPLINE_OPTIONS;
-  if (category === "type") return TYPE_OPTIONS;
+  if (category === "systems") return SYSTEM_OPTIONS;
+  if (category === "house") return HOUSE_OPTIONS;
   return [];
 };
+
+// Categories whose value is a free-form narrative string rather than a preset.
+const isLongTextCategory = (category) => category === "condition";
 
 function _getItemStateKey(item) {
   return String(item?.uuid ?? item?.id ?? "").trim();
@@ -166,6 +248,35 @@ function _summarizeAllRequirements(requirements) {
     "Requires",
   );
   return `${prefix} ${parts.join(", ")}`;
+}
+
+// Conditions are long narrative strings; keep them out of the inline summary so
+// they can render on their own wrapping lines.
+function _splitRequirementSummary(requirements) {
+  const list = Array.isArray(requirements) ? requirements : [];
+  const conditions = [];
+  const inline = [];
+  for (const entry of list) {
+    if (normalizeRequirementString(entry?.category) === "condition") {
+      const text = String(entry?.clauses?.[0]?.value ?? "").trim();
+      if (text) conditions.push(text);
+    } else {
+      inline.push(entry);
+    }
+  }
+
+  const conditionLabel = localize(
+    "sta-officers-log.talents.requirements.category.condition",
+    "Condition",
+  );
+  let summary = "";
+  if (inline.length) summary = _summarizeAllRequirements(inline);
+  else if (!conditions.length) summary = _summarizeAllRequirements([]);
+
+  return {
+    summary,
+    conditionSummaries: conditions.map((text) => `${conditionLabel}: ${text}`),
+  };
 }
 
 function _toEditableRequirements(requirements) {
@@ -264,6 +375,47 @@ export class OfficersTalentSheet extends api.HandlebarsApplicationMixin(
     return super._processSubmitData(event, form, formData);
   }
 
+  _onRender(context, options) {
+    super._onRender(context, options);
+    const root = this.element;
+    if (!(root instanceof HTMLElement)) return;
+    const typeSelect = root.querySelector(".sta-talent-type-select");
+    if (typeSelect instanceof HTMLSelectElement) {
+      typeSelect.addEventListener("change", (event) => {
+        // Handle the change ourselves; keep it out of submitOnChange.
+        event.stopPropagation();
+        this._onTalentTypeChange(String(event.currentTarget.value ?? ""));
+      });
+    }
+  }
+
+  async _onTalentTypeChange(newType) {
+    this._captureDraftRequirementsFromDom();
+    const state = this._getUiState();
+    const category = TYPE_TO_REQUIREMENT_CATEGORY[newType] ?? null;
+
+    // Some types auto-insert a backing requirement (e.g. Species Ability adds a
+    // Species requirement). Leave it as a draft row for the user to fill in; it
+    // persists with the rest on Done. The type is stored independently below.
+    if (category) {
+      const exists = state.requirements.some(
+        (entry) => entry.category === category,
+      );
+      if (!exists) {
+        const entry = cloneDefaultEntry(category);
+        if (entry) state.requirements = [...state.requirements, entry];
+      }
+      state.compactMode = false;
+    }
+    this._setUiState(state);
+
+    await this.item.update({
+      "system.talenttype.typeenum": newType,
+    });
+
+    this.render();
+  }
+
   _getUiState() {
     const key = _getItemStateKey(this.item);
     let state = key ? _talentSheetUiStateByItemKey.get(key) : null;
@@ -340,26 +492,13 @@ export class OfficersTalentSheet extends api.HandlebarsApplicationMixin(
       .map((entry) => _sanitizeRequirementEntry(entry))
       .filter(Boolean);
 
-    const legacy = deriveLegacyRequirementUpdate(requirements);
-    const currentType = normalizeRequirementString(
-      this.item?.system?.talenttype?.typeenum,
-    );
-    if (!requirements.length && currentType === "award") {
-      legacy.typeenum = "award";
-    }
-
     state.requirements = _toEditableRequirements(requirements);
     this._setUiState(state);
 
+    // Requirements are stored independently of the talent type, which is set
+    // solely by the Talent Type dropdown.
     await this.item.update({
       [`flags.${MODULE_ID}.${TALENT_REQUIREMENTS_FLAG_KEY}`]: requirements,
-      "system.talenttype.typeenum": legacy.typeenum,
-      "system.talenttype.description": legacy.description,
-      "system.talenttype.minimum": legacy.minimum,
-      [`flags.${MODULE_ID}.secondReq.description`]:
-        legacy.secondReq.description,
-      [`flags.${MODULE_ID}.secondReq.minimum`]: legacy.secondReq.minimum,
-      [`flags.${MODULE_ID}.npcRequirement.species`]: legacy.npcSpecies,
     });
   }
 
@@ -398,6 +537,7 @@ export class OfficersTalentSheet extends api.HandlebarsApplicationMixin(
             ? Number(clause.minimum)
             : 0,
           hasPresetOptions,
+          isLongText: isLongTextCategory(category),
           options: hasPresetOptions
             ? [{ value: "", label: "(none)" }, ...optionSet].map((opt) => ({
                 value: opt.value,
@@ -431,14 +571,28 @@ export class OfficersTalentSheet extends api.HandlebarsApplicationMixin(
       label: localize(option.labelKey, option.fallback),
     }));
 
+    const currentTypeenum =
+      normalizeRequirementString(this.item?.system?.talenttype?.typeenum) ||
+      "general";
+    const talentTypeOptions = TALENT_TYPE_OPTIONS.map((option) => ({
+      value: option.value,
+      label: localize(option.key, option.fallback),
+      selected: option.value === currentTypeenum,
+    }));
+
+    const { summary, conditionSummaries } =
+      _splitRequirementSummary(requirements);
+
     return {
       ...context,
       item: this.item,
       enrichedNotes,
       compactMode: state.compactMode,
-      requirementSummary: _summarizeAllRequirements(requirements),
+      requirementSummary: summary,
+      conditionSummaries,
       requirementRows,
       availableCategories,
+      talentTypeOptions,
       hasRequirements: requirementRows.length > 0,
     };
   }

@@ -1,6 +1,5 @@
 import { MODULE_ID } from "../core/constants.js";
 import {
-  deriveLegacyRequirementUpdate,
   getNormalizedTalentRequirements,
   normalizeRequirementString,
   TALENT_REQUIREMENTS_FLAG_KEY,
@@ -24,14 +23,24 @@ const CATEGORY_OPTIONS = [
     label: "Departments",
   },
   {
+    value: "systems",
+    labelKey: "sta-officers-log.talents.requirements.category.systems",
+    label: "Systems",
+  },
+  {
     value: "species",
     labelKey: "sta-officers-log.talents.requirements.category.species",
     label: "Species",
   },
   {
-    value: "type",
-    labelKey: "sta-officers-log.talents.requirements.category.type",
-    label: "Type",
+    value: "house",
+    labelKey: "sta-officers-log.talents.requirements.category.house",
+    label: "House",
+  },
+  {
+    value: "condition",
+    labelKey: "sta-officers-log.talents.requirements.category.condition",
+    label: "Condition",
   },
 ];
 
@@ -53,10 +62,22 @@ const DISCIPLINE_OPTIONS = [
   { value: "security", label: "Security" },
 ];
 
-const TYPE_OPTIONS = [
-  { value: "npc", label: "NPC" },
-  { value: "character", label: "Character" },
-  { value: "starship", label: "Starship" },
+const SYSTEM_OPTIONS = [
+  { value: "communications", label: "Communications" },
+  { value: "computers", label: "Computers" },
+  { value: "engines", label: "Engines" },
+  { value: "sensors", label: "Sensors" },
+  { value: "structure", label: "Structure" },
+  { value: "weapons", label: "Weapons" },
+];
+
+const HOUSE_OPTIONS = [
+  { value: "leaders", label: "Leaders" },
+  { value: "warriors", label: "Warriors" },
+  { value: "spacefarers", label: "Spacefarers" },
+  { value: "engineers", label: "Engineers" },
+  { value: "scientists", label: "Scientists" },
+  { value: "physicians", label: "Physicians" },
 ];
 
 const DEFAULT_ENTRY_BY_CATEGORY = {
@@ -76,21 +97,28 @@ const DEFAULT_ENTRY_BY_CATEGORY = {
       { value: "", minimum: 0 },
     ],
   },
-  species: {
-    category: "species",
+  systems: {
+    category: "systems",
     operator: "OR",
     clauses: [
-      { value: "", minimum: 0 },
+      { value: "communications", minimum: 0 },
       { value: "", minimum: 0 },
     ],
   },
-  type: {
-    category: "type",
+  species: {
+    category: "species",
     operator: "OR",
-    clauses: [
-      { value: "npc", minimum: 0 },
-      { value: "", minimum: 0 },
-    ],
+    clauses: [{ value: "", minimum: 0 }],
+  },
+  house: {
+    category: "house",
+    operator: "OR",
+    clauses: [{ value: "leaders", minimum: 0 }],
+  },
+  condition: {
+    category: "condition",
+    operator: "OR",
+    clauses: [{ value: "", minimum: 0 }],
   },
 };
 
@@ -98,7 +126,9 @@ const normalizeOp = (value) =>
   String(value ?? "OR").toUpperCase() === "AND" ? "AND" : "OR";
 
 const isNumericCategory = (category) =>
-  category === "attribute" || category === "discipline";
+  category === "attribute" ||
+  category === "discipline" ||
+  category === "systems";
 
 const maxClausesForCategory = (category) =>
   isNumericCategory(category) ? 2 : 1;
@@ -109,9 +139,13 @@ const cloneDefaultEntry = (category) =>
 const getOptionSet = (category) => {
   if (category === "attribute") return ATTRIBUTE_OPTIONS;
   if (category === "discipline") return DISCIPLINE_OPTIONS;
-  if (category === "type") return TYPE_OPTIONS;
+  if (category === "systems") return SYSTEM_OPTIONS;
+  if (category === "house") return HOUSE_OPTIONS;
   return [];
 };
+
+// Categories whose value is a free-form narrative string rather than a preset.
+const isLongTextCategory = (category) => category === "condition";
 
 const localize = (key, fallback) => {
   if (game.i18n?.has?.(key)) return game.i18n.localize(key);
@@ -192,6 +226,35 @@ function _summarizeAllRequirements(requirements) {
 
   if (!parts.length) return "No requirements.";
   return `Requires ${parts.join(", ")}`;
+}
+
+// Conditions are long narrative strings; keep them out of the inline summary so
+// they can render on their own wrapping lines.
+function _splitRequirementSummary(requirements) {
+  const list = Array.isArray(requirements) ? requirements : [];
+  const conditions = [];
+  const inline = [];
+  for (const entry of list) {
+    if (normalizeRequirementString(entry?.category) === "condition") {
+      const text = String(entry?.clauses?.[0]?.value ?? "").trim();
+      if (text) conditions.push(text);
+    } else {
+      inline.push(entry);
+    }
+  }
+
+  const conditionLabel = localize(
+    "sta-officers-log.talents.requirements.category.condition",
+    "Condition",
+  );
+  let summary = "";
+  if (inline.length) summary = _summarizeAllRequirements(inline);
+  else if (!conditions.length) summary = _summarizeAllRequirements([]);
+
+  return {
+    summary,
+    conditionSummaries: conditions.map((text) => `${conditionLabel}: ${text}`),
+  };
 }
 
 function createEl(tag, className = "", text = "") {
@@ -275,6 +338,12 @@ function buildEntryRow(entry, index) {
     if (options.length) {
       const selectOptions = [{ value: "", label: "(none)" }, ...options];
       valueInput = createSelect(selectOptions, clause.value);
+    } else if (isLongTextCategory(category)) {
+      valueInput = document.createElement("textarea");
+      valueInput.className = "sta-talent-req-condition";
+      valueInput.rows = 2;
+      valueInput.value = clause.value ?? "";
+      valueInput.placeholder = "Describe the condition…";
     } else {
       valueInput = document.createElement("input");
       valueInput.type = "text";
@@ -331,20 +400,21 @@ function injectStyles(root) {
 .${ROOT_CLASS} { margin-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.6rem; }
 .${ROOT_CLASS} .sta-talent-req-compact { display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.6rem; }
 .${ROOT_CLASS} .sta-talent-req-compact-summary { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.${ROOT_CLASS} .sta-talent-req-condition-summary { font-weight:600; margin-top:0.3rem; white-space:normal; overflow-wrap:anywhere; }
 .${ROOT_CLASS} .sta-talent-req-edit-panel[hidden] { display:none !important; }
 .${ROOT_CLASS} .sta-talent-req-controls { display:flex; gap:0.4rem; align-items:center; margin-bottom:0.6rem; }
 .${ROOT_CLASS} .${ADD_SELECT_CLASS} { flex:1; }
 .${ROOT_CLASS} .${LIST_CLASS} { display:flex; flex-direction:column; gap:0.5rem; }
 .${ROOT_CLASS} .sta-talent-req-row { border:1px solid rgba(255,255,255,0.12); border-radius:6px; padding:0.45rem; }
 .${ROOT_CLASS} .sta-talent-req-row-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; }
-.${ROOT_CLASS} .sta-talent-req-row-summary { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:0.6rem; }
-.${ROOT_CLASS} .sta-talent-req-row-actions { display:flex; gap:0.3rem; align-items:center; }
+.${ROOT_CLASS} .sta-talent-req-row-summary { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:0.6rem; }.${ROOT_CLASS} .sta-talent-req-row-actions { display:flex; gap:0.3rem; align-items:center; }
 .${ROOT_CLASS} .sta-talent-req-row-body { display:flex; flex-wrap:wrap; align-items:center; gap:0.35rem; }
 .${ROOT_CLASS} .sta-talent-req-clauses { display:flex; flex:1 1 32rem; gap:0.35rem; min-width:20rem; align-items:center; }
 .${ROOT_CLASS} .sta-talent-req-clause { display:flex; flex:1 1 0; min-width:0; gap:0.35rem; align-items:center; }
 .${ROOT_CLASS} .sta-talent-req-clause > input[type="text"],
 .${ROOT_CLASS} .sta-talent-req-clause > select { flex:1; min-width:0; }
 .${ROOT_CLASS} .sta-talent-req-clause > input[type="number"] { width:3.5rem; }
+.${ROOT_CLASS} .sta-talent-req-clause > textarea.sta-talent-req-condition { flex:1; min-width:0; width:100%; resize:vertical; }
 .${ROOT_CLASS} .sta-talent-req-op-toggle {
   flex:0 0 auto;
   width:3.1rem;
@@ -378,7 +448,17 @@ function renderEditor(root, item) {
   if (!state) return;
 
   if (state.summaryEl instanceof HTMLElement) {
-    state.summaryEl.textContent = _summarizeAllRequirements(state.requirements);
+    const { summary, conditionSummaries } = _splitRequirementSummary(
+      state.requirements,
+    );
+    state.summaryEl.textContent = summary;
+    if (state.conditionsEl instanceof HTMLElement) {
+      state.conditionsEl.replaceChildren(
+        ...conditionSummaries.map((text) =>
+          createEl("div", "sta-talent-req-condition-summary", text),
+        ),
+      );
+    }
   }
   if (state.editToggle instanceof HTMLButtonElement) {
     state.editToggle.textContent = state.compactMode ? "Edit" : "Done";
@@ -487,22 +567,10 @@ async function persistRequirements(root, item) {
   const requirements = readRequirementsFromDom(root);
   state.requirements = requirements;
 
-  const legacy = deriveLegacyRequirementUpdate(requirements);
-  const currentType = normalizeRequirementString(
-    item?.system?.talenttype?.typeenum,
-  );
-  if (!requirements.length && currentType === "award") {
-    legacy.typeenum = "award";
-  }
-
+  // Requirements are stored independently of the talent type, which is set by
+  // the talent type dropdown, not derived from requirements.
   await item.update({
     [`flags.${MODULE_ID}.${TALENT_REQUIREMENTS_FLAG_KEY}`]: requirements,
-    "system.talenttype.typeenum": legacy.typeenum,
-    "system.talenttype.description": legacy.description,
-    "system.talenttype.minimum": legacy.minimum,
-    [`flags.${MODULE_ID}.secondReq.description`]: legacy.secondReq.description,
-    [`flags.${MODULE_ID}.secondReq.minimum`]: legacy.secondReq.minimum,
-    [`flags.${MODULE_ID}.npcRequirement.species`]: legacy.npcSpecies,
   });
 }
 
@@ -583,6 +651,7 @@ function wireEditorEvents(root, item) {
     if (!(el instanceof Element)) return;
 
     // Free-typing fields save on explicit actions (e.g. Done) to avoid rerender while typing.
+    if (el instanceof HTMLTextAreaElement) return;
     if (el instanceof HTMLInputElement) {
       if (el.type === "text" || el.type === "number") return;
     }
@@ -617,6 +686,8 @@ export function installTalentRequirementsEditor(root, item) {
     compactToggle.dataset.action = "compact-toggle";
     compact.append(compactSummary, compactToggle);
 
+    const compactConditions = createEl("div", "sta-talent-req-conditions");
+
     const editPanel = createEl("div", "sta-talent-req-edit-panel");
 
     const controls = createEl("div", "sta-talent-req-controls");
@@ -631,7 +702,7 @@ export function installTalentRequirementsEditor(root, item) {
 
     const list = createEl("div", LIST_CLASS);
     editPanel.append(controls, list);
-    container.append(compact, editPanel);
+    container.append(compact, compactConditions, editPanel);
 
     typeRow.style.display = "none";
     typeRow.after(container);
@@ -650,6 +721,7 @@ export function installTalentRequirementsEditor(root, item) {
       addSelect,
       addButton,
       summaryEl: compactSummary,
+      conditionsEl: compactConditions,
       editToggle: compactToggle,
       editPanel,
       requirements,
