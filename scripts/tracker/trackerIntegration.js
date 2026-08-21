@@ -57,10 +57,16 @@ function _anchorTrackerBottomEdge(trackerContainer) {
 
   const trackerRect = trackerContainer.getBoundingClientRect();
   const playerRect = playerList.getBoundingClientRect();
+  const viewportH =
+    window.innerHeight || document.documentElement.clientHeight || 0;
+  const maxReasonableOffset = Math.max(
+    48,
+    Math.min(viewportH * 0.35, trackerRect.height + 32),
+  );
 
   const GAP = 4; // px gap between tracker bottom and player list top
   const delta = trackerRect.bottom - (playerRect.top - GAP);
-  if (Math.abs(delta) < 1) return; // already in position
+  if (Math.abs(delta) < 1 || Math.abs(delta) > maxReasonableOffset) return;
 
   trackerContainer.style.position = "relative";
   trackerContainer.style.top = `${-delta}px`;
