@@ -10,7 +10,7 @@ import {
 } from "../core/talentRequirements.js";
 import {
   getTalentPickerCustomCompendiumKeys,
-  getTalentPickerCustomFolderFilterEnabled,
+  getTalentPickerIncludeBuiltinEnabled,
 } from "../settings/pickerSettings.js";
 import {
   ATTRIBUTE_KEYS,
@@ -111,13 +111,24 @@ export async function loadTalentPickerTalents(options = {}) {
   return _collectTalentPickerEntries(options);
 }
 
-// Just a wrapper around _deriveTalentCategoryFromImg for talent entries.
+// Derives the picker group for a talent entry. Species grouping keys off the
+// talent's species *requirement* (from the requirements flag / legacy inference),
+// not the talent type.
 function _deriveCategoryFromEntry(entry) {
-  const talenttype = entry?.talenttype ?? null;
-  const type = normalizeRequirementString(talenttype?.typeenum);
-  if (type === "species") {
-    const rawLabel = String(talenttype?.description ?? "").trim();
-    const label = rawLabel || "Species";
+  const requirements = getNormalizedTalentRequirements(entry, {
+    inferSpecies: _inferRequiredSpeciesFromTalent,
+  });
+  const speciesReq = requirements.find(
+    (r) => normalizeRequirementString(r?.category) === "species",
+  );
+  if (speciesReq) {
+    const rawLabel = (
+      Array.isArray(speciesReq.clauses) ? speciesReq.clauses : []
+    )
+      .map((c) => String(c?.value ?? "").trim())
+      .filter(Boolean)
+      .join(", ");
+    const label = humanizeRequirementValue(rawLabel) || "Species";
     const key = `species:${normalizeRequirementString(rawLabel) || "species"}`;
     return { key, label, img: null, isSpeciesGroup: true };
   }
@@ -126,17 +137,42 @@ function _deriveCategoryFromEntry(entry) {
   return { ...cat, isSpeciesGroup: cat.key === "species" };
 }
 
+// Talent types never offered as an advancement choice in any picker.
+const NEVER_PICKABLE_TYPES = new Set([
+  "role",
+  "speciesability",
+  "npc",
+  "award",
+]);
+// Character advancement additionally excludes all ship talents.
+const CHARACTER_EXCLUDED_TYPES = new Set([
+  ...NEVER_PICKABLE_TYPES,
+  "starship",
+  "starshipservicerecord",
+  "starshipspecialrule",
+]);
+// Ship advancement shows "starship" talents but not service records / special rules.
+const SHIP_EXCLUDED_TYPES = new Set([
+  ...NEVER_PICKABLE_TYPES,
+  "starshipservicerecord",
+  "starshipspecialrule",
+]);
+
 export function prepareTalentPickerContext(
   talents = [],
   actor = null,
   options = {},
 ) {
   const showCustomButton = options.showCustomButton !== false;
+  const excludedTypes =
+    options.pickerKind === "ship"
+      ? SHIP_EXCLUDED_TYPES
+      : CHARACTER_EXCLUDED_TYPES;
   const groupsMap = new Map();
   const speciesImgCounts = new Map();
   for (const talent of Array.isArray(talents) ? talents : []) {
     const talentType = normalizeRequirementString(talent?.talenttype?.typeenum);
-    if (talentType === "role" || talentType === "speciesability") continue;
+    if (excludedTypes.has(talentType)) continue;
 
     const cat = _deriveCategoryFromEntry(talent);
     const requirementLabel = formatTalentRequirementLabel(
@@ -575,9 +611,18 @@ function _isConsolidatedTalentPackKey(packKey) {
   return key.endsWith("items-1e") || key.endsWith("items-2e");
 }
 
-function _classifyTalentFolderFromDocument(doc, pack = null) {
-  let cur = doc?.folder ?? null;
+// Some compendiums (e.g. Forge shared packs) return index entries without a
+// uuid; reconstruct it from the pack key + _id so downstream loads still work.
+function _resolveEntryUuid(entry, packKey) {
+  const existing = String(entry?.uuid ?? "").trim();
+  if (existing) return existing;
+  const id = String(entry?._id ?? "").trim();
+  const key = String(packKey ?? "").trim();
+  if (id && key) return `Compendium.${key}.Item.${id}`;
+  return null;
+}
 
+function _classifyTalentFolderFromDocument(doc, pack = null) {
   // Handle case where folder is an ID string instead of a Folder object.
   // This can happen with compendium documents before full folder population.
   if (typeof cur === "string" && pack?.folders?.get) {
@@ -846,14 +891,17 @@ async function _collectTalentPickerEntries({
     if (!packs.includes(normalized)) packs.push(normalized);
   };
 
-  for (const key of basePackKeys ?? []) addPack(key);
-  for (const key of extraPackKeys ?? []) addPack(key);
+  // Built-in STA packs (base/extra) can be excluded via world setting so the
+  // configured custom compendiums become the sole source.
+  if (getTalentPickerIncludeBuiltinEnabled()) {
+    for (const key of basePackKeys ?? []) addPack(key);
+    for (const key of extraPackKeys ?? []) addPack(key);
+  }
 
   const explicit = String(packKey ?? "").trim();
   if (explicit) addPack(explicit);
 
   const customPackKeys = getTalentPickerCustomCompendiumKeys();
-  const customFolderFilterEnabled = getTalentPickerCustomFolderFilterEnabled();
   for (const custom of customPackKeys) {
     if (custom) addPack(custom);
   }
@@ -888,14 +936,11 @@ async function _collectTalentPickerEntries({
     const { entries, error } = await _getTalentIndexEntries({ packKey: key });
     if (error) errors.push(error);
     if (entries?.length) {
-      // If the pack is consolidated (items-1e/items-2e), filter by folder lineage.
-      // For legacy packs we usually already have crew-vs-ship separation by pack.
-      // Custom compendiums can opt-in to folder filtering via settings.
+      // Consolidated packs (items-1e/items-2e) still separate crew vs starship
+      // by folder lineage; other packs rely on talent-type filtering downstream.
       const isConsolidated =
         key.endsWith("items-1e") || key.endsWith("items-2e");
-      const isCustomWithFolderFilter =
-        customFolderFilterEnabled && customPackKeys.includes(key);
-      const shouldFilterByFolder = isConsolidated || isCustomWithFolderFilter;
+      const shouldFilterByFolder = isConsolidated;
       if (!wantedKind || !shouldFilterByFolder) {
         allEntries.push({ key, entries });
       } else {
@@ -958,7 +1003,7 @@ async function _collectTalentPickerEntries({
         value: {
           name,
           img: entry?.img ?? null,
-          uuid: entry?.uuid ?? null,
+          uuid: _resolveEntryUuid(entry, batch.key),
           folder: entry?.folder ?? null,
         },
       });
@@ -970,9 +1015,7 @@ async function _collectTalentPickerEntries({
     talents.map(async (talent) => {
       const packKey = _packKeyFromUuid(talent.uuid);
       const isConsolidated = _isConsolidatedTalentPackKey(packKey);
-      const isCustomWithFolderFilter =
-        customFolderFilterEnabled && customPackKeys.includes(packKey);
-      const shouldFilterByFolder = isConsolidated || isCustomWithFolderFilter;
+      const shouldFilterByFolder = isConsolidated;
       const doc = await _getTalentDocumentByUuid(talent.uuid);
       if (_isNpcTalentFromDocument(doc) && !actorIsNpc) {
         return null;
@@ -1017,7 +1060,12 @@ async function _collectTalentPickerEntries({
 
 class TalentPickerApp extends Base {
   constructor(
-    { talents = [], resolve = null, actor = null } = {},
+    {
+      talents = [],
+      resolve = null,
+      actor = null,
+      pickerKind = "character",
+    } = {},
     options = {},
   ) {
     super(options);
@@ -1025,6 +1073,7 @@ class TalentPickerApp extends Base {
     this._resolve = typeof resolve === "function" ? resolve : null;
     this._resolved = false;
     this._actor = actor ?? null;
+    this._pickerKind = pickerKind;
   }
 
   static DEFAULT_OPTIONS = {
@@ -1046,7 +1095,9 @@ class TalentPickerApp extends Base {
   }
 
   async _prepareContext(_options) {
-    return prepareTalentPickerContext(this._talents, this._actor);
+    return prepareTalentPickerContext(this._talents, this._actor, {
+      pickerKind: this._pickerKind,
+    });
   }
 
   _resolveOnce(value) {
@@ -1154,11 +1205,34 @@ async function _promptTalentPickerFromPackList(options = {}) {
     return null;
   }
 
+  const pickerKind = options.folderKind === "starship" ? "ship" : "character";
+
+  // Prefer the browser-styled picker from sta-utils; fall back to the built-in
+  // list picker when sta-utils is inactive or the delegation fails.
+  try {
+    const { runTalentBrowserPicker } = await import("./talentPickerBridge.js");
+    const bridged = await runTalentBrowserPicker({
+      actor: options.actor ?? null,
+      pickerKind,
+      talents,
+      allowCustom: options.allowCustom !== false,
+    });
+    if (!bridged.fallback) {
+      return bridged.chosen;
+    }
+  } catch (err) {
+    console.error(
+      `${MODULE_ID} | talent browser picker failed; using fallback`,
+      err,
+    );
+  }
+
   return new Promise((resolve) => {
     const app = new TalentPickerApp({
       talents,
       resolve,
       actor: options.actor ?? null,
+      pickerKind,
     });
     app.render(true);
   });
@@ -1167,10 +1241,12 @@ async function _promptTalentPickerFromPackList(options = {}) {
 export async function promptTalentChoiceFromCompendium({
   actor = null,
   packKey = "",
+  allowCustom = true,
 } = {}) {
   return _promptTalentPickerFromPackList({
     actor,
     packKey,
+    allowCustom,
     basePackKeys: TALENT_BASE_PACKS,
     extraPackKeys: [TALENT_CREW_PACK],
     priorityEntries: TALENT_BASE_PACKS.map((key, idx) => [key, idx + 1]),
@@ -1182,10 +1258,12 @@ export async function promptTalentChoiceFromCompendium({
 export async function promptShipTalentChoiceFromCompendium({
   actor = null,
   packKey = "",
+  allowCustom = true,
 } = {}) {
   return _promptTalentPickerFromPackList({
     actor,
     packKey,
+    allowCustom,
     basePackKeys: SHIP_TALENT_BASE_PACKS,
     priorityEntries: SHIP_TALENT_BASE_PACKS.map((key, idx) => [key, idx + 1]),
     folderKind: "starship",
@@ -1243,10 +1321,15 @@ const getTraitNames = (actor) => {
  * (legacy path).
  */
 const _actorHasSpecies = (actor, speciesNorm) => {
-  if (!speciesNorm) return true;
+  // A requirement value may list several qualifying species/traits separated by
+  // commas (e.g. "vulcan, augment, cyborg"); the actor matches if it has ANY.
+  const options = String(speciesNorm ?? "")
+    .split(",")
+    .map((s) => normalizeRequirementString(s))
+    .filter(Boolean);
+  if (!options.length) return true;
+
   const traits = getTraitNames(actor);
-  if (traits.some((name) => name === speciesNorm || name.includes(speciesNorm)))
-    return true;
   const sysSpecies =
     normalizeRequirementString(
       foundry.utils.getProperty(actor, "system.species"),
@@ -1254,7 +1337,11 @@ const _actorHasSpecies = (actor, speciesNorm) => {
     normalizeRequirementString(
       foundry.utils.getProperty(actor, "system.details.species"),
     );
-  return sysSpecies === speciesNorm || sysSpecies.includes(speciesNorm);
+
+  return options.some((opt) => {
+    if (traits.some((name) => name === opt || name.includes(opt))) return true;
+    return sysSpecies === opt || sysSpecies.includes(opt);
+  });
 };
 
 /**
@@ -1266,7 +1353,7 @@ const _actorHasSpecies = (actor, speciesNorm) => {
  *   1. The talent name itself is a known species name (e.g. "Vulcan").
  *   2. The talent image path contains a species name (e.g. "talent-vulcan.svg").
  */
-const _inferRequiredSpeciesFromTalent = (talentEntry) => {
+export const _inferRequiredSpeciesFromTalent = (talentEntry) => {
   const name = normalizeRequirementString(talentEntry?.name);
   if (name && SPECIES_TALENT_NAMES.has(name)) return name;
   const img = String(talentEntry?.img ?? "").toLowerCase();
@@ -1321,7 +1408,8 @@ const requirementTypeLabels = {
   species: "Species",
   house: "House",
   system: "System",
-  systems: "Starship",
+  systems: "Systems",
+  condition: "Condition",
   general: "General",
   npc: "NPC",
   starship: "Starship",
@@ -1360,6 +1448,14 @@ const formatRequirementClauseLabel = (category, clause) => {
     if (norm === "npc") return "NPC";
     if (norm === "character") return "Character";
     if (norm === "starship") return "Starship";
+  }
+
+  if (category === "systems") {
+    const label = humanizeRequirementValue(rawValue) || rawValue;
+    const min = Number.isFinite(Number(clause?.minimum))
+      ? Number(clause.minimum)
+      : null;
+    return min != null ? `${label} ${min}+` : label;
   }
 
   return humanizeRequirementValue(rawValue) || rawValue;
@@ -1421,6 +1517,20 @@ const evaluateRequirementCategory = (actor, entry, talentEntry) => {
       }
       case "species":
         return _actorHasSpecies(actor, value);
+      case "systems": {
+        // Ship system rating — only a starship can satisfy it; characters/NPCs
+        // can never meet a ship-system requirement.
+        if (!_isStarshipActor(actor)) return false;
+        const actorValue = getNumeric(actor, `system.systems.${value}.value`);
+        if (actorValue == null) return false;
+        const minimum = Number.isFinite(Number(clause?.minimum))
+          ? Number(clause.minimum)
+          : null;
+        return minimum == null ? true : actorValue >= minimum;
+      }
+      case "condition":
+        // Narrative condition — GM adjudicates; never auto-filter.
+        return true;
       case "type": {
         if (value === "npc") return _isNpcActor(actor);
         if (value === "starship") return _isStarshipActor(actor);

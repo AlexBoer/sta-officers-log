@@ -33,9 +33,9 @@
         "name": "Talent Picker: Extra Compendium",
         "hint": "Optional compendium pack id(s) to include in the Talent picker. You can provide multiple pack ids separated by commas (e.g. module-name.talents-homebrew, another-module.more-talents)."
       },
-      "talentPickerCustomCompendiumFolderFilter": {
-        "name": "Talent Picker: Filter Custom Compendium by Folder",
-        "hint": "If enabled, talents in custom compendiums will be filtered by folder structure (Crew vs Starship), just like the official STA consolidated packs. Use this if your custom compendium contains both crew and starship talents organized in folders."
+      "talentPickerIncludeBuiltin": {
+        "name": "Talent Picker: Include Built-in STA Packs",
+        "hint": "If disabled, the built-in STA talent packs are not searched and only the compendiums you configure are used as sources for the Talent picker."
       },
       "focusPickerCustomCompendium": {
         "name": "Focus Picker: Extra Compendium",
@@ -51,8 +51,8 @@
         "focusHint": "These packs are searched in addition to the built-in STA packs when a player opens the Focus picker.",
         "talentLabel": "Talent Picker Compendiums",
         "talentHint": "These packs are searched in addition to the built-in STA packs when a player opens the Talent picker.",
-        "folderFilterName": "Filter Talent Compendiums by Folder",
-        "folderFilterHint": "If enabled, talents in custom compendiums are filtered by folder structure (Crew vs Starship), just like the official STA consolidated packs. Use this if your custom compendium organises crew and starship talents in separate folders.",
+        "includeBuiltinName": "Include Built-in STA Talent Packs",
+        "includeBuiltinHint": "When enabled, the built-in STA talent packs are searched alongside your compendiums. Disable to use only the compendiums configured above as the Talent picker's sources.",
         "selectPlaceholder": "— Select a compendium to add —",
         "addPack": "Add",
         "removePack": "Remove",
@@ -217,6 +217,9 @@
       "addButton": "Add",
       "addRequirementCategory": "Add Requirement Category",
       "conditionPlaceholder": "Describe the condition…",
+      "speciesPlaceholder": "e.g. Vulcan, Augment, Cyborg",
+      "sourceLabel": "Source",
+      "sourcePlaceholder": "e.g. Core Rulebook p.130",
       "sheet": {
         "requirements": "Requirements",
         "requiresPrefix": "Requires",
@@ -241,6 +244,8 @@
         "general": "General",
         "character": "Character",
         "speciesAbility": "Species Ability",
+        "starshipServiceRecord": "Starship Service Record",
+        "starshipSpecialRule": "Starship Special Rule",
         "role": "Role",
         "award": "Award",
         "hint": "Choosing Species Ability adds a Species requirement below that you can fill in."
@@ -621,7 +626,9 @@
         "confirmUnnamed": "(Unnamed Focus)",
         "confirmNoDescription": "No description available for this focus.",
         "none": "No focuses found.",
-        "found": "Found: {count}"
+        "found": "Found: {count}",
+        "heading": "Focuses",
+        "category": "Category"
       },
       "talentPicker": {
         "createCustom": "Create Custom Talent",
@@ -638,7 +645,22 @@
         "none": "No talents found.",
         "found": "Found: {count}",
         "loadingTitle": "Loading Talents",
-        "loadingMessage": "Loading talents from compendiums..."
+        "loadingMessage": "Loading talents from compendiums...",
+        "requiresPrefix": "Requires:",
+        "conditionPrefix": "Condition:",
+        "characterHeading": "Talents",
+        "shipHeading": "Ship Talents",
+        "aCharacter": "A character",
+        "gmNotice": "<strong>{actor}</strong> added the talent <strong>{talent}</strong> without meeting its requirements ({requirements}).",
+        "showSpeciesAbilities": "Show species abilities",
+        "showStarshipSpecialRules": "Show special rules",
+        "showStarshipServiceRecords": "Show service records",
+        "nonStandardNotice": "<strong>{actor}</strong> added <strong>{talent}</strong>, a non-standard {kind}.",
+        "nonStandardKind": {
+          "speciesAbility": "species ability",
+          "starshipSpecialRule": "starship special rule",
+          "starshipServiceRecord": "starship service record"
+        }
       },
       "shipTalentSwap": {
         "title": "Replace a Ship Talent",
@@ -658,7 +680,8 @@
         "customLabel": "Custom Talent",
         "customPlaceholder": "Describe the custom talent",
         "customButton": "Choose Custom Talent",
-        "customNameRequired": "Enter a custom talent name before selecting it."
+        "customNameRequired": "Enter a custom talent name before selecting it.",
+        "chooseReplacement": "Choose Replacement…"
       },
       "pendingShipBenefits": {
         "title": "Review Pending Ship Benefits",

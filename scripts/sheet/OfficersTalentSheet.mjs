@@ -98,6 +98,16 @@ const TALENT_TYPE_OPTIONS = [
     fallback: "Starship",
   },
   {
+    value: "starshipservicerecord",
+    key: "sta-officers-log.talents.type.starshipServiceRecord",
+    fallback: "Starship Service Record",
+  },
+  {
+    value: "starshipspecialrule",
+    key: "sta-officers-log.talents.type.starshipSpecialRule",
+    fallback: "Starship Special Rule",
+  },
+  {
     value: "speciesability",
     key: "sta-officers-log.talents.type.speciesAbility",
     fallback: "Species Ability",
@@ -375,6 +385,20 @@ export class OfficersTalentSheet extends api.HandlebarsApplicationMixin(
     return super._processSubmitData(event, form, formData);
   }
 
+  async close(options = {}) {
+    // Persist any in-progress requirement edits so they aren't lost on close.
+    try {
+      this._captureDraftRequirementsFromDom();
+      await this._persistRequirementsFromState();
+    } catch (err) {
+      console.error(
+        `${MODULE_ID} | Failed to persist talent requirements on close`,
+        err,
+      );
+    }
+    return super.close(options);
+  }
+
   _onRender(context, options) {
     super._onRender(context, options);
     const root = this.element;
@@ -593,6 +617,7 @@ export class OfficersTalentSheet extends api.HandlebarsApplicationMixin(
       requirementRows,
       availableCategories,
       talentTypeOptions,
+      talentSource: String(this.item?.flags?.[MODULE_ID]?.source ?? ""),
       hasRequirements: requirementRows.length > 0,
     };
   }

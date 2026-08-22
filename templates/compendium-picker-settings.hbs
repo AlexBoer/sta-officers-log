@@ -71,12 +71,13 @@
     </div>
   </div>
 
-  {{!-- ── Talent folder filter (inline below talent section) ───────────── --}}
+
+  {{!-- ── Include built-in STA packs ───────────────────────────────────── --}}
   <div class="form-group">
-    <label>{{localize "sta-officers-log.settings.compendiumPicker.folderFilterName"}}</label>
-    <p class="hint">{{localize "sta-officers-log.settings.compendiumPicker.folderFilterHint"}}</p>
+    <label>{{localize "sta-officers-log.settings.compendiumPicker.includeBuiltinName"}}</label>
+    <p class="hint">{{localize "sta-officers-log.settings.compendiumPicker.includeBuiltinHint"}}</p>
     <div class="form-fields">
-      <input type="checkbox" name="talentFolderFilter" {{#if talentFolderFilter}}checked{{/if}}>
+      <input type="checkbox" name="talentIncludeBuiltin" {{#if talentIncludeBuiltin}}checked{{/if}}>
     </div>
   </div>
 

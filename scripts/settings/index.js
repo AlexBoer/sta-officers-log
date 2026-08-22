@@ -32,7 +32,6 @@ export {
 export {
   FOCUS_PICKER_CUSTOM_COMPENDIUM_SETTING,
   TALENT_PICKER_CUSTOM_COMPENDIUM_SETTING,
-  TALENT_PICKER_CUSTOM_FOLDER_FILTER_SETTING,
   parseCompendiumPackKeys,
   registerFocusPickerSettings,
   registerTalentPickerSettings,
@@ -41,5 +40,4 @@ export {
   getFocusPickerCustomCompendiumKeys,
   getTalentPickerCustomCompendiumKey,
   getTalentPickerCustomCompendiumKeys,
-  getTalentPickerCustomFolderFilterEnabled,
 } from "./pickerSettings.js";

@@ -541,6 +541,19 @@ export async function promptFocusChoiceFromCompendium({ packKey = "" } = {}) {
     }),
   );
 
+  // Prefer the browser-styled picker from sta-utils; fall back to the built-in
+  // list picker when sta-utils is inactive or the delegation fails.
+  try {
+    const { runFocusBrowserPicker } = await import("./focusPickerBridge.js");
+    const bridged = await runFocusBrowserPicker({ focuses: focusesWithData });
+    if (!bridged.fallback) return bridged.chosen;
+  } catch (err) {
+    console.error(
+      `${MODULE_ID} | focus browser picker failed; using fallback`,
+      err,
+    );
+  }
+
   return new Promise((resolve) => {
     const app = new FocusPickerApp({ focuses: focusesWithData, resolve });
     app.render(true);

@@ -5936,6 +5936,22 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
   overflow-wrap: anywhere;
 }
 
+.officers-talent-sheet .sta-talent-source-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.officers-talent-sheet .sta-talent-source-label {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.officers-talent-sheet .sta-talent-source-row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
 .officers-talent-sheet .sta-talent-req-controls {
   display: flex;
   gap: 0.4rem;

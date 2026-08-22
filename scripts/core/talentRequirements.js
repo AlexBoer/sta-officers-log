@@ -41,7 +41,8 @@ export const sanitizeRequirementOperator = (value) =>
 
 export const isNumericRequirementCategory = (category) =>
   normalizeRequirementString(category) === "attribute" ||
-  normalizeRequirementString(category) === "discipline";
+  normalizeRequirementString(category) === "discipline" ||
+  normalizeRequirementString(category) === "systems";
 
 export const resolveAttributeKey = (value) => {
   if (!value) return null;

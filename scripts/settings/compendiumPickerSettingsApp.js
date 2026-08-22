@@ -3,7 +3,7 @@ import { t } from "../core/i18n.js";
 import {
   FOCUS_PICKER_CUSTOM_COMPENDIUM_SETTING,
   TALENT_PICKER_CUSTOM_COMPENDIUM_SETTING,
-  TALENT_PICKER_CUSTOM_FOLDER_FILTER_SETTING,
+  TALENT_PICKER_INCLUDE_BUILTIN_SETTING,
   parseCompendiumPackKeys,
 } from "./pickerSettings.js";
 
@@ -54,8 +54,8 @@ export class CompendiumPickerSettingsApp extends HandlebarsApplicationMixin(
       game.settings.get(MODULE_ID, TALENT_PICKER_CUSTOM_COMPENDIUM_SETTING) ??
         "",
     );
-    const talentFolderFilter = Boolean(
-      game.settings.get(MODULE_ID, TALENT_PICKER_CUSTOM_FOLDER_FILTER_SETTING),
+    const talentIncludeBuiltin = Boolean(
+      game.settings.get(MODULE_ID, TALENT_PICKER_INCLUDE_BUILTIN_SETTING),
     );
 
     return {
@@ -64,7 +64,7 @@ export class CompendiumPickerSettingsApp extends HandlebarsApplicationMixin(
       talentPacks: talentKeys.map((k) => ({ key: k, label: _packLabel(k) })),
       focusKeysValue: focusKeys.join(","),
       talentKeysValue: talentKeys.join(","),
-      talentFolderFilter,
+      talentIncludeBuiltin,
     };
   }
 
@@ -194,8 +194,8 @@ export class CompendiumPickerSettingsApp extends HandlebarsApplicationMixin(
     );
     await game.settings.set(
       MODULE_ID,
-      TALENT_PICKER_CUSTOM_FOLDER_FILTER_SETTING,
-      Boolean(obj.talentFolderFilter),
+      TALENT_PICKER_INCLUDE_BUILTIN_SETTING,
+      Boolean(obj.talentIncludeBuiltin),
     );
 
     ui.notifications?.info?.(

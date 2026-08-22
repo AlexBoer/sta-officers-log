@@ -67,7 +67,7 @@ export async function handleItemSheetRender(app, root) {
     } else if (item?.type === "talent") {
       if (app?.constructor?.name === "OfficersTalentSheet") return;
       installTalentStarshipType(root, item);
-      installTalentRequirementsEditor(root, item);
+      installTalentRequirementsEditor(root, item, app);
     }
   } catch (_) {
     // ignore

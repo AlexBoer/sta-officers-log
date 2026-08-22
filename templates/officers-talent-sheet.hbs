@@ -15,6 +15,15 @@
     </section>
 
     <section class="ol-section">
+      <div class="sta-talent-type-row">
+        <label class="sta-talent-type-label">{{localize "sta-officers-log.talents.type.label"}}</label>
+        <select class="sta-talent-type-select">
+          {{#each talentTypeOptions as |opt|}}
+          <option value="{{opt.value}}" {{#if opt.selected}}selected{{/if}}>{{opt.label}}</option>
+          {{/each}}
+        </select>
+      </div>
+
       <div class="sta-talent-req-compact">
         <div class="sta-talent-req-compact-summary">{{requirementSummary}}</div>
         <button type="button" class="button" data-action="onToggleEdit">
@@ -30,14 +39,6 @@
       {{/each}}
 
       {{#unless compactMode}}
-      <div class="sta-talent-type-row">
-        <label class="sta-talent-type-label">{{localize "sta-officers-log.talents.type.label"}}</label>
-        <select class="sta-talent-type-select">
-          {{#each talentTypeOptions as |opt|}}
-          <option value="{{opt.value}}" {{#if opt.selected}}selected{{/if}}>{{opt.label}}</option>
-          {{/each}}
-        </select>
-      </div>
       <p class="sta-talent-type-hint">{{localize "sta-officers-log.talents.type.hint"}}</p>
 
       <div class="sta-talent-req-controls">
@@ -84,7 +85,7 @@
                        data-field="value"
                        data-clause-index="0"
                        value="{{row.clauseA.value}}"
-                       placeholder="{{localize 'sta-officers-log.talents.npcSpeciesPlaceholder'}}" />
+                       placeholder="{{localize 'sta-officers-log.talents.speciesPlaceholder'}}" />
                 {{/if}}
 
                 {{#if row.isNumeric}}
@@ -158,6 +159,15 @@
                       toggled="true">
           {{{enrichedNotes}}}
         </prose-mirror>
+      </div>
+    </section>
+
+    <section class="ol-section">
+      <div class="sta-talent-source-row">
+        <label class="sta-talent-source-label">{{localize "sta-officers-log.talents.sourceLabel"}}</label>
+        <input type="text" name="flags.sta-officers-log.source"
+               value="{{talentSource}}"
+               placeholder="{{localize 'sta-officers-log.talents.sourcePlaceholder'}}" />
       </div>
     </section>
   </div>

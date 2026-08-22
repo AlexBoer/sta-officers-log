@@ -1,11 +1,6 @@
 import { MODULE_ID } from "../core/constants.js";
 import { t } from "../core/i18n.js";
-import {
-  SHIP_TALENT_BASE_PACKS,
-  prepareTalentPickerContext,
-  bindTalentPickerInteractions,
-  loadTalentPickerTalents,
-} from "../milestones/talentPickerDialog.js";
+import { promptShipTalentChoiceFromCompendium } from "../milestones/talentPickerDialog.js";
 
 const Base = foundry.applications.api.HandlebarsApplicationMixin(
   foundry.applications.api.ApplicationV2,
@@ -13,12 +8,11 @@ const Base = foundry.applications.api.HandlebarsApplicationMixin(
 
 class ShipTalentSwapApp extends Base {
   constructor(
-    { ship = null, talents = [], shipTalents = [], resolve = null } = {},
+    { ship = null, shipTalents = [], resolve = null } = {},
     options = {},
   ) {
     super(options);
     this._ship = ship;
-    this._talents = Array.isArray(talents) ? talents : [];
     this._shipTalents = Array.isArray(shipTalents) ? shipTalents : [];
     this._resolve = typeof resolve === "function" ? resolve : null;
     this._resolved = false;
@@ -54,23 +48,6 @@ class ShipTalentSwapApp extends Base {
   };
 
   async _prepareContext(_options) {
-    const pickerContext = prepareTalentPickerContext(
-      this._talents,
-      this._ship,
-      {
-        showCustomButton: false,
-      },
-    );
-    const rawPickerMarkup =
-      await foundry.applications.handlebars.renderTemplate(
-        `modules/${MODULE_ID}/templates/talent-picker.hbs`,
-        pickerContext,
-      );
-    const talentPickerMarkup = String(rawPickerMarkup ?? "")
-      .trim()
-      .replace(/^<form\b([^>]*)>/i, "<div$1>")
-      .replace(/<\/form>\s*$/i, "</div>");
-
     const shipName = this._ship?.name ?? "";
     const notChosen =
       t("sta-officers-log.dialog.shipTalentSwap.notChosen") ?? "Not chosen yet";
@@ -97,6 +74,9 @@ class ShipTalentSwapApp extends Base {
       addHint:
         t("sta-officers-log.dialog.shipTalentSwap.addHint") ??
         "Pick a new talent to add.",
+      chooseReplacementLabel:
+        t("sta-officers-log.dialog.shipTalentSwap.chooseReplacement") ??
+        "Choose Replacement…",
       customLabel,
       customPlaceholder,
       customButtonLabel,
@@ -112,7 +92,6 @@ class ShipTalentSwapApp extends Base {
       cancelLabel:
         t("sta-officers-log.dialog.shipTalentSwap.cancel") ?? "Cancel",
       shipTalents: this._shipTalents,
-      talentPickerMarkup,
     };
   }
 
@@ -186,34 +165,34 @@ class ShipTalentSwapApp extends Base {
       this._updateConfirmButton();
     });
 
-    const pickerRoot = root.querySelector(".sta-focus-picker");
-    const binding = bindTalentPickerInteractions(pickerRoot, this._talents, {
-      onChoose: async (entry, btn) => {
-        if (this._selectedCustomBtn) {
-          this._selectedCustomBtn.classList.remove("is-selected");
-          this._selectedCustomBtn = null;
-        }
+    const pickerBtn = root.querySelector(
+      'button[data-action="choose-replacement"]',
+    );
+    pickerBtn?.addEventListener("click", async () => {
+      const chosen = await promptShipTalentChoiceFromCompendium({
+        actor: this._ship,
+        allowCustom: false,
+      });
+      if (!chosen || chosen.custom) return;
 
-        this._selectedNewTalent = entry;
-        this._selectedNewTalentName = String(entry?.name ?? "").trim();
-        if (this._selectedNewBtn) {
-          this._selectedNewBtn.classList.remove("is-selected");
-        }
-        if (btn) {
-          btn.classList.add("is-selected");
-          this._selectedNewBtn = btn;
-        }
-        if (this._summaryNewEl) {
-          this._summaryNewEl.textContent =
-            this._selectedNewTalentName || this._summaryNewEl.textContent;
-        }
-        this._updateConfirmButton();
-      },
-      onCancel: () => {
-        return null;
-      },
+      if (this._selectedCustomBtn) {
+        this._selectedCustomBtn.classList.remove("is-selected");
+        this._selectedCustomBtn = null;
+      }
+      this._selectedNewTalent = {
+        name: chosen.name ?? "",
+        img: chosen.img ?? null,
+        uuid: chosen.uuid ?? null,
+        item: chosen.item ?? null,
+        talenttype: chosen.talenttype ?? null,
+      };
+      this._selectedNewTalentName = String(chosen.name ?? "").trim();
+      if (this._summaryNewEl) {
+        this._summaryNewEl.textContent =
+          this._selectedNewTalentName || this._summaryNewEl.textContent;
+      }
+      this._updateConfirmButton();
     });
-    binding.applyFilter();
 
     const backBtn = root.querySelector('button[data-action="back"]');
     const cancelBtn = root.querySelector('button[data-action="cancel"]');
@@ -271,21 +250,6 @@ class ShipTalentSwapApp extends Base {
 export async function promptShipTalentSwapDialog({ ship = null } = {}) {
   if (!ship) return null;
 
-  const { talents, errors } = await loadTalentPickerTalents({
-    basePackKeys: SHIP_TALENT_BASE_PACKS,
-    priorityEntries: SHIP_TALENT_BASE_PACKS.map((key, idx) => [key, idx + 1]),
-    folderKind: "starship",
-  });
-
-  for (const msg of errors ?? []) {
-    ui.notifications?.warn?.(msg);
-  }
-
-  if (!talents.length) {
-    ui.notifications?.warn?.("No talents found in the available compendiums.");
-    return null;
-  }
-
   return new Promise((resolve) => {
     const shipTalents = (ship.items ?? [])
       .filter((item) => item?.type === "talent" || item?.type === "shipTalent")
@@ -308,7 +272,6 @@ export async function promptShipTalentSwapDialog({ ship = null } = {}) {
 
     const app = new ShipTalentSwapApp({
       ship,
-      talents,
       shipTalents,
       resolve,
     });

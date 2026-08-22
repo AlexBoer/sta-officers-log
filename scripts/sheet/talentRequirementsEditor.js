@@ -349,7 +349,7 @@ function buildEntryRow(entry, index) {
       valueInput.type = "text";
       valueInput.value = clause.value ?? "";
       valueInput.placeholder =
-        category === "species" ? "e.g. Vulcan" : "Requirement";
+        category === "species" ? "e.g. Vulcan, Augment, Cyborg" : "Requirement";
     }
     valueInput.dataset.field = "value";
     valueInput.dataset.clauseIndex = String(i);
@@ -407,7 +407,8 @@ function injectStyles(root) {
 .${ROOT_CLASS} .${LIST_CLASS} { display:flex; flex-direction:column; gap:0.5rem; }
 .${ROOT_CLASS} .sta-talent-req-row { border:1px solid rgba(255,255,255,0.12); border-radius:6px; padding:0.45rem; }
 .${ROOT_CLASS} .sta-talent-req-row-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; }
-.${ROOT_CLASS} .sta-talent-req-row-summary { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:0.6rem; }.${ROOT_CLASS} .sta-talent-req-row-actions { display:flex; gap:0.3rem; align-items:center; }
+.${ROOT_CLASS} .sta-talent-req-row-summary { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:0.6rem; }
+.${ROOT_CLASS} .sta-talent-req-row-actions { display:flex; gap:0.3rem; align-items:center; }
 .${ROOT_CLASS} .sta-talent-req-row-body { display:flex; flex-wrap:wrap; align-items:center; gap:0.35rem; }
 .${ROOT_CLASS} .sta-talent-req-clauses { display:flex; flex:1 1 32rem; gap:0.35rem; min-width:20rem; align-items:center; }
 .${ROOT_CLASS} .sta-talent-req-clause { display:flex; flex:1 1 0; min-width:0; gap:0.35rem; align-items:center; }
@@ -660,7 +661,7 @@ function wireEditorEvents(root, item) {
   });
 }
 
-export function installTalentRequirementsEditor(root, item) {
+export function installTalentRequirementsEditor(root, item, app = null) {
   try {
     if (!(root instanceof HTMLElement)) return;
     if (!item || item.type !== "talent") return;
@@ -671,6 +672,24 @@ export function installTalentRequirementsEditor(root, item) {
     if (!(typeRow instanceof HTMLElement)) return;
 
     injectStyles(root);
+
+    // Persist in-progress (free-text) edits when the sheet closes, so they
+    // aren't lost if the user closes without pressing Done. Registered once.
+    if (app && !app.__staReqEditorCloseHook) {
+      app.__staReqEditorCloseHook = true;
+      const closeHandler = async (closingApp) => {
+        if (closingApp !== app) return;
+        Hooks.off("closeApplicationV2", closeHandler);
+        try {
+          const curRoot =
+            app.element instanceof HTMLElement ? app.element : root;
+          if (getEditorState(curRoot)) await persistRequirements(curRoot, item);
+        } catch (_) {
+          // ignore
+        }
+      };
+      Hooks.on("closeApplicationV2", closeHandler);
+    }
 
     const existing = root.querySelector(`.${ROOT_CLASS}`);
     if (existing instanceof HTMLElement) {

@@ -66,8 +66,8 @@ export function getFocusPickerCustomCompendiumKeys() {
 export const TALENT_PICKER_CUSTOM_COMPENDIUM_SETTING =
   "talentPickerCustomCompendium";
 
-export const TALENT_PICKER_CUSTOM_FOLDER_FILTER_SETTING =
-  "talentPickerCustomCompendiumFolderFilter";
+export const TALENT_PICKER_INCLUDE_BUILTIN_SETTING =
+  "talentPickerIncludeBuiltin";
 
 export function registerTalentPickerSettings() {
   game.settings.register(MODULE_ID, TALENT_PICKER_CUSTOM_COMPENDIUM_SETTING, {
@@ -80,23 +80,15 @@ export function registerTalentPickerSettings() {
     default: "",
   });
 
-  game.settings.register(
-    MODULE_ID,
-    TALENT_PICKER_CUSTOM_FOLDER_FILTER_SETTING,
-    {
-      name: t(
-        "sta-officers-log.settings.talentPickerCustomCompendiumFolderFilter.name",
-      ),
-      hint: t(
-        "sta-officers-log.settings.talentPickerCustomCompendiumFolderFilter.hint",
-      ),
-      scope: "world",
-      config: false,
-      restricted: true,
-      type: Boolean,
-      default: false,
-    },
-  );
+  game.settings.register(MODULE_ID, TALENT_PICKER_INCLUDE_BUILTIN_SETTING, {
+    name: t("sta-officers-log.settings.talentPickerIncludeBuiltin.name"),
+    hint: t("sta-officers-log.settings.talentPickerIncludeBuiltin.hint"),
+    scope: "world",
+    config: false,
+    restricted: true,
+    type: Boolean,
+    default: true,
+  });
 }
 
 export function registerCompendiumPickerMenu() {
@@ -137,12 +129,14 @@ export function getTalentPickerCustomCompendiumKeys() {
   }
 }
 
-export function getTalentPickerCustomFolderFilterEnabled() {
+// When false, the built-in STA talent packs are excluded and only the
+// configured custom compendiums are searched.
+export function getTalentPickerIncludeBuiltinEnabled() {
   try {
     return Boolean(
-      game.settings.get(MODULE_ID, TALENT_PICKER_CUSTOM_FOLDER_FILTER_SETTING),
+      game.settings.get(MODULE_ID, TALENT_PICKER_INCLUDE_BUILTIN_SETTING),
     );
   } catch (_) {
-    return false;
+    return true;
   }
 }
