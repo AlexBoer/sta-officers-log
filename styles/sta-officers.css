@@ -3834,7 +3834,7 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.2rem 0.5rem 0.2rem 0.6rem;
+  padding: 0.2rem 0.6rem 0.2rem 0.35rem;
   border: 1px solid var(--color-border-light-secondary, rgba(0, 0, 0, 0.25));
   border-radius: 1rem;
   background: var(--color-bg-option, rgba(0, 0, 0, 0.06));
@@ -3844,6 +3844,7 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
 }
 
 .sta-compendium-picker-settings .pack-badge-label {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -766,6 +766,17 @@ export async function installMissionDirectivesInStaTracker(root) {
     });
 
     traitLinks.forEach((btn) => {
+      // Emit standard Item drag data so the sta-utils trait-drawing/sticker
+      // drop handler can create a trait on the canvas.
+      if (btn.dataset.uuid) {
+        btn.setAttribute("draggable", "true");
+        btn.addEventListener("dragstart", (ev) => {
+          ev.dataTransfer?.setData(
+            "text/plain",
+            JSON.stringify({ type: "Item", uuid: btn.dataset.uuid }),
+          );
+        });
+      }
       btn.addEventListener("click", async (ev) => {
         ev.preventDefault();
         ev.stopPropagation();

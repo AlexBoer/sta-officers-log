@@ -124,11 +124,6 @@ export class CompendiumPickerSettingsApp extends HandlebarsApplicationMixin(
     badge.className = "pack-badge";
     badge.dataset.key = key;
 
-    const labelSpan = document.createElement("span");
-    labelSpan.className = "pack-badge-label";
-    labelSpan.textContent = label;
-    badge.appendChild(labelSpan);
-
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className = "pack-badge-remove";
@@ -142,6 +137,12 @@ export class CompendiumPickerSettingsApp extends HandlebarsApplicationMixin(
       this._removePackBadge(target, key);
     });
     badge.appendChild(removeBtn);
+
+    const labelSpan = document.createElement("span");
+    labelSpan.className = "pack-badge-label";
+    labelSpan.textContent = label;
+    labelSpan.title = label;
+    badge.appendChild(labelSpan);
 
     badgesEl.appendChild(badge);
   }

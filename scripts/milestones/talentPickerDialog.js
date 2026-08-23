@@ -623,6 +623,8 @@ function _resolveEntryUuid(entry, packKey) {
 }
 
 function _classifyTalentFolderFromDocument(doc, pack = null) {
+  let cur = doc?.folder ?? null;
+
   // Handle case where folder is an ID string instead of a Folder object.
   // This can happen with compendium documents before full folder population.
   if (typeof cur === "string" && pack?.folders?.get) {

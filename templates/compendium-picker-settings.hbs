@@ -9,12 +9,12 @@
       <div class="pack-badges" data-target="focusKeys">
         {{#each focusPacks}}
         <span class="pack-badge" data-key="{{key}}">
-          <span class="pack-badge-label">{{label}}</span>
           <button type="button" class="pack-badge-remove" data-key="{{key}}" data-target="focusKeys"
             title="{{localize "sta-officers-log.settings.compendiumPicker.removePack"}}"
             aria-label="{{localize "sta-officers-log.settings.compendiumPicker.removePack"}}">
             <i class="fa-solid fa-times" aria-hidden="true"></i>
           </button>
+          <span class="pack-badge-label" title="{{label}}">{{label}}</span>
         </span>
         {{else}}
         <span class="pack-badges-empty">{{localize "sta-officers-log.settings.compendiumPicker.noneSelected"}}</span>
@@ -44,12 +44,12 @@
       <div class="pack-badges" data-target="talentKeys">
         {{#each talentPacks}}
         <span class="pack-badge" data-key="{{key}}">
-          <span class="pack-badge-label">{{label}}</span>
           <button type="button" class="pack-badge-remove" data-key="{{key}}" data-target="talentKeys"
             title="{{localize "sta-officers-log.settings.compendiumPicker.removePack"}}"
             aria-label="{{localize "sta-officers-log.settings.compendiumPicker.removePack"}}">
             <i class="fa-solid fa-times" aria-hidden="true"></i>
           </button>
+          <span class="pack-badge-label" title="{{label}}">{{label}}</span>
         </span>
         {{else}}
         <span class="pack-badges-empty">{{localize "sta-officers-log.settings.compendiumPicker.noneSelected"}}</span>
