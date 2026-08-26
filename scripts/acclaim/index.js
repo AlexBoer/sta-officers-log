@@ -6,10 +6,14 @@ export {
 } from "./acclaimSurvey.js";
 export {
   registerCustomSpendOptionsSettings,
-  getCustomAwards,
   getCustomAcclaimOptions,
   getCustomReprimandOptions,
 } from "./customSpendOptions.js";
+export {
+  registerAwardTalentSettings,
+  getEnabledAwardOptions,
+} from "./awardTalents.js";
+export { openAwardTalentSelector } from "./awardTalentSelectorApp.js";
 export {
   installReputationSpendHook,
   promptGMSpendDialog,

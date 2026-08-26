@@ -12,22 +12,22 @@
   {{#if hasAwards}}
     <div class="sta-award-grid">
       {{#each awards}}
-        <article class="sta-award-card" role="button" tabindex="0" data-action="edit-award" data-index="{{index}}">
-          <header class="sta-award-card-header">
-            <span class="sta-award-card-name">{{name}}</span>
-            <span class="sta-award-card-cost">{{costLabel}}</span>
-          </header>
-          <p class="sta-award-card-desc">{{descriptionPreview}}</p>
-          <div class="sta-award-card-meta">
-            {{#if isBuiltIn}}
-              <span class="sta-award-card-badge">{{localize "sta-officers-log.settings.customSpendOptions.builtInBadge"}}</span>
-            {{else}}
-              <span class="sta-award-card-badge is-custom">{{localize "sta-officers-log.settings.customSpendOptions.customBadge"}}</span>
-            {{/if}}
+        <article class="sta-award-card {{#unless enabled}}is-disabled{{/unless}}" data-award-action="{{action}}">
+          <label class="sta-award-card-toggle" title="{{localize "sta-officers-log.settings.customSpendOptions.toggleEnabled"}}">
+            <input type="checkbox" class="sta-award-card-enable" data-award-action="{{action}}" {{#if enabled}}checked{{/if}} />
+          </label>
+          <div class="sta-award-card-main" role="button" tabindex="0" data-award-action="{{action}}">
+            <header class="sta-award-card-header">
+              <span class="sta-award-card-name">{{name}}</span>
+              <span class="sta-award-card-cost">{{costLabel}}</span>
+            </header>
+            <p class="sta-award-card-desc">{{descriptionPreview}}</p>
           </div>
-          <button type="button" class="sta-award-card-remove sta-danger" data-action="remove-award" data-index="{{index}}" title="{{localize "sta-officers-log.settings.customSpendOptions.removeAward"}}">
-            <i class="fa-solid fa-trash"></i>
-          </button>
+          {{#unless isBuiltIn}}
+            <button type="button" class="sta-award-card-remove sta-danger" data-action="remove-award" data-award-action="{{action}}" title="{{localize "sta-officers-log.settings.customSpendOptions.removeAward"}}">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          {{/unless}}
         </article>
       {{/each}}
     </div>

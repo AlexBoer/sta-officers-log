@@ -51,6 +51,7 @@ import {
   migrateCustomSpendOptions,
   registerCustomSpendOptionsSettings,
 } from "./acclaim/customSpendOptions.js";
+import { registerAwardTalentSettings } from "./acclaim/awardTalents.js";
 import { useValue } from "./values/useValue.js";
 import { CreationWizardApp } from "./creation/creation-wizard-app.mjs";
 import { preloadCreationTabTemplate } from "./creation/creation-tab.mjs";
@@ -257,6 +258,15 @@ function safeRegisterSettings() {
   } catch (err) {
     console.error(
       `${MODULE_ID} | failed to register custom spend options settings`,
+      err,
+    );
+  }
+
+  try {
+    registerAwardTalentSettings();
+  } catch (err) {
+    console.error(
+      `${MODULE_ID} | failed to register award talent settings`,
       err,
     );
   }

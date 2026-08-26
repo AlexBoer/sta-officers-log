@@ -1556,7 +1556,10 @@ const evaluateRequirementCategory = (actor, entry, talentEntry) => {
   return opIsAnd ? checks.every(Boolean) : checks.some(Boolean);
 };
 
-const formatTalentRequirementLabel = (talenttype, talentEntry = null) => {
+export const formatTalentRequirementLabel = (
+  talenttype,
+  talentEntry = null,
+) => {
   const normalizedRequirements = getNormalizedTalentRequirements(talentEntry, {
     inferSpecies: _inferRequiredSpeciesFromTalent,
   });

@@ -2,7 +2,7 @@
   "id": "sta-officers-log",
   "title": "STA Officers Log",
   "description": "<p>GM instructions and log automation for STA officer callbacks.</p>",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "authors": [{"name": "Alex Boer", "url": "https://alexrunsgames.com"}],
   "license": "GPL-3.0",
   "readme": "README.md",

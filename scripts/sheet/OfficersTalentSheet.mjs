@@ -607,6 +607,12 @@ export class OfficersTalentSheet extends api.HandlebarsApplicationMixin(
     const { summary, conditionSummaries } =
       _splitRequirementSummary(requirements);
 
+    const awardCost = this.item?.flags?.[MODULE_ID]?.awardCost ?? {};
+    const toCostValue = (n) =>
+      Number.isFinite(Number(n)) && String(n ?? "").trim() !== ""
+        ? Number(n)
+        : "";
+
     return {
       ...context,
       item: this.item,
@@ -617,6 +623,9 @@ export class OfficersTalentSheet extends api.HandlebarsApplicationMixin(
       requirementRows,
       availableCategories,
       talentTypeOptions,
+      isAward: currentTypeenum === "award",
+      awardCostMin: toCostValue(awardCost?.min),
+      awardCostMax: toCostValue(awardCost?.max),
       talentSource: String(this.item?.flags?.[MODULE_ID]?.source ?? ""),
       hasRequirements: requirementRows.length > 0,
     };

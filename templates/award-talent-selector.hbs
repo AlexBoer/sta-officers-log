@@ -1,0 +1,47 @@
+<section class="sta-settings-form sta-award-talent-selector">
+  <p class="hint">{{hint}}</p>
+
+  <div class="sta-award-talent-toolbar">
+    <input type="text" class="sta-award-talent-search" data-role="search"
+           value="{{search}}" placeholder="{{searchPlaceholder}}" />
+    <span class="sta-award-talent-count">{{countText}}</span>
+  </div>
+
+  {{#if loadError}}
+    <p class="hint sta-danger">{{loadErrorLabel}}</p>
+  {{else}}
+    <div class="sta-award-talent-list">
+      {{#if hasEntries}}
+        <div class="sta-award-grid sta-award-talent-grid">
+          {{#each entries}}
+            <article class="sta-award-card sta-award-talent-card">
+              <label class="sta-award-talent-toggle">
+                <input type="checkbox" data-uuid="{{uuid}}" {{#if checked}}checked{{/if}} />
+              </label>
+              <img class="sta-award-talent-img" src="{{img}}" alt="" />
+              <div class="sta-award-talent-body">
+                <header class="sta-award-card-header">
+                  <span class="sta-award-card-name">{{name}}</span>
+                  <span class="sta-award-card-cost">{{../costLabel}}: {{costLabel}}</span>
+                </header>
+                {{#if condition}}
+                  <p class="sta-award-talent-condition">{{../conditionLabel}}: {{condition}}</p>
+                {{/if}}
+                <p class="sta-award-card-desc">{{descriptionPreview}}</p>
+              </div>
+            </article>
+          {{/each}}
+        </div>
+      {{else}}
+        <p class="hint">{{noneFoundLabel}}</p>
+      {{/if}}
+    </div>
+  {{/if}}
+
+  <footer class="form-footer">
+    <button type="button" class="dialog-button" data-action="close-award-talent-selector">
+      <i class="fa-solid fa-xmark"></i>
+      {{closeLabel}}
+    </button>
+  </footer>
+</section>

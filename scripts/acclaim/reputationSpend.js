@@ -11,14 +11,18 @@ import { MODULE_ID } from "../core/constants.js";
 import { applyKlingonMode, isKlingonModeEnabled, t } from "../core/i18n.js";
 import { isAcclaimSurveyEnabled } from "./acclaimSurvey.js";
 import {
-  getCustomAwards,
   getCustomAcclaimOptions,
   getCustomReprimandOptions,
 } from "./customSpendOptions.js";
+import { getEnabledAwardOptions } from "./awardTalents.js";
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
+
+// Reputation is capped at 5 (STA core rules); "Increase Reputation" is
+// hidden once the actor is already at the cap.
+const MAX_REPUTATION = 5;
 
 /* ------------------------------------------------------------------ */
 /*  Outcome detection                                                  */
@@ -143,13 +147,18 @@ function _resolveActor(message) {
  * @param {number} savedAmount - Amount saved on the character sheet.
  * @param {number} totalBudget - Total available (roll + saved).
  * @param {Actor} actor - The actor spending reputation.
+ * @param {Array<object>} options - Pre-built spend options (acclaim/award or reprimand).
  * @returns {string}
  */
-function _buildSpendContent(type, rollAmount, savedAmount, totalBudget, actor) {
+function _buildSpendContent(
+  type,
+  rollAmount,
+  savedAmount,
+  totalBudget,
+  actor,
+  options,
+) {
   const isAcclaim = type === "acclaim";
-  const options = isAcclaim
-    ? [...getCustomAcclaimOptions(), ...getCustomAwards()]
-    : [...getCustomReprimandOptions()];
   const headerKey = isAcclaim
     ? "sta-officers-log.reputationSpend.acclaimHeader"
     : "sta-officers-log.reputationSpend.reprimandHeader";
@@ -180,6 +189,14 @@ function _buildSpendContent(type, rollAmount, savedAmount, totalBudget, actor) {
     // Only show options the player can afford (base/minimum cost ≤ budget)
     if (effCost > totalBudget) continue;
 
+    // Reputation cannot go above the cap, so hide the option once reached.
+    if (
+      opt.action === "increaseReputation" &&
+      currentReputation >= MAX_REPUTATION
+    ) {
+      continue;
+    }
+
     // Insert an "Awards" subheader before the first award option
     if (opt.isAward && !awardHeaderInserted) {
       awardHeaderInserted = true;
@@ -196,17 +213,34 @@ function _buildSpendContent(type, rollAmount, savedAmount, totalBudget, actor) {
       rows += `<h4 class="sta-spend-subheader">${customHeaderText}</h4>`;
     }
 
-    const label = opt.label || t(opt.labelKey) || opt.action;
-    const desc = opt.desc || t(opt.descKey) || "";
+    const label = opt.label || opt.action;
+    const desc = opt.desc || "";
     const costLabel = t("sta-officers-log.reputationSpend.cost") || "Cost";
-    // Variable-cost options show "1+" to hint at variability
+    const conditionLabel =
+      t("sta-officers-log.reputationSpend.conditionLabel") || "Condition";
+    const conditionNoneLabel =
+      t("sta-officers-log.reputationSpend.conditionNone") || "None";
+    // Awards always show their condition (falling back to "None"); other
+    // option types never carry a condition, so their row omits it entirely.
+    const conditionDisplay = opt.isAward
+      ? opt.condition || conditionNoneLabel
+      : "";
+    // Bounded award cost ranges (min–max) and open-ended variable costs ("1+")
+    // both let the player type an amount; only award ranges cap the maximum.
+    const hasCostRange =
+      opt.isAward && Number.isFinite(opt.costMax) && opt.costMax > effCost;
     const isVariable =
+      hasCostRange ||
       opt.action === "gainFavor" ||
       opt.action === "gainAntipathy" ||
       opt.action === "strippedOfAward";
-    const costDisplay = isVariable ? `${effCost}+` : String(effCost);
+    const costDisplay = hasCostRange
+      ? `${effCost}\u2013${opt.costMax}`
+      : isVariable
+        ? `${effCost}+`
+        : String(effCost);
     const variableInput = isVariable
-      ? `<input type="number" class="sta-spend-variable-input" min="${effCost}" value="${effCost}" data-base-cost="${effCost}" />`
+      ? `<input type="number" class="sta-spend-variable-input" min="${effCost}" ${hasCostRange ? `max="${opt.costMax}" data-max-cost="${opt.costMax}"` : ""} value="${effCost}" data-base-cost="${effCost}" />`
       : "";
     rows += `
       <div class="sta-spend-option" data-action="${opt.action}" data-cost="${effCost}"${isVariable ? ' data-variable="true"' : ""}>
@@ -216,6 +250,7 @@ function _buildSpendContent(type, rollAmount, savedAmount, totalBudget, actor) {
           <span class="sta-spend-option-cost">(${costLabel}: ${costDisplay})</span>
           ${variableInput}
         </label>
+        ${conditionDisplay ? `<p class="sta-spend-option-condition">${conditionLabel}: ${conditionDisplay}</p>` : ""}
         <p class="sta-spend-option-desc">${desc}</p>
       </div>`;
   }
@@ -294,17 +329,18 @@ export async function openSpendDialog(type, amount, actor) {
     : parseInt(actor.system?.reprimand ?? 0, 10);
   const totalBudget = amount + savedAmount;
 
+  const options = isAcclaim
+    ? [...getCustomAcclaimOptions(), ...(await getEnabledAwardOptions())]
+    : [...getCustomReprimandOptions()];
+
   const content = _buildSpendContent(
     type,
     amount,
     savedAmount,
     totalBudget,
     actor,
+    options,
   );
-
-  const options = isAcclaim
-    ? [...getCustomAcclaimOptions(), ...getCustomAwards()]
-    : [...getCustomReprimandOptions()];
 
   const confirmLabel =
     t("sta-officers-log.reputationSpend.confirm") || "Confirm";
@@ -363,10 +399,14 @@ export async function openSpendDialog(type, amount, actor) {
         numInput.addEventListener("input", () => {
           const optEl = numInput.closest(".sta-spend-option");
           const baseCost = parseInt(numInput.dataset.baseCost ?? "1", 10);
-          const val = Math.max(
+          const maxCost = numInput.dataset.maxCost
+            ? parseInt(numInput.dataset.maxCost, 10)
+            : null;
+          let val = Math.max(
             baseCost,
             parseInt(numInput.value, 10) || baseCost,
           );
+          if (Number.isFinite(maxCost)) val = Math.min(val, maxCost);
           numInput.value = String(val);
           if (optEl) optEl.dataset.cost = String(val);
           updateTotal();
@@ -444,20 +484,55 @@ export async function openSpendDialog(type, amount, actor) {
   const totalCost = result.reduce((sum, r) => sum + (r.cost ?? 0), 0);
   const remaining = totalBudget - totalCost;
 
+  const awardAddedNote =
+    t("sta-officers-log.reputationSpend.awardAddedNote") ||
+    "Added to character sheet.";
+  const awardImportFailedTemplate =
+    t("sta-officers-log.reputationSpend.awardImportFailed") ||
+    "Could not add {name} to the character sheet automatically. Please add it manually.";
+
+  // Selecting an Award option copies the talent item straight from the
+  // compendium onto the actor, rather than leaving it as a freeform note.
+  const awardOutcomes = new Map();
+  for (const r of result) {
+    const opt = options.find((o) => o.action === r.action);
+    if (!opt?.isAward || !opt?.uuid) continue;
+
+    try {
+      const doc = await fromUuid(opt.uuid);
+      if (!doc) throw new Error(`Award talent not found: ${opt.uuid}`);
+      const itemData = doc.toObject();
+      delete itemData._id;
+      await actor.createEmbeddedDocuments("Item", [itemData]);
+      awardOutcomes.set(r.action, { ok: true });
+    } catch (err) {
+      console.error(`${MODULE_ID} | failed to add award talent to actor`, err);
+      awardOutcomes.set(r.action, { ok: false });
+    }
+  }
+
+  let hasNonAwardSelection = false;
+
   // Build list items with option name, cost, and description
   const lines = result.map((r) => {
     // Ad-hoc custom entries carry their own label
     if (r.action === "adhocCustom") {
+      hasNonAwardSelection = true;
       return `<li><strong>${r.label}</strong> (${r.cost})</li>`;
     }
     const opt = options.find((o) => o.action === r.action);
-    const lbl = opt
-      ? opt.isCustom
-        ? opt.label
-        : t(opt.labelKey) || opt.action
-      : r.action;
-    const desc = opt ? (opt.isCustom ? opt.desc : t(opt.descKey) || "") : "";
-    return `<li><strong>${lbl}</strong> (${r.cost})${desc ? `<br/><em>${desc}</em>` : ""}</li>`;
+    const lbl = opt?.label || r.action;
+    const desc = opt?.desc || "";
+    const outcome = awardOutcomes.get(r.action);
+    if (!outcome) hasNonAwardSelection = true;
+    const outcomeNote = outcome
+      ? `<br/><em class="${outcome.ok ? "sta-spend-chat-award-ok" : "sta-spend-chat-award-failed"}">${
+          outcome.ok
+            ? awardAddedNote
+            : awardImportFailedTemplate.replace("{name}", lbl)
+        }</em>`
+      : "";
+    return `<li><strong>${lbl}</strong> (${r.cost})${desc ? `<br/><em>${desc}</em>` : ""}${outcomeNote}</li>`;
   });
 
   const spentVerb = t("sta-officers-log.reputationSpend.spent") || "spent";
@@ -487,16 +562,17 @@ export async function openSpendDialog(type, amount, actor) {
     }
   }
 
-  const manualNote =
-    t("sta-officers-log.reputationSpend.manualNote") ||
-    "(Changes must be applied manually)";
+  const manualNote = hasNonAwardSelection
+    ? t("sta-officers-log.reputationSpend.manualNote") ||
+      "(Changes must be applied manually)"
+    : "";
 
   const chatContent = `
     <div class="sta-spend-chat-result">
       <p><strong>${actor.name}</strong> ${spentVerb} ${totalCost} ${typeLabel}:</p>
       <ul>${lines.join("")}</ul>
       ${remainingNote}
-      <p class="sta-spend-chat-manual">${manualNote}</p>
+      ${manualNote ? `<p class="sta-spend-chat-manual">${manualNote}</p>` : ""}
     </div>`;
 
   await ChatMessage.create({

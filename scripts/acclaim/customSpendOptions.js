@@ -1,11 +1,14 @@
 /**
  * Custom Spend Options
  *
- * World settings for awards, acclaim spend options, and reprimand spend
- * options. Each category is stored as an Array of objects
+ * World settings for acclaim spend options and reprimand spend options.
+ * Each category is stored as an Array of objects
  * `{ action, name, cost, description }` and surfaced through an ApplicationV2
  * settings menu. The built-in entries are included in the editable lists,
  * so GMs can edit or remove them directly.
+ *
+ * Award options are handled separately (see acclaim/awardTalents.js) and are
+ * sourced from Award-type Talent items in the configured compendiums.
  *
  * Line format in the editor textarea:
  *   Action | Name | Cost | Description
@@ -17,31 +20,21 @@
 
 import { MODULE_ID } from "../core/constants.js";
 import { t } from "../core/i18n.js";
+import { openAwardTalentSelector } from "./awardTalentSelectorApp.js";
 
 /* ------------------------------------------------------------------ */
 /*  Setting keys                                                       */
 /* ------------------------------------------------------------------ */
 
-export const CUSTOM_AWARDS_SETTING = "customAwards";
 export const CUSTOM_ACCLAIM_OPTIONS_SETTING = "customAcclaimOptions";
 export const CUSTOM_REPRIMAND_OPTIONS_SETTING = "customReprimandOptions";
+export const DISABLED_ACCLAIM_DEFAULTS_SETTING =
+  "disabledAcclaimDefaultActions";
+export const DISABLED_REPRIMAND_DEFAULTS_SETTING =
+  "disabledReprimandDefaultActions";
 export const CUSTOM_SPEND_OPTIONS_VERSION_SETTING = "customSpendOptionsVersion";
 
-const CURRENT_SPEND_OPTIONS_VERSION = 3;
-
-const DEFAULT_AWARD_ACTIONS = [
-  "awardPikeMedal",
-  "awardCochraneMedal",
-  "awardGrankiteOrder",
-  "awardKaragiteOrder",
-  "awardLegionOfHonor",
-  "awardPalmLeaf",
-  "awardStarCross",
-  "awardConspicuousGallantry",
-  "awardDecorationGallantry",
-  "awardMedalOfHonor",
-  "awardSurgeonsDecoration",
-];
+const CURRENT_SPEND_OPTIONS_VERSION = 4;
 
 const DEFAULT_ACCLAIM_ACTIONS = [
   "commendAnother",
@@ -77,6 +70,7 @@ function _sanitizeOption(option) {
     name: String(option?.name ?? "").trim(),
     cost: Math.max(0, parseInt(option?.cost, 10) || 0),
     description: String(option?.description ?? "").trim(),
+    enabled: option?.enabled !== false,
   };
 }
 
@@ -92,140 +86,9 @@ function _makeCustomAction(prefix, name, index) {
   return `${prefix}_${index}_${base || "option"}_${suffix}`;
 }
 
-function _looksLikeLocalizationKey(value) {
-  return /^sta-officers-log\./i.test(String(value ?? "").trim());
-}
-
-function _getDefaultOptionMap(defaults) {
-  return new Map(
-    defaults.map((option) => [String(option?.action ?? "").trim(), option]),
-  );
-}
-
-function _normalizeBuiltInOption(option, defaultOption) {
-  if (!defaultOption) return option;
-
-  const normalized = { ...option };
-  if (!normalized.name || _looksLikeLocalizationKey(normalized.name)) {
-    normalized.name = defaultOption.name;
-  }
-  if (
-    !normalized.description ||
-    _looksLikeLocalizationKey(normalized.description)
-  ) {
-    normalized.description = defaultOption.description;
-  }
-  return normalized;
-}
-
 /* ------------------------------------------------------------------ */
 /*  Defaults                                                           */
 /* ------------------------------------------------------------------ */
-
-export function getDefaultAwardsOptions() {
-  const rows = [
-    {
-      name:
-        t("sta-officers-log.reputationSpend.awardPikeMedal") ||
-        "Christopher Pike Medal of Valor",
-      cost: 4,
-      description:
-        t("sta-officers-log.reputationSpend.awardPikeMedalDesc") ||
-        "<strong>Cost 4.</strong> Requires command/leadership officer who led crew through several difficult missions with personal danger on at least two. <em>Benefit:</em> Once per mission, when using the Direct task, treat your d20 as if it rolled a 1.",
-    },
-    {
-      name:
-        t("sta-officers-log.reputationSpend.awardCochraneMedal") ||
-        "Cochrane Medal of Excellence",
-      cost: 3,
-      description:
-        t("sta-officers-log.reputationSpend.awardCochraneMedalDesc") ||
-        "<strong>Cost 3.</strong> Must have significantly contributed to science or engineering (discovery, solution to a long-standing problem). <em>Benefit:</em> (See rulebook for details.)",
-    },
-    {
-      name:
-        t("sta-officers-log.reputationSpend.awardGrankiteOrder") ||
-        "Grankite Order of Tactics",
-      cost: 3,
-      description:
-        t("sta-officers-log.reputationSpend.awardGrankiteOrderDesc") ||
-        "<strong>Cost 3.</strong> Awarded for exceptional tactical acumen. <em>Benefit:</em> Once per mission, when creating a strategy/tactic trait, automatically add a level of Potency to it.",
-    },
-    {
-      name:
-        t("sta-officers-log.reputationSpend.awardKaragiteOrder") ||
-        "Karagite Order of Heroism",
-      cost: 3,
-      description:
-        t("sta-officers-log.reputationSpend.awardKaragiteOrderDesc") ||
-        "<strong>Cost 3.</strong> Must have faced extreme danger and defended a Federation world/outpost. <em>Benefit:</em> Once per mission, Avoid an Injury for free — or spend 2 Momentum (Immediate) + complication to ignore one ship breach.",
-    },
-    {
-      name:
-        t("sta-officers-log.reputationSpend.awardLegionOfHonor") ||
-        "Legion of Honor",
-      cost: 4,
-      description:
-        t("sta-officers-log.reputationSpend.awardLegionOfHonorDesc") ||
-        "<strong>Cost 4.</strong> No conditions. <em>Benefit:</em> Once per mission, gain 2 bonus Momentum on a successful task (not saveable), or ignore a single complication before its effect is announced.",
-    },
-    {
-      name:
-        t("sta-officers-log.reputationSpend.awardPalmLeaf") ||
-        "Palm Leaf of Peace Mission",
-      cost: 3,
-      description:
-        t("sta-officers-log.reputationSpend.awardPalmLeafDesc") ||
-        "<strong>Cost 3.</strong> Mission must have involved securing peace or signing a peace treaty; all characters in that mission are eligible. <em>Benefit:</em> Once per mission, auto-succeed a Persuade task to prevent violence by spending Momentum equal to Difficulty.",
-    },
-    {
-      name:
-        t("sta-officers-log.reputationSpend.awardStarCross") || "Star Cross",
-      cost: 3,
-      description:
-        t("sta-officers-log.reputationSpend.awardStarCrossDesc") ||
-        "<strong>Cost 3.</strong> No conditions. <em>Benefit:</em> Once per mission, before a task where a focus applies, double your focus range — score 2 successes for dice equal to or less than twice your department rating.",
-    },
-    {
-      name:
-        t("sta-officers-log.reputationSpend.awardConspicuousGallantry") ||
-        "Citation for Conspicuous Gallantry",
-      cost: 2,
-      description:
-        t("sta-officers-log.reputationSpend.awardConspicuousGallantryDesc") ||
-        "<strong>Cost 2.</strong> Must have succeeded at a heroic, risky, or daring action. <em>Benefit:</em> Once per mission, when paying for Immediate Momentum by adding Threat, roll 1d20; if ≤ Daring, remove 1 Threat.",
-    },
-    {
-      name:
-        t("sta-officers-log.reputationSpend.awardDecorationGallantry") ||
-        "Decoration of Gallantry",
-      cost: 2,
-      description:
-        t("sta-officers-log.reputationSpend.awardDecorationGallantryDesc") ||
-        "<strong>Cost 2.</strong> Must have faced an extremely difficult/dangerous situation and triumphed. <em>Benefit:</em> Once per mission, when suffering an Injury, halve its Severity before avoiding it.",
-    },
-    {
-      name:
-        t("sta-officers-log.reputationSpend.awardMedalOfHonor") ||
-        "Starfleet Medal of Honor",
-      cost: 5,
-      description:
-        t("sta-officers-log.reputationSpend.awardMedalOfHonorDesc") ||
-        "<strong>Cost 5.</strong> No conditions. May be earned multiple times. <em>Benefit:</em> Once per mission (per medal), gain 2 bonus Momentum on a successful task (not saveable, max once per task).",
-    },
-    {
-      name:
-        t("sta-officers-log.reputationSpend.awardSurgeonsDecoration") ||
-        "Surgeons' Decoration",
-      cost: 3,
-      description:
-        t("sta-officers-log.reputationSpend.awardSurgeonsDecorationDesc") ||
-        "<strong>Cost 3.</strong> Must be a Medical officer who acted above and beyond to save patients or alleviate a medical crisis. <em>Benefit:</em> Once per mission, reduce the Difficulty of a single Medical task by 2 (min 1).",
-    },
-  ];
-
-  return _withActions(rows, DEFAULT_AWARD_ACTIONS, { isAward: true });
-}
 
 export function getDefaultAcclaimOptions() {
   const rows = [
@@ -382,86 +245,81 @@ function _getStoredVersion() {
   }
 }
 
-function _isMigrated() {
-  return _getStoredVersion() >= CURRENT_SPEND_OPTIONS_VERSION;
+// Custom rows are the only thing stored under CUSTOM_*_OPTIONS_SETTING;
+// built-in defaults always come from getDefault*Options() and are never
+// persisted, so clearing the setting can never bring defaults back.
+function _getCustomRows(category) {
+  const config = _getSpendOptionCategoryConfig(category);
+  return _cloneOptions(_getStoredOptions(config.key));
 }
 
-function _normalizeStoredOptions(stored, fallbackPrefix, defaults = []) {
-  const defaultOptionMap = _getDefaultOptionMap(defaults);
-  return _cloneOptions(stored)
-    .map((option, index) => ({
-      ..._normalizeBuiltInOption(
-        option,
-        defaultOptionMap.get(String(option?.action ?? "").trim()),
-      ),
-      action:
-        option.action || _makeCustomAction(fallbackPrefix, option.name, index),
-    }))
-    .filter((option) => option.name.length > 0);
+async function _saveCustomRows(category, rows) {
+  const config = _getSpendOptionCategoryConfig(category);
+  const saved = _prepareSaveOptions(rows, config.prefix);
+  await game.settings.set(MODULE_ID, config.key, saved);
+  return saved;
 }
 
-function _isSameOptionList(raw, defaults) {
-  if (!Array.isArray(raw) || !Array.isArray(defaults)) return false;
-  if (raw.length !== defaults.length) return false;
-
-  return raw.every((option, index) => {
-    const sanitized = _sanitizeOption(option);
-    const baseline = _sanitizeOption(defaults[index]);
-    return (
-      String(option?.action ?? "").trim() === baseline.action &&
-      sanitized.name === baseline.name &&
-      sanitized.cost === baseline.cost &&
-      sanitized.description === baseline.description
+function _getDisabledDefaultActions(category) {
+  const config = _getSpendOptionCategoryConfig(category);
+  try {
+    const raw = game.settings.get(MODULE_ID, config.disabledDefaultsKey) ?? [];
+    return new Set(
+      Array.isArray(raw)
+        ? raw.map((a) => String(a ?? "").trim()).filter(Boolean)
+        : [],
     );
-  });
+  } catch (_) {
+    return new Set();
+  }
 }
 
-function _hasAnyDefaultActions(rows, defaults) {
-  if (!Array.isArray(rows) || !Array.isArray(defaults)) return false;
-  const defaultActions = new Set(defaults.map((option) => option.action));
-  return rows.some((row) =>
-    defaultActions.has(String(row?.action ?? "").trim()),
+async function _setDefaultActionEnabled(category, action, enabled) {
+  const config = _getSpendOptionCategoryConfig(category);
+  const disabled = _getDisabledDefaultActions(category);
+  if (enabled) disabled.delete(action);
+  else disabled.add(action);
+  await game.settings.set(
+    MODULE_ID,
+    config.disabledDefaultsKey,
+    Array.from(disabled),
   );
 }
 
-function _getEffectiveOptions(key, defaultsFn, fallbackPrefix) {
-  const stored = _getStoredOptions(key);
-  const defaults = defaultsFn();
-
-  if (stored.length === 0) return defaults;
-
-  const normalizedStored = _normalizeStoredOptions(
-    stored,
-    fallbackPrefix,
-    defaults,
-  );
-
-  if (_hasAnyDefaultActions(normalizedStored, defaults)) {
-    return normalizedStored;
-  }
-
-  if (_isSameOptionList(stored, defaults)) {
-    return defaults;
-  }
-
-  return [...defaults, ...normalizedStored];
+// Combined rows for the editor UI: built-in defaults (with their enabled
+// state from the disabled-actions setting) followed by custom rows.
+function _getAllSpendOptionRows(category) {
+  const config = _getSpendOptionCategoryConfig(category);
+  const disabledDefaults = _getDisabledDefaultActions(category);
+  const defaults = config.defaultsFn().map((option) => ({
+    ...option,
+    enabled: !disabledDefaults.has(option.action),
+    isBuiltIn: true,
+  }));
+  const custom = _getCustomRows(category).map((option) => ({
+    ...option,
+    isBuiltIn: false,
+  }));
+  return [...defaults, ...custom];
 }
 
-async function _migrateStoredOptions(key, defaultsFn, fallbackPrefix) {
+// One-time migration (v3 -> v4): the old model stored built-in rows
+// alongside custom ones and re-added defaults whenever the list was fully
+// cleared. Strip any rows matching a default action so only genuine custom
+// rows remain; built-ins are now always enabled unless explicitly disabled.
+async function _migrateStoredOptions(key, defaultsFn) {
   const stored = _getStoredOptions(key);
   if (stored.length === 0) return false;
 
-  const defaults = defaultsFn();
-  const normalizedStored = _normalizeStoredOptions(
-    stored,
-    fallbackPrefix,
-    defaults,
+  const defaultActions = new Set(defaultsFn().map((option) => option.action));
+  const customOnly = _cloneOptions(stored).filter(
+    (option) => !defaultActions.has(option.action),
   );
 
   const optionsEqual = foundry.utils.equals ?? foundry.utils.objectsEqual;
-  if (optionsEqual(stored, normalizedStored)) return false;
+  if (optionsEqual(stored, customOnly)) return false;
 
-  await game.settings.set(MODULE_ID, key, normalizedStored);
+  await game.settings.set(MODULE_ID, key, customOnly);
   return true;
 }
 
@@ -470,19 +328,12 @@ export async function migrateCustomSpendOptions() {
   if (_getStoredVersion() >= CURRENT_SPEND_OPTIONS_VERSION) return;
 
   await _migrateStoredOptions(
-    CUSTOM_AWARDS_SETTING,
-    getDefaultAwardsOptions,
-    "customAward",
-  );
-  await _migrateStoredOptions(
     CUSTOM_ACCLAIM_OPTIONS_SETTING,
     getDefaultAcclaimOptions,
-    "customAcclaim",
   );
   await _migrateStoredOptions(
     CUSTOM_REPRIMAND_OPTIONS_SETTING,
     getDefaultReprimandOptions,
-    "customReprimand",
   );
 
   await game.settings.set(
@@ -610,25 +461,6 @@ function _truncateText(value, maxLength = 140) {
   return `${text.slice(0, maxLength - 3)}...`;
 }
 
-function _getAwardEditorRows() {
-  return _getEffectiveOptions(
-    CUSTOM_AWARDS_SETTING,
-    getDefaultAwardsOptions,
-    "customAward",
-  );
-}
-
-async function _saveAwardEditorRows(rows) {
-  const awards = _prepareSaveOptions(rows, "customAward");
-  await game.settings.set(MODULE_ID, CUSTOM_AWARDS_SETTING, awards);
-  await game.settings.set(
-    MODULE_ID,
-    CUSTOM_SPEND_OPTIONS_VERSION_SETTING,
-    CURRENT_SPEND_OPTIONS_VERSION,
-  );
-  return awards;
-}
-
 function _openAwardEditorDialog(category, { title, award }) {
   const config = _getSpendOptionCategoryConfig(category);
   const isEdit = Boolean(award);
@@ -668,24 +500,11 @@ function _openAwardEditorDialog(category, { title, award }) {
 
 function _getSpendOptionCategoryConfig(category) {
   switch (category) {
-    case "acclaim":
-      return {
-        key: CUSTOM_ACCLAIM_OPTIONS_SETTING,
-        prefix: "customAcclaim",
-        title: "Acclaim Spend Editor",
-        createLabel: "Create Acclaim Option",
-        emptyLabel: "No acclaim spend options have been created yet.",
-        saveLabel: "Acclaim spend option saved.",
-        removedLabel: "Acclaim spend option removed.",
-        removeConfirm: "Remove this acclaim spend option?",
-        fieldNameLabel: "Option Name",
-        fieldCostLabel: "Cost",
-        fieldDescriptionLabel: "Description",
-        saveOptionLabel: "Save Option",
-      };
     case "reprimand":
       return {
         key: CUSTOM_REPRIMAND_OPTIONS_SETTING,
+        disabledDefaultsKey: DISABLED_REPRIMAND_DEFAULTS_SETTING,
+        defaultsFn: getDefaultReprimandOptions,
         prefix: "customReprimand",
         title: "Reprimand Spend Editor",
         createLabel: "Create Reprimand Option",
@@ -698,115 +517,64 @@ function _getSpendOptionCategoryConfig(category) {
         fieldDescriptionLabel: "Description",
         saveOptionLabel: "Save Option",
       };
-    case "award":
+    case "acclaim":
     default:
       return {
-        key: CUSTOM_AWARDS_SETTING,
-        prefix: "customAward",
-        title: "Award Creation",
-        createLabel: "Create Award",
-        emptyLabel: "No awards have been created yet.",
-        saveLabel: "Award saved.",
-        removedLabel: "Award removed.",
-        removeConfirm: "Remove this award?",
-        fieldNameLabel: "Award Name",
+        key: CUSTOM_ACCLAIM_OPTIONS_SETTING,
+        disabledDefaultsKey: DISABLED_ACCLAIM_DEFAULTS_SETTING,
+        defaultsFn: getDefaultAcclaimOptions,
+        prefix: "customAcclaim",
+        title: "Acclaim Spend Editor",
+        createLabel: "Create Acclaim Option",
+        emptyLabel: "No acclaim spend options have been created yet.",
+        saveLabel: "Acclaim spend option saved.",
+        removedLabel: "Acclaim spend option removed.",
+        removeConfirm: "Remove this acclaim spend option?",
+        fieldNameLabel: "Option Name",
         fieldCostLabel: "Cost",
         fieldDescriptionLabel: "Description",
-        saveOptionLabel: "Save Award",
+        saveOptionLabel: "Save Option",
       };
   }
-}
-
-function _getSpendOptionRows(category) {
-  const config = _getSpendOptionCategoryConfig(category);
-  const defaultsFn =
-    category === "acclaim"
-      ? getDefaultAcclaimOptions
-      : category === "reprimand"
-        ? getDefaultReprimandOptions
-        : getDefaultAwardsOptions;
-  return _getEffectiveOptions(config.key, defaultsFn, config.prefix);
-}
-
-async function _saveSpendOptionRows(category, rows) {
-  const config = _getSpendOptionCategoryConfig(category);
-  const saved = _prepareSaveOptions(rows, config.prefix);
-  await game.settings.set(MODULE_ID, config.key, saved);
-  return saved;
 }
 
 /* ------------------------------------------------------------------ */
 /*  Getters                                                            */
 /* ------------------------------------------------------------------ */
 
-/**
- * Get awards available in the Spend Acclaim dialog.
- *
- * @returns {Array<{ action: string, label: string, desc: string,
- *                    cost: number, isAward: true }>}
- */
-export function getCustomAwards() {
-  const defaultActions = new Set(
-    getDefaultAwardsOptions().map((option) => option.action),
-  );
-  return _getEffectiveOptions(
-    CUSTOM_AWARDS_SETTING,
-    getDefaultAwardsOptions,
-    "customAward",
-  ).map((o, i) => ({
-    action: o.action || `customAward_${i}`,
-    label: o.name,
-    desc: o.description ?? "",
-    cost: o.cost ?? 1,
-    isAward: true,
-    isCustom: !defaultActions.has(o.action),
-  }));
+function _getEnabledSpendOptions(category) {
+  const config = _getSpendOptionCategoryConfig(category);
+  return _getAllSpendOptionRows(category)
+    .filter((option) => option.enabled !== false)
+    .map((option, index) => ({
+      action: option.action || `${config.prefix}_${index}`,
+      label: option.name,
+      desc: option.description ?? "",
+      cost: option.cost ?? 1,
+      isCustom: !option.isBuiltIn,
+    }));
 }
 
 /**
  * Get acclaim spend options available in the Spend Acclaim dialog.
+ * Disabled options (built-in or custom) are excluded entirely.
  *
  * @returns {Array<{ action: string, label: string, desc: string,
  *                    cost: number }>}
  */
 export function getCustomAcclaimOptions() {
-  const defaultActions = new Set(
-    getDefaultAcclaimOptions().map((option) => option.action),
-  );
-  return _getEffectiveOptions(
-    CUSTOM_ACCLAIM_OPTIONS_SETTING,
-    getDefaultAcclaimOptions,
-    "customAcclaim",
-  ).map((o, i) => ({
-    action: o.action || `customAcclaim_${i}`,
-    label: o.name,
-    desc: o.description ?? "",
-    cost: o.cost ?? 1,
-    isCustom: !defaultActions.has(o.action),
-  }));
+  return _getEnabledSpendOptions("acclaim");
 }
 
 /**
  * Get reprimand spend options available in the Spend Reprimands dialog.
+ * Disabled options (built-in or custom) are excluded entirely.
  *
  * @returns {Array<{ action: string, label: string, desc: string,
  *                    cost: number }>}
  */
 export function getCustomReprimandOptions() {
-  const defaultActions = new Set(
-    getDefaultReprimandOptions().map((option) => option.action),
-  );
-  return _getEffectiveOptions(
-    CUSTOM_REPRIMAND_OPTIONS_SETTING,
-    getDefaultReprimandOptions,
-    "customReprimand",
-  ).map((o, i) => ({
-    action: o.action || `customReprimand_${i}`,
-    label: o.name,
-    desc: o.description ?? "",
-    cost: o.cost ?? 1,
-    isCustom: !defaultActions.has(o.action),
-  }));
+  return _getEnabledSpendOptions("reprimand");
 }
 
 /* ------------------------------------------------------------------ */
@@ -818,7 +586,7 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 export class AwardEditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
   constructor(options = {}) {
     super(options);
-    this.category = options.category || "award";
+    this.category = options.category || "acclaim";
   }
 
   static DEFAULT_OPTIONS = {
@@ -842,41 +610,31 @@ export class AwardEditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
   async _prepareContext(_options) {
     const config = _getSpendOptionCategoryConfig(this.category);
-    const awards = _getSpendOptionRows(this.category);
-    const defaultActions = new Set(
-      (this.category === "acclaim"
-        ? getDefaultAcclaimOptions()
-        : this.category === "reprimand"
-          ? getDefaultReprimandOptions()
-          : getDefaultAwardsOptions()
-      ).map((option) => option.action),
-    );
+    const rows = _getAllSpendOptionRows(this.category);
 
     return {
       editorTitle: config.title,
       editorHint:
         this.category === "acclaim"
           ? "Open the Acclaim Spend Editor to add, edit, or remove options."
-          : this.category === "reprimand"
-            ? "Open the Reprimand Spend Editor to add, edit, or remove options."
-            : "Open the Award Creation dialog to add, edit, or remove awards.",
+          : "Open the Reprimand Spend Editor to add, edit, or remove options.",
       createLabel: config.createLabel,
       emptyLabel: config.emptyLabel,
       closeLabel: "Close",
-      awards: awards.map((award, index) => ({
-        index,
-        action: award.action,
-        name: award.name,
-        cost: award.cost ?? 1,
+      awards: rows.map((row) => ({
+        action: row.action,
+        name: row.name,
+        cost: row.cost ?? 1,
         costLabel:
-          award.action === "increaseReputation" ||
-          award.action === "reduceReputation"
+          row.action === "increaseReputation" ||
+          row.action === "reduceReputation"
             ? "Cost X"
-            : `Cost ${award.cost ?? 1}`,
-        descriptionPreview: _truncateText(award.description ?? "", 150),
-        isBuiltIn: defaultActions.has(award.action),
+            : `Cost ${row.cost ?? 1}`,
+        descriptionPreview: _truncateText(row.description ?? "", 150),
+        isBuiltIn: row.isBuiltIn,
+        enabled: row.enabled !== false,
       })),
-      hasAwards: awards.length > 0,
+      hasAwards: rows.length > 0,
     };
   }
 
@@ -891,27 +649,26 @@ export class AwardEditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
         await this._openAwardDialog();
       });
 
-    for (const card of html?.querySelectorAll(".sta-award-card") ?? []) {
-      card.addEventListener("click", async (event) => {
-        const target = event.target;
-        if (
-          target instanceof HTMLElement &&
-          target.closest('[data-action="remove-award"]')
-        ) {
-          return;
-        }
-
-        const index = parseInt(card.dataset.index ?? "", 10);
-        if (!Number.isInteger(index)) return;
-        await this._openAwardDialog(index);
-      });
-
+    for (const card of html?.querySelectorAll(".sta-award-card-main") ?? []) {
+      const activate = async () =>
+        this._onCardActivate(card.dataset.awardAction);
+      card.addEventListener("click", activate);
       card.addEventListener("keydown", async (event) => {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
-        const index = parseInt(card.dataset.index ?? "", 10);
-        if (!Number.isInteger(index)) return;
-        await this._openAwardDialog(index);
+        await activate();
+      });
+    }
+
+    for (const checkbox of html?.querySelectorAll(".sta-award-card-enable") ??
+      []) {
+      checkbox.addEventListener("click", (event) => event.stopPropagation());
+      checkbox.addEventListener("change", async (event) => {
+        event.stopPropagation();
+        await this._setActionEnabled(
+          checkbox.dataset.awardAction,
+          checkbox.checked,
+        );
       });
     }
 
@@ -921,25 +678,7 @@ export class AwardEditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       button.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
-
-        const index = parseInt(button.dataset.index ?? "", 10);
-        if (!Number.isInteger(index)) return;
-
-        const awards = _getSpendOptionRows(this.category);
-        const award = awards[index];
-        if (!award) return;
-
-        const confirmed = window.confirm(
-          `${_getSpendOptionCategoryConfig(this.category).removeConfirm}\n\n${award.name}`,
-        );
-        if (!confirmed) return;
-
-        awards.splice(index, 1);
-        await _saveSpendOptionRows(this.category, awards);
-        await this.render(true);
-        ui.notifications?.info?.(
-          _getSpendOptionCategoryConfig(this.category).removedLabel,
-        );
+        await this._removeCustomAward(button.dataset.awardAction);
       });
     }
 
@@ -951,10 +690,77 @@ export class AwardEditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
       });
   }
 
-  async _openAwardDialog(index = null) {
+  async _onCardActivate(action) {
+    const row = _getAllSpendOptionRows(this.category).find(
+      (r) => r.action === action,
+    );
+    if (!row) return;
+
+    if (row.isBuiltIn) {
+      ui.notifications?.info?.(
+        t("sta-officers-log.settings.customSpendOptions.builtInReadOnly") ||
+          "Built-in options can only be enabled or disabled, not edited.",
+      );
+      return;
+    }
+
+    await this._openAwardDialog(action);
+  }
+
+  async _setActionEnabled(action, enabled) {
+    if (!action) return;
+    const row = _getAllSpendOptionRows(this.category).find(
+      (r) => r.action === action,
+    );
+    if (!row) return;
+
+    if (row.isBuiltIn) {
+      await _setDefaultActionEnabled(this.category, action, enabled);
+    } else {
+      const custom = _getCustomRows(this.category);
+      const index = custom.findIndex((r) => r.action === action);
+      if (index < 0) return;
+      custom[index] = { ...custom[index], enabled };
+      await _saveCustomRows(this.category, custom);
+    }
+
+    await this.render(true);
+  }
+
+  async _removeCustomAward(action) {
+    if (!action) return;
+    const custom = _getCustomRows(this.category);
+    const index = custom.findIndex((r) => r.action === action);
+    if (index < 0) return;
+    const award = custom[index];
+
     const config = _getSpendOptionCategoryConfig(this.category);
-    const awards = _getSpendOptionRows(this.category);
-    const award = Number.isInteger(index) ? (awards[index] ?? null) : null;
+    const confirmed = await foundry.applications.api.DialogV2.confirm({
+      classes: ["sta-officers-log"],
+      window: { title: config.removeConfirm },
+      content: `<p>${_escapeHtml(award.name)}</p>`,
+      yes: { label: "Remove" },
+      no: {
+        label:
+          t("sta-officers-log.settings.customSpendOptions.awardCancel") ||
+          "Cancel",
+      },
+      rejectClose: false,
+      modal: true,
+    });
+    if (!confirmed) return;
+
+    custom.splice(index, 1);
+    await _saveCustomRows(this.category, custom);
+    await this.render(true);
+    ui.notifications?.info?.(config.removedLabel);
+  }
+
+  async _openAwardDialog(action = null) {
+    const config = _getSpendOptionCategoryConfig(this.category);
+    const custom = _getCustomRows(this.category);
+    const index = action ? custom.findIndex((r) => r.action === action) : -1;
+    const award = index >= 0 ? custom[index] : null;
     const result = await _openAwardEditorDialog(this.category, {
       title: award ? `Edit ${config.title}` : config.title,
       award,
@@ -970,20 +776,20 @@ export class AwardEditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
 
     const nextAward = {
       action:
-        award?.action ||
-        _makeCustomAction(config.prefix, name, index ?? awards.length),
+        award?.action || _makeCustomAction(config.prefix, name, custom.length),
       name,
       cost: Math.max(0, parseInt(result.cost, 10) || 0),
       description: String(result.description ?? "").trim(),
+      enabled: award?.enabled ?? true,
     };
 
-    if (Number.isInteger(index)) {
-      awards[index] = nextAward;
+    if (index >= 0) {
+      custom[index] = nextAward;
     } else {
-      awards.push(nextAward);
+      custom.push(nextAward);
     }
 
-    await _saveSpendOptionRows(this.category, awards);
+    await _saveCustomRows(this.category, custom);
     await this.render(true);
     ui.notifications?.info?.(
       _getSpendOptionCategoryConfig(this.category).saveLabel,
@@ -991,7 +797,7 @@ export class AwardEditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 }
 
-export function openAwardEditor(category = "award") {
+export function openAwardEditor(category = "acclaim") {
   return new AwardEditorApp({ category }).render(true);
 }
 
@@ -1023,9 +829,11 @@ export class CustomSpendOptionsSettingsApp extends HandlebarsApplicationMixin(
 
   async _prepareContext(_options) {
     return {
-      awardEditorHint:
-        t("sta-officers-log.settings.customSpendOptions.awardEditorHint") ||
-        "Open the Award Creation dialog to add, edit, or remove awards.",
+      awardTalentSelectorHint:
+        t(
+          "sta-officers-log.settings.customSpendOptions.awardTalentSelectorHint",
+        ) ||
+        "Choose which Award-type talents from your compendiums appear as Award options in the Spend Acclaim dialog.",
       acclaimEditorHint:
         t("sta-officers-log.settings.customSpendOptions.acclaimEditorHint") ||
         "Open the Acclaim Spend Editor to add, edit, or remove options.",
@@ -1039,10 +847,10 @@ export class CustomSpendOptionsSettingsApp extends HandlebarsApplicationMixin(
     super._onRender(context, options);
     const html = this.element;
     html
-      ?.querySelector('[data-action="open-award-editor"]')
+      ?.querySelector('[data-action="open-award-talent-selector"]')
       ?.addEventListener("click", (event) => {
         event.preventDefault();
-        openAwardEditor();
+        openAwardTalentSelector();
       });
     html
       ?.querySelector('[data-action="open-acclaim-editor"]')
@@ -1074,30 +882,9 @@ export class CustomSpendOptionsSettingsApp extends HandlebarsApplicationMixin(
  * Register the three world settings and the settings menu entry.
  */
 export function registerCustomSpendOptionsSettings() {
-  const fieldType = new foundry.data.fields.ArrayField(
-    new foundry.data.fields.SchemaField({
-      action: new foundry.data.fields.StringField({
-        required: false,
-        initial: "",
-      }),
-      name: new foundry.data.fields.StringField(),
-      cost: new foundry.data.fields.NumberField({ integer: true, min: 0 }),
-      description: new foundry.data.fields.StringField(),
-    }),
-  );
-
-  game.settings.register(MODULE_ID, CUSTOM_AWARDS_SETTING, {
-    name: "Awards",
-    hint: "Editable awards for the acclaim spend dialog.",
-    scope: "world",
-    config: false,
-    type: fieldType,
-    default: getDefaultAwardsOptions(),
-  });
-
   game.settings.register(MODULE_ID, CUSTOM_ACCLAIM_OPTIONS_SETTING, {
     name: "Acclaim Spend Options",
-    hint: "Editable acclaim spend options.",
+    hint: "Custom acclaim spend options (built-in options are not stored here).",
     scope: "world",
     config: false,
     // Re-create field type for each setting to avoid shared state issues
@@ -1110,14 +897,15 @@ export function registerCustomSpendOptionsSettings() {
         name: new foundry.data.fields.StringField(),
         cost: new foundry.data.fields.NumberField({ integer: true, min: 0 }),
         description: new foundry.data.fields.StringField(),
+        enabled: new foundry.data.fields.BooleanField({ initial: true }),
       }),
     ),
-    default: getDefaultAcclaimOptions(),
+    default: [],
   });
 
   game.settings.register(MODULE_ID, CUSTOM_REPRIMAND_OPTIONS_SETTING, {
     name: "Reprimand Spend Options",
-    hint: "Editable reprimand spend options.",
+    hint: "Custom reprimand spend options (built-in options are not stored here).",
     scope: "world",
     config: false,
     type: new foundry.data.fields.ArrayField(
@@ -1129,9 +917,28 @@ export function registerCustomSpendOptionsSettings() {
         name: new foundry.data.fields.StringField(),
         cost: new foundry.data.fields.NumberField({ integer: true, min: 0 }),
         description: new foundry.data.fields.StringField(),
+        enabled: new foundry.data.fields.BooleanField({ initial: true }),
       }),
     ),
-    default: getDefaultReprimandOptions(),
+    default: [],
+  });
+
+  game.settings.register(MODULE_ID, DISABLED_ACCLAIM_DEFAULTS_SETTING, {
+    name: "Disabled Acclaim Defaults",
+    hint: "Built-in acclaim spend options the GM has turned off.",
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
+  });
+
+  game.settings.register(MODULE_ID, DISABLED_REPRIMAND_DEFAULTS_SETTING, {
+    name: "Disabled Reprimand Defaults",
+    hint: "Built-in reprimand spend options the GM has turned off.",
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
   });
 
   game.settings.register(MODULE_ID, CUSTOM_SPEND_OPTIONS_VERSION_SETTING, {

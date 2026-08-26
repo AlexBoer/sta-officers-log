@@ -24,6 +24,20 @@
         </select>
       </div>
 
+      {{#if isAward}}
+      <div class="sta-talent-award-cost-row">
+        <label class="sta-talent-type-label">{{localize "sta-officers-log.talents.awardCostLabel"}}</label>
+        <input type="number" name="flags.sta-officers-log.awardCost.min"
+               value="{{awardCostMin}}" min="0" step="1"
+               placeholder="{{localize 'sta-officers-log.talents.awardCostMinPlaceholder'}}" />
+        <span class="sta-talent-award-cost-sep">–</span>
+        <input type="number" name="flags.sta-officers-log.awardCost.max"
+               value="{{awardCostMax}}" min="0" step="1"
+               placeholder="{{localize 'sta-officers-log.talents.awardCostMaxPlaceholder'}}" />
+      </div>
+      <p class="sta-talent-type-hint">{{localize "sta-officers-log.talents.awardCostHint"}}</p>
+      {{/if}}
+
       <div class="sta-talent-req-compact">
         <div class="sta-talent-req-compact-summary">{{requirementSummary}}</div>
         <button type="button" class="button" data-action="onToggleEdit">
