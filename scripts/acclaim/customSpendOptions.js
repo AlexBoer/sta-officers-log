@@ -65,10 +65,27 @@ function _withActions(rows, actions, extra = {}) {
 }
 
 function _sanitizeOption(option) {
+  const cost = Math.max(0, parseInt(option?.cost, 10) || 0);
+  const rawMax = option?.costMax;
+  const hasMax =
+    rawMax !== null && rawMax !== undefined && String(rawMax).trim() !== "";
+  let costMax = null;
+  if (hasMax) {
+    const parsedMax = Math.max(0, parseInt(rawMax, 10) || 0);
+    if (parsedMax < cost) {
+      console.warn(
+        `${MODULE_ID} | Spend option "${option?.name ?? "Unknown"}" has a max cost (${parsedMax}) lower than its min cost (${cost}); ignoring the max.`,
+      );
+    } else if (parsedMax > cost) {
+      costMax = parsedMax;
+    }
+  }
+
   return {
     action: String(option?.action ?? "").trim(),
     name: String(option?.name ?? "").trim(),
-    cost: Math.max(0, parseInt(option?.cost, 10) || 0),
+    cost,
+    costMax,
     description: String(option?.description ?? "").trim(),
     enabled: option?.enabled !== false,
   };
@@ -476,6 +493,10 @@ function _openAwardEditorDialog(category, { title, award }) {
         <input type="number" name="cost" min="0" value="${_escapeHtml(String(award?.cost ?? 1))}" required />
       </div>
       <div class="form-group">
+        <label>${config.fieldMaxCostLabel}</label>
+        <input type="number" name="costMax" min="0" value="${_escapeHtml(award?.costMax != null ? String(award.costMax) : "")}" placeholder="${config.fieldMaxCostPlaceholder}" />
+      </div>
+      <div class="form-group">
         <label>${config.fieldDescriptionLabel}</label>
         <textarea name="description" rows="8" spellcheck="true">${_escapeHtml(award?.description ?? "")}</textarea>
       </div>
@@ -514,6 +535,8 @@ function _getSpendOptionCategoryConfig(category) {
         removeConfirm: "Remove this reprimand spend option?",
         fieldNameLabel: "Option Name",
         fieldCostLabel: "Cost",
+        fieldMaxCostLabel: "Max Cost (optional)",
+        fieldMaxCostPlaceholder: "Same as Cost",
         fieldDescriptionLabel: "Description",
         saveOptionLabel: "Save Option",
       };
@@ -532,6 +555,8 @@ function _getSpendOptionCategoryConfig(category) {
         removeConfirm: "Remove this acclaim spend option?",
         fieldNameLabel: "Option Name",
         fieldCostLabel: "Cost",
+        fieldMaxCostLabel: "Max Cost (optional)",
+        fieldMaxCostPlaceholder: "Same as Cost",
         fieldDescriptionLabel: "Description",
         saveOptionLabel: "Save Option",
       };
@@ -551,6 +576,7 @@ function _getEnabledSpendOptions(category) {
       label: option.name,
       desc: option.description ?? "",
       cost: option.cost ?? 1,
+      costMax: Number.isFinite(option.costMax) ? option.costMax : null,
       isCustom: !option.isBuiltIn,
     }));
 }
@@ -629,7 +655,9 @@ export class AwardEditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
           row.action === "increaseReputation" ||
           row.action === "reduceReputation"
             ? "Cost X"
-            : `Cost ${row.cost ?? 1}`,
+            : Number.isFinite(row.costMax) && row.costMax > (row.cost ?? 0)
+              ? `Cost ${row.cost ?? 0}\u2013${row.costMax}`
+              : `Cost ${row.cost ?? 1}`,
         descriptionPreview: _truncateText(row.description ?? "", 150),
         isBuiltIn: row.isBuiltIn,
         enabled: row.enabled !== false,
@@ -779,6 +807,10 @@ export class AwardEditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
         award?.action || _makeCustomAction(config.prefix, name, custom.length),
       name,
       cost: Math.max(0, parseInt(result.cost, 10) || 0),
+      costMax:
+        String(result.costMax ?? "").trim() === ""
+          ? null
+          : Math.max(0, parseInt(result.costMax, 10) || 0),
       description: String(result.description ?? "").trim(),
       enabled: award?.enabled ?? true,
     };
@@ -896,6 +928,13 @@ export function registerCustomSpendOptionsSettings() {
         }),
         name: new foundry.data.fields.StringField(),
         cost: new foundry.data.fields.NumberField({ integer: true, min: 0 }),
+        costMax: new foundry.data.fields.NumberField({
+          required: false,
+          nullable: true,
+          integer: true,
+          min: 0,
+          initial: null,
+        }),
         description: new foundry.data.fields.StringField(),
         enabled: new foundry.data.fields.BooleanField({ initial: true }),
       }),
@@ -916,6 +955,13 @@ export function registerCustomSpendOptionsSettings() {
         }),
         name: new foundry.data.fields.StringField(),
         cost: new foundry.data.fields.NumberField({ integer: true, min: 0 }),
+        costMax: new foundry.data.fields.NumberField({
+          required: false,
+          nullable: true,
+          integer: true,
+          min: 0,
+          initial: null,
+        }),
         description: new foundry.data.fields.StringField(),
         enabled: new foundry.data.fields.BooleanField({ initial: true }),
       }),

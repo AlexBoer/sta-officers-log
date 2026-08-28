@@ -225,10 +225,10 @@ function _buildSpendContent(
     const conditionDisplay = opt.isAward
       ? opt.condition || conditionNoneLabel
       : "";
-    // Bounded award cost ranges (min–max) and open-ended variable costs ("1+")
-    // both let the player type an amount; only award ranges cap the maximum.
-    const hasCostRange =
-      opt.isAward && Number.isFinite(opt.costMax) && opt.costMax > effCost;
+    // Bounded cost ranges (min–max, from awards or custom acclaim/reprimand
+    // options) and open-ended variable costs ("1+") both let the player type
+    // an amount; only bounded ranges cap the maximum.
+    const hasCostRange = Number.isFinite(opt.costMax) && opt.costMax > effCost;
     const isVariable =
       hasCostRange ||
       opt.action === "gainFavor" ||
