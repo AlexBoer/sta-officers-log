@@ -1,298 +1,283 @@
-/**
- * GM Survey Monitor
- *
- * Shows a compact table-style view of all players' acclaim survey choices.
- * Questions are listed once as rows; each player has an answer-indicator column.
- *
- * @module hooks/renderAppV2/gmSurveyMonitor
- */
+/** Shared Acclaim Survey Monitor. */
 
 import {
   getAcclaimPositiveQuestions,
   getAcclaimNegativeQuestions,
+  canPlayersUseAcclaimSurveyMonitor,
 } from "./acclaimSurvey.js";
+import { canCurrentUserChangeActor } from "../core/utils.js";
 import { t } from "../core/i18n.js";
 
-/* ------------------------------------------------------------------ */
-/*  Module-level state                                                 */
-/* ------------------------------------------------------------------ */
-
-/** @type {HTMLElement|null} Reference to the live dialog DOM element. */
 let _monitorEl = null;
+const _surveys = new Map();
 
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-/**
- * Map an answer string to a display symbol.
- * @param {string|null} answer - "yes" | "no" | "unsure" | null
- * @returns {string}
- */
 function _answerIcon(answer) {
-  switch (answer) {
-    case "yes":
-      return '<i class="fa-solid fa-check sta-gm-monitor-icon-yes"></i>';
-    case "no":
-      return '<i class="fa-solid fa-xmark sta-gm-monitor-icon-no"></i>';
-    case "unsure":
-      return '<i class="fa-solid fa-question sta-gm-monitor-icon-unsure"></i>';
-    default:
-      return '<span class="sta-gm-monitor-icon-none">—</span>';
-  }
+  if (answer === "yes")
+    return '<i class="fa-solid fa-check sta-gm-monitor-icon-yes"></i>';
+  if (answer === "no")
+    return '<i class="fa-solid fa-xmark sta-gm-monitor-icon-no"></i>';
+  return '<span class="sta-gm-monitor-icon-none">—</span>';
 }
 
-/* ------------------------------------------------------------------ */
-/*  Build HTML — compact table layout                                  */
-/* ------------------------------------------------------------------ */
-
-/**
- * Build a single player column header cell.
- * @private
- */
-function _buildPlayerColHeader(player) {
-  return `
-    <div class="sta-gm-monitor-col-header" data-user-id="${player.userId}">
-      <div class="sta-gm-monitor-player-name">
-        ${foundry.utils.escapeHTML(player.playerName)}
-      </div>
-      <div class="sta-gm-monitor-actor-name" title="${foundry.utils.escapeHTML(player.actorName)}">
-        (${foundry.utils.escapeHTML(player.actorName)})
-      </div>
-      <div class="sta-gm-monitor-player-stats">
-        <span class="sta-gm-monitor-total-positive" title="${t("sta-officers-log.acclaimSurvey.positiveInfluences")}">
-          <i class="fa-solid fa-plus"></i><strong data-total="positive">0</strong>
-        </span>
-        <span class="sta-gm-monitor-total-negative" title="${t("sta-officers-log.acclaimSurvey.negativeInfluences")}">
-          <i class="fa-solid fa-minus"></i><strong data-total="negative">0</strong>
-        </span>
-      </div>
-      <span class="sta-gm-monitor-status" data-status="waiting">
-        <i class="fa-solid fa-hourglass-half"></i>
-        ${t("sta-officers-log.gmMonitor.waiting")}
-      </span>
-    </div>`;
+function _emptyChoices(type) {
+  const questions =
+    type === "pos"
+      ? getAcclaimPositiveQuestions()
+      : getAcclaimNegativeQuestions();
+  return questions.map((_question, index) => ({ index, answer: null }));
 }
 
-/**
- * Build answer indicator cells for one question row, one per player.
- * @private
- */
-function _buildAnswerCells(players) {
-  return players
+function _canEdit(actorId) {
+  return canCurrentUserChangeActor(game.actors?.get?.(actorId));
+}
+
+function _normalize(data) {
+  const actorId = String(data?.actorId ?? "");
+  const current = _surveys.get(actorId) ?? {};
+  const actor = game.actors?.get?.(actorId);
+  const positiveChoices = Array.isArray(data?.positiveChoices)
+    ? data.positiveChoices
+    : (current.positiveChoices ?? _emptyChoices("pos"));
+  const negativeChoices = Array.isArray(data?.negativeChoices)
+    ? data.negativeChoices
+    : (current.negativeChoices ?? _emptyChoices("neg"));
+  const positiveModifier = Math.max(
+    0,
+    Number(data?.positiveModifier ?? current.positiveModifier ?? 0) || 0,
+  );
+  const negativeModifier = Math.max(
+    0,
+    Number(data?.negativeModifier ?? current.negativeModifier ?? 0) || 0,
+  );
+  const countYes = (choices) =>
+    choices.filter((choice) => choice?.answer === "yes").length;
+  return {
+    ...current,
+    ...data,
+    actorId,
+    actorName: actor?.name ?? data?.actorName ?? current.actorName ?? "Unknown",
+    positiveChoices,
+    negativeChoices,
+    positiveModifier,
+    negativeModifier,
+    positiveCount: countYes(positiveChoices) + positiveModifier,
+    negativeCount: countYes(negativeChoices) + negativeModifier,
+    rolled: Boolean(data?.rolled ?? current.rolled),
+  };
+}
+
+function _header(survey) {
+  const editable = _canEdit(survey.actorId);
+  const status = survey.rolled ? "rolled" : "answering";
+  const icon = survey.rolled ? "fa-dice-d20" : "fa-pencil";
+  const label = survey.rolled
+    ? t("sta-officers-log.gmMonitor.rolled")
+    : t("sta-officers-log.gmMonitor.answering");
+  return `<div class="sta-gm-monitor-col-header" data-actor-id="${survey.actorId}">
+    <div class="sta-gm-monitor-actor-name" title="${foundry.utils.escapeHTML(survey.actorName)}">${foundry.utils.escapeHTML(survey.actorName)}</div>
+    <div class="sta-gm-monitor-player-stats"><span class="sta-gm-monitor-total-positive"><i class="fa-solid fa-plus"></i><strong data-total="positive">${survey.positiveCount}</strong></span><span class="sta-gm-monitor-total-negative"><i class="fa-solid fa-minus"></i><strong data-total="negative">${survey.negativeCount}</strong></span></div>
+    <span class="sta-gm-monitor-status" data-status="${status}"><i class="fa-solid ${icon}"></i> ${label}</span>
+    <button type="button" class="sta-gm-monitor-roll" data-action="roll" data-actor-id="${survey.actorId}" ${editable ? "" : "disabled"}><i class="fa-solid fa-dice-d20"></i> ${t("sta-officers-log.acclaimSurvey.rollReputation")}</button>
+  </div>`;
+}
+
+function _cells(surveys, type, index) {
+  return surveys
+    .map((survey) => {
+      const choices =
+        type === "pos" ? survey.positiveChoices : survey.negativeChoices;
+      const answer =
+        choices.find((choice) => choice.index === index)?.answer ?? null;
+      return `<span class="sta-gm-monitor-answer" data-actor-id="${survey.actorId}" data-answer="${answer ?? "none"}" data-editable="${_canEdit(survey.actorId)}">${_answerIcon(answer)}</span>`;
+    })
+    .join("");
+}
+
+function _modifiers(surveys, type) {
+  const field = type === "pos" ? "positiveModifier" : "negativeModifier";
+  return surveys
     .map(
-      (p) =>
-        `<span class="sta-gm-monitor-answer" data-user-id="${p.userId}" data-answer="none">${_answerIcon(null)}</span>`,
+      (survey) =>
+        `<input class="sta-gm-monitor-modifier" type="number" min="0" value="${survey[field]}" data-actor-id="${survey.actorId}" data-modifier-type="${type}" ${_canEdit(survey.actorId) ? "" : "disabled"}>`,
     )
     .join("");
 }
 
-/**
- * Build the full content HTML for the GM monitor dialog.
- *
- * @param {{ userId: string, playerName: string, actorName: string }[]} players
- * @returns {string}
- */
-function _buildMonitorContent(players) {
-  const positiveQuestions = getAcclaimPositiveQuestions();
-  const negativeQuestions = getAcclaimNegativeQuestions();
-
-  let html = '<div class="sta-gm-monitor">';
-
-  // ----- Player column headers -----
-  html += '<div class="sta-gm-monitor-header">';
-  html += '<div class="sta-gm-monitor-label-spacer"></div>'; // spacer for question text column
-  for (const player of players) {
-    html += _buildPlayerColHeader(player);
-  }
-  html += "</div>";
-
-  // ----- Positive Influences section -----
-  if (positiveQuestions.length > 0) {
-    html += `
-      <div class="sta-gm-monitor-section sta-gm-monitor-positive">
-        <h4>
-          <i class="fa-solid fa-plus"></i>
-          ${t("sta-officers-log.acclaimSurvey.positiveInfluences")}
-        </h4>`;
-    for (let i = 0; i < positiveQuestions.length; i++) {
-      html += `
-        <div class="sta-gm-monitor-row" data-q-type="pos" data-q-index="${i}">
-          <span class="sta-gm-monitor-question-text">${foundry.utils.escapeHTML(positiveQuestions[i])}</span>
-          ${_buildAnswerCells(players)}
-        </div>`;
-    }
-    html += "</div>";
-  }
-
-  // ----- Negative Influences section -----
-  if (negativeQuestions.length > 0) {
-    html += `
-      <div class="sta-gm-monitor-section sta-gm-monitor-negative">
-        <h4>
-          <i class="fa-solid fa-minus"></i>
-          ${t("sta-officers-log.acclaimSurvey.negativeInfluences")}
-        </h4>`;
-    for (let i = 0; i < negativeQuestions.length; i++) {
-      html += `
-        <div class="sta-gm-monitor-row" data-q-type="neg" data-q-index="${i}">
-          <span class="sta-gm-monitor-question-text">${foundry.utils.escapeHTML(negativeQuestions[i])}</span>
-          ${_buildAnswerCells(players)}
-        </div>`;
-    }
-    html += "</div>";
-  }
-
-  html += "</div>";
-  return html;
+function _content() {
+  const surveys = [..._surveys.values()];
+  const section = (type, questions, key, icon) => {
+    if (!questions.length) return "";
+    const interactionHint =
+      type === "pos"
+        ? `<div class="sta-gm-monitor-interaction-hint"><span></span><span>${t("sta-officers-log.gmMonitor.interactionHint")}</span></div>`
+        : "";
+    let html = `<div class="sta-gm-monitor-section sta-gm-monitor-${type === "pos" ? "positive" : "negative"}">${interactionHint}<h4><span class="sta-gm-monitor-section-label"><i class="fa-solid ${icon}"></i>${t(key)}</span>${_modifiers(surveys, type)}</h4>`;
+    for (let index = 0; index < questions.length; index++)
+      html += `<div class="sta-gm-monitor-row" data-q-type="${type}" data-q-index="${index}"><span class="sta-gm-monitor-question-text">${foundry.utils.escapeHTML(questions[index])}</span>${_cells(surveys, type, index)}</div>`;
+    return `${html}</div>`;
+  };
+  return `<div class="sta-gm-monitor"><div class="sta-gm-monitor-header"><div class="sta-gm-monitor-label-spacer"></div>${surveys.map(_header).join("")}</div>${section("pos", getAcclaimPositiveQuestions(), "sta-officers-log.acclaimSurvey.positiveInfluences", "fa-plus")}${section("neg", getAcclaimNegativeQuestions(), "sta-officers-log.acclaimSurvey.negativeInfluences", "fa-minus")}</div>`;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Dynamic player column insertion                                    */
-/* ------------------------------------------------------------------ */
-
-/**
- * Dynamically add a new player column to the existing monitor.
- *
- * @param {{ userId: string, playerName: string, actorName: string }} player
- * @private
- */
-function _addPlayerColumn(player) {
-  if (!_monitorEl) return;
-
-  // Add column header
-  const header = _monitorEl.querySelector(".sta-gm-monitor-header");
-  if (header) {
-    const tpl = document.createElement("template");
-    tpl.innerHTML = _buildPlayerColHeader(player).trim();
-    header.appendChild(tpl.content.firstElementChild);
-  }
-
-  // Add an answer cell to every question row
-  const rows = _monitorEl.querySelectorAll(".sta-gm-monitor-row");
-  for (const row of rows) {
-    const cell = document.createElement("span");
-    cell.className = "sta-gm-monitor-answer";
-    cell.dataset.userId = player.userId;
-    cell.dataset.answer = "none";
-    cell.innerHTML = _answerIcon(null);
-    row.appendChild(cell);
-  }
+function _render() {
+  const root = _monitorEl?.querySelector(".sta-gm-monitor");
+  if (root) root.outerHTML = _content();
 }
 
-/* ------------------------------------------------------------------ */
-/*  Live update API                                                    */
-/* ------------------------------------------------------------------ */
-
-/**
- * Called by the socket handler when a player sends a survey state update.
- *
- * @param {object} data
- * @param {string} data.userId
- * @param {string} [data.playerName]
- * @param {string} [data.actorName]
- * @param {Array<{index:number, answer:string|null}>} [data.positiveChoices]
- * @param {Array<{index:number, answer:string|null}>} [data.negativeChoices]
- * @param {number} [data.positiveCount]
- * @param {number} [data.negativeCount]
- * @param {boolean} [data.rolled] - True when the player has rolled.
- */
-export function updateGMMonitor(data) {
-  if (!_monitorEl) return;
-
-  // If the player doesn't have a column yet, add one dynamically
-  let colHeader = _monitorEl.querySelector(
-    `.sta-gm-monitor-col-header[data-user-id="${data.userId}"]`,
-  );
-  if (!colHeader) {
-    _addPlayerColumn({
-      userId: data.userId,
-      playerName: data.playerName ?? "Unknown",
-      actorName: data.actorName ?? "—",
+function _read(actorId) {
+  const survey = _surveys.get(actorId);
+  if (!survey) return null;
+  const choices = (type) =>
+    [
+      ...(_monitorEl?.querySelectorAll(
+        `.sta-gm-monitor-row[data-q-type="${type}"]`,
+      ) ?? []),
+    ].map((row) => {
+      const cell = row.querySelector(
+        `.sta-gm-monitor-answer[data-actor-id="${actorId}"]`,
+      );
+      return {
+        index: Number(row.dataset.qIndex),
+        answer:
+          cell?.dataset.answer === "none"
+            ? null
+            : (cell?.dataset.answer ?? null),
+      };
     });
-    colHeader = _monitorEl.querySelector(
-      `.sta-gm-monitor-col-header[data-user-id="${data.userId}"]`,
+  const modifier = (type) =>
+    Math.max(
+      0,
+      Number(
+        _monitorEl?.querySelector(
+          `.sta-gm-monitor-modifier[data-actor-id="${actorId}"][data-modifier-type="${type}"]`,
+        )?.value ?? 0,
+      ) || 0,
     );
-  }
+  return {
+    ...survey,
+    positiveChoices: choices("pos"),
+    negativeChoices: choices("neg"),
+    positiveModifier: modifier("pos"),
+    negativeModifier: modifier("neg"),
+    rolled: false,
+  };
+}
 
-  // --- Update individual question answer cells ---
-  if (data.positiveChoices) {
-    for (const choice of data.positiveChoices) {
-      const row = _monitorEl.querySelector(
-        `.sta-gm-monitor-row[data-q-type="pos"][data-q-index="${choice.index}"]`,
-      );
-      if (!row) continue;
-      const cell = row.querySelector(
-        `.sta-gm-monitor-answer[data-user-id="${data.userId}"]`,
-      );
-      if (cell) {
-        cell.dataset.answer = choice.answer || "none";
-        cell.innerHTML = _answerIcon(choice.answer);
-      }
-    }
-  }
-
-  if (data.negativeChoices) {
-    for (const choice of data.negativeChoices) {
-      const row = _monitorEl.querySelector(
-        `.sta-gm-monitor-row[data-q-type="neg"][data-q-index="${choice.index}"]`,
-      );
-      if (!row) continue;
-      const cell = row.querySelector(
-        `.sta-gm-monitor-answer[data-user-id="${data.userId}"]`,
-      );
-      if (cell) {
-        cell.dataset.answer = choice.answer || "none";
-        cell.innerHTML = _answerIcon(choice.answer);
-      }
-    }
-  }
-
-  // --- Update totals in column header ---
-  if (colHeader) {
-    const posTotalEl = colHeader.querySelector('[data-total="positive"]');
-    const negTotalEl = colHeader.querySelector('[data-total="negative"]');
-    if (posTotalEl) posTotalEl.textContent = String(data.positiveCount ?? 0);
-    if (negTotalEl) negTotalEl.textContent = String(data.negativeCount ?? 0);
-  }
-
-  // --- Update status indicator ---
-  const statusEl = colHeader?.querySelector(".sta-gm-monitor-status");
-  if (!statusEl) return;
-
-  if (data.rolled) {
-    statusEl.dataset.status = "rolled";
-    statusEl.innerHTML = `<i class="fa-solid fa-dice-d20"></i> ${t("sta-officers-log.gmMonitor.rolled")}`;
+async function _publish(survey) {
+  const { getModuleSocket } = await import("../core/socket.js");
+  const socket = getModuleSocket();
+  if (!socket) return;
+  if (game.user.isGM) {
+    const updated = updateGMSurveyMonitor(survey);
+    await socket.executeForOthers("acclaimSurveyMonitorUpdate", updated);
   } else {
-    statusEl.dataset.status = "answering";
-    statusEl.innerHTML = `<i class="fa-solid fa-pencil"></i> ${t("sta-officers-log.gmMonitor.answering")}`;
+    const updated = await socket.executeAsGM("acclaimSurveyUpdate", {
+      ...survey,
+      requestingUserId: game.user.id,
+    });
+    if (updated?.actorId) updateGMSurveyMonitor(updated);
   }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Show the monitor dialog                                            */
-/* ------------------------------------------------------------------ */
+async function _editAnswer(event, answer) {
+  const cell = event.target.closest?.(".sta-gm-monitor-answer");
+  if (!cell || cell.dataset.editable !== "true") return;
+  event.preventDefault();
+  const next = cell.dataset.answer === answer ? "none" : answer;
+  cell.dataset.answer = next;
+  cell.innerHTML = _answerIcon(next === "none" ? null : next);
+  const survey = _read(cell.dataset.actorId);
+  if (survey) await _publish(survey);
+}
 
-/**
- * Open the GM Survey Monitor dialog.
- *
- * @param {{ userId: string, playerName: string, actorName: string }[]} players
- */
-export async function showGMSurveyMonitor(players) {
-  const content = _buildMonitorContent(players);
+async function _roll(event) {
+  const button = event.target.closest?.('[data-action="roll"]');
+  if (!button || button.disabled) return;
+  const survey = _read(button.dataset.actorId);
+  const actor = game.actors?.get?.(button.dataset.actorId);
+  if (!survey || !actor || !_canEdit(actor.id)) return;
+  const { performAcclaimSurveyRoll } = await import("./acclaimButton.js");
+  const submitted = await performAcclaimSurveyRoll(
+    actor,
+    survey.positiveCount,
+    survey.negativeCount,
+  );
+  if (submitted) await _publish({ ...survey, rolled: true });
+}
 
+function _installInteractions() {
+  _monitorEl?.addEventListener("click", (event) => {
+    if (event.target.closest?.('[data-action="roll"]')) void _roll(event);
+    else void _editAnswer(event, "yes");
+  });
+  _monitorEl?.addEventListener(
+    "contextmenu",
+    (event) => void _editAnswer(event, "no"),
+  );
+  const publishModifier = (event) => {
+    const input = event.target.closest?.(".sta-gm-monitor-modifier");
+    if (!input || input.disabled) return;
+    const survey = _read(input.dataset.actorId);
+    if (survey) void _publish(survey);
+  };
+  _monitorEl?.addEventListener("input", publishModifier);
+  _monitorEl?.addEventListener("change", publishModifier);
+}
+
+export function updateGMSurveyMonitor(data) {
+  const survey = _normalize(data);
+  if (!survey.actorId) return null;
+  _surveys.set(survey.actorId, survey);
+  _render();
+  return survey;
+}
+
+export function getGMSurveyMonitorState() {
+  return [..._surveys.values()];
+}
+
+export async function openSurveyMonitorForActor(actor) {
+  if (!actor || !_canEdit(actor.id)) {
+    ui.notifications?.warn(t("sta-officers-log.gmMonitor.actorOwnerOnly"));
+    return;
+  }
+  const { getModuleSocket } = await import("../core/socket.js");
+  const socket = getModuleSocket();
+  if (!socket) return;
+  let survey;
+  if (game.user.isGM) {
+    survey = updateGMSurveyMonitor({
+      actorId: actor.id,
+      actorName: actor.name,
+    });
+    await socket.executeForOthers("acclaimSurveyMonitorUpdate", survey);
+  } else {
+    survey = await socket.executeAsGM("acclaimSurveyMonitorOpen", {
+      actorId: actor.id,
+      requestingUserId: game.user.id,
+    });
+    if (survey?.actorId) updateGMSurveyMonitor(survey);
+  }
+  await openGMSurveyMonitor();
+}
+
+export async function showGMSurveyMonitor(surveys = []) {
+  for (const survey of surveys) updateGMSurveyMonitor(survey);
+  if (_monitorEl) {
+    _render();
+    return;
+  }
   await foundry.applications.api.DialogV2.wait({
     classes: ["sta-officers-log"],
     window: {
       title: t("sta-officers-log.gmMonitor.title"),
       icon: "fa-solid fa-eye",
     },
-    position: {
-      width: 960,
-    },
-    content,
+    position: { width: 960 },
+    content: _content(),
     render: (_event, dialog) => {
       _monitorEl = dialog.element;
+      _installInteractions();
     },
     buttons: [
       {
@@ -307,28 +292,20 @@ export async function showGMSurveyMonitor(players) {
   });
 }
 
-/**
- * Standalone entry point for the GM to open the survey monitor.
- * Usable from a macro or the module API without triggering surveys.
- * The monitor starts with columns for all online players and
- * dynamically adds new columns if other players start a survey.
- */
 export async function openGMSurveyMonitor() {
-  if (!game.user.isGM) {
+  if (!game.user.isGM && !canPlayersUseAcclaimSurveyMonitor()) {
     ui.notifications?.warn(
-      t("sta-officers-log.gmMonitor.gmOnly") ||
-        "Only the GM can use the survey monitor.",
+      t("sta-officers-log.gmMonitor.playerAccessDisabled"),
     );
     return;
   }
-
-  const onlinePlayers = game.users
-    .filter((u) => u.active && !u.isGM && u.character)
-    .map((u) => ({
-      userId: u.id,
-      playerName: u.name,
-      actorName: u.character?.name ?? "—",
-    }));
-
-  return showGMSurveyMonitor(onlinePlayers);
+  if (!game.user.isGM) {
+    const { getModuleSocket } = await import("../core/socket.js");
+    const state = await getModuleSocket()?.executeAsGM(
+      "getAcclaimSurveyMonitorState",
+    );
+    if (Array.isArray(state))
+      for (const survey of state) updateGMSurveyMonitor(survey);
+  }
+  return showGMSurveyMonitor();
 }

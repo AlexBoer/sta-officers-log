@@ -1,0 +1,83 @@
+<div class="starship-sheet house-sheet {{#if isLcars}}sta-lcars-sheet sta-lcars {{lcarsSchemeClass}}{{/if}}">
+  <div class="split-section">
+    <div class="left-column">
+      <div class="image-field">
+        <img class="profile-img" src="{{actor.img}}" data-action="editImage" data-edit="img" title="{{actor.name}}" />
+      </div>
+
+      <div class="systems-block house-statistics-block">
+        <div class="title">{{localize "sta-officers-log.house.attributes"}}</div>
+        <div class="stat header row"><div class="text secondary-title">{{localize "sta-officers-log.house.attribute"}}</div><div class="field secondary-title">{{localize "sta-officers-log.house.value"}}</div></div>
+        <div class="stat row"><div class="text list-entry">{{localize "sta-officers-log.house.reputation"}}</div><input class="field numeric-entry" name="system.reputation" type="number" value="{{system.reputation}}" min="0" max="12" /></div>
+        <div class="stat row"><div class="text list-entry">{{localize "sta-officers-log.house.influence"}}</div><input class="field numeric-entry" name="system.influence" type="number" value="{{system.influence}}" min="6" max="12" /></div>
+        <div class="stat row"><div class="text list-entry">{{localize "sta-officers-log.house.might"}}</div><input class="field numeric-entry" name="system.might" type="number" value="{{system.might}}" min="6" max="12" /></div>
+        <div class="stat row"><div class="text list-entry">{{localize "sta-officers-log.house.wealth"}}</div><input class="field numeric-entry" name="system.wealth" type="number" value="{{system.wealth}}" min="6" max="12" /></div>
+      </div>
+
+      <div class="departments-block house-status-block">
+        <div class="title">{{localize "sta-officers-log.house.status"}}</div>
+        <div class="stat row"><input class="text-entry" name="system.status.value" type="text" value="{{status.value}}" /></div>
+      </div>
+
+      <div class="section house-state-section">
+        <div class="title">{{localize "sta-officers-log.house.state"}}</div>
+        <label class="house-state-row"><span>{{localize "sta-officers-log.house.isGreatHouse"}}</span><input type="checkbox" name="system.isGreatHouse" {{checked system.isGreatHouse}} /></label>
+        <label class="house-state-row"><span>{{localize "sta-officers-log.house.highCouncilSeat"}}</span><input type="checkbox" name="system.highCouncilSeat" {{checked system.highCouncilSeat}} /></label>
+        <label class="house-state-row"><span>{{localize "sta-officers-log.house.dissolved"}}</span><input type="checkbox" name="system.dissolved" {{checked system.dissolved}} /></label>
+      </div>
+      <div class="section house-leader-section">
+        <div class="title">{{localize "sta-officers-log.house.leader"}}</div>
+        <select class="house-leader-select" name="system.leaderUuid"><option value="">{{localize "sta-officers-log.house.noLeader"}}</option>{{#each characters}}<option value="{{uuid}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select>
+      </div>
+    </div>
+
+    <div class="right-column">
+      <div class="name-row">
+        <div class="name-field"><label class="title" for="house-name">{{localize "sta-officers-log.house.name"}}</label><input name="name" id="house-name" class="text-entry" type="text" value="{{actor.name}}" placeholder="{{localize "sta-officers-log.house.name"}}" /></div>
+        <span class="house-member-count">{{memberCount}} {{localize "sta-officers-log.house.members"}}</span>
+        {{#if isLcars}}<button type="button" class="sta-lcars-theme-btn" title="Change LCARS color scheme"><i class="fas fa-palette"></i></button>{{/if}}
+      </div>
+      {{#if isLcars}}<div class="sta-lcars-theme-picker">{{#each lcarsThemes}}<button type="button" class="sta-lcars-theme-dot {{#if isActive}}active{{/if}}" data-theme="{{key}}" title="{{label}}" style="--dot-color: {{color}}; --dot-secondary-color: {{secondaryColor}}"></button>{{/each}}</div>{{/if}}
+
+      <nav class="sheet-tabs tabs house-tabs" aria-label="{{localize 'sta-officers-log.house.tabs.label'}}"><a class="item {{#if (eq activeTab "details")}}active{{/if}}" data-tab="details">{{localize "sta-officers-log.house.tabs.details"}}</a><a class="item {{#if (eq activeTab "development")}}active{{/if}}" data-tab="development">{{localize "sta-officers-log.house.tabs.development"}}</a><a class="item {{#if (eq activeTab "members")}}active{{/if}}" data-tab="members">{{localize "sta-officers-log.house.tabs.members"}}</a></nav>
+      <section class="tab house-tab {{#unless (eq activeTab "details")}}hidden{{/unless}}" data-tab-content="details">
+        <div class="house-three-column-row">
+          <div class="section house-bonus-section"><div class="title">{{localize "sta-officers-log.house.attributeBonuses"}}</div><div class="header row item"><div class="one-column-with-roll">{{localize "sta-officers-log.house.attribute"}}</div><div class="one-column-with-roll">{{localize "sta-officers-log.house.total"}}</div></div>{{#each attributeBonusRows}}<div class="row entry house-bonus-row"><span>{{label}}</span><input type="number" name="system.attributeBonuses.{{key}}" value="{{total}}" /></div>{{/each}}</div>
+
+          <div class="section house-bonus-section"><div class="title">{{localize "sta-officers-log.house.departmentBonuses"}}</div><div class="header row item"><div class="one-column-with-roll">{{localize "sta-officers-log.house.department"}}</div><div class="one-column-with-roll">{{localize "sta-officers-log.house.total"}}</div></div>{{#each departmentBonusRows}}<div class="row entry house-bonus-row"><span>{{label}}</span><input type="number" name="system.departmentBonuses.{{key}}" value="{{total}}" /></div>{{/each}}</div>
+
+          <div class="house-stacked-choice-column">
+            <div class="section house-choice-section"><div class="title">{{localize "sta-officers-log.house.legacy"}}</div><input class="text-entry" name="system.legacy.value" type="text" value="{{legacy.value}}" placeholder="Legacy Name" /><textarea class="text-entry house-description-field" name="system.legacy.description" placeholder="Legacy Description">{{legacy.description}}</textarea></div>
+            <div class="section house-choice-section"><div class="title">{{localize "sta-officers-log.house.temperament"}}</div><input class="text-entry" name="system.temperament.value" type="text" value="{{temperament.value}}" placeholder="Temperament Name" /><textarea class="text-entry house-description-field" name="system.temperament.description" placeholder="Temperament Description">{{temperament.description}}</textarea></div>
+          </div>
+        </div>
+
+        <div class="house-two-column-row">
+          <div class="section house-item-section"><div class="title house-item-section-title">{{localize "sta-officers-log.house.suggestedFocuses"}}<a class="control create" data-action="openHouseFocusPicker" title="Choose focus"><i class="fas fa-plus"></i></a></div>{{#each focuses}}<li class="row entry" data-item-id="{{id}}"><div class="image"><img src="{{img}}" title="{{name}}" /></div><button type="button" class="item-name house-item-link" data-action="editHouseItem" data-item-id="{{id}}">{{name}}</button><div class="control"><a data-action="editHouseItem" data-item-id="{{id}}" title="Edit"><i class="fas fa-edit"></i></a><a data-action="deleteHouseItem" data-item-id="{{id}}" title="Delete"><i class="fas fa-trash"></i></a></div></li>{{/each}}</div>
+
+          <div class="section house-item-section"><div class="title house-item-section-title">{{localize "sta-officers-log.house.suggestedTalents"}}<a class="control create" data-action="openHouseTalentPicker" title="Choose House talent"><i class="fas fa-plus"></i></a></div>{{#each talents}}<li class="row entry" data-item-id="{{id}}"><div class="image"><img src="{{img}}" title="{{name}}" /></div><button type="button" class="item-name house-item-link" data-action="editHouseItem" data-item-id="{{id}}">{{name}}</button><div class="control"><a data-action="editHouseItem" data-item-id="{{id}}" title="Edit"><i class="fas fa-edit"></i></a><a data-action="deleteHouseItem" data-item-id="{{id}}" title="Delete"><i class="fas fa-trash"></i></a></div></li>{{/each}}</div>
+        </div>
+
+        <div class="section house-item-section house-traits-section"><div class="title house-item-section-title">{{localize "sta.actor.character.traits"}}<a class="control create" data-action="createHouseItem" data-type="trait" title="Create trait"><i class="fas fa-plus"></i></a></div>{{#each traits}}<li class="row entry" data-item-id="{{id}}"><div class="image"><img src="{{img}}" title="{{name}}" /></div><button type="button" class="item-name house-item-link" data-action="editHouseItem" data-item-id="{{id}}">{{name}}</button><div class="control"><a data-action="editHouseItem" data-item-id="{{id}}" title="Edit"><i class="fas fa-edit"></i></a><a data-action="deleteHouseItem" data-item-id="{{id}}" title="Delete"><i class="fas fa-trash"></i></a></div></li>{{/each}}</div>
+
+        <div class="section house-description-section"><div class="title">{{localize "sta-officers-log.house.description"}}</div><textarea class="house-notes" name="system.description">{{system.description}}</textarea><div class="title">{{localize "sta-officers-log.house.history"}}</div><textarea class="house-notes" name="system.history">{{system.history}}</textarea></div>
+
+      </section>
+
+      <section class="tab house-tab {{#unless (eq activeTab "development")}}hidden{{/unless}}" data-tab-content="development">
+        <div class="section house-item-section house-development-section">
+          <div class="title house-item-section-title">{{localize "sta-officers-log.house.development.title"}}<a class="control create" data-action="createHouseItem" data-type="milestone" title="Create House development"><i class="fas fa-plus"></i></a></div>
+          {{#if milestones.length}}
+          {{#each milestones}}<li class="row entry" data-item-id="{{id}}"><div class="image"><img src="{{img}}" title="{{name}}" /></div><button type="button" class="item-name house-item-link" data-action="editHouseItem" data-item-id="{{id}}">{{name}}</button><div class="control"><a data-action="editHouseItem" data-item-id="{{id}}" title="Edit"><i class="fas fa-edit"></i></a><a data-action="deleteHouseItem" data-item-id="{{id}}" title="Delete"><i class="fas fa-trash"></i></a></div></li>{{/each}}
+          {{else}}<p>{{localize "sta-officers-log.house.development.empty"}}</p>{{/if}}
+        </div>
+      </section>
+
+      <section class="tab house-tab {{#unless (eq activeTab "members")}}hidden{{/unless}}" data-tab-content="members">
+        <div class="section values house-item-section house-members-section"><div class="title house-item-section-title">{{localize "sta-officers-log.house.members"}}<a class="control create" data-action="addMember" title="{{localize 'sta-officers-log.house.addMember.title'}}"><i class="fas fa-plus"></i></a></div>
+          {{#if members.length}}{{#each members}}<li class="row entry" data-actor-id="{{id}}"><div class="image"><img class="chat" src="{{img}}" title="{{name}}" /></div><button type="button" class="item-name house-member-link" data-action="openMember" data-actor-id="{{id}}">{{name}}</button><div class="control"><a data-action="openMember" data-actor-id="{{id}}" title="{{localize 'sta-officers-log.house.openMember'}}"><i class="fas fa-edit"></i></a></div></li>{{/each}}{{else}}<p>{{localize "sta-officers-log.house.noMembers"}}</p>{{/if}}
+        </div>
+      </section>
+    </div>
+  </div>
+</div>

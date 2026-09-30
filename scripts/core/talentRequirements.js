@@ -42,6 +42,7 @@ export const sanitizeRequirementOperator = (value) =>
 export const isNumericRequirementCategory = (category) =>
   normalizeRequirementString(category) === "attribute" ||
   normalizeRequirementString(category) === "discipline" ||
+  normalizeRequirementString(category) === "department" ||
   normalizeRequirementString(category) === "systems";
 
 export const resolveAttributeKey = (value) => {

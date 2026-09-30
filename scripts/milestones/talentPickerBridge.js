@@ -90,7 +90,7 @@ function _formatClause(category, clause) {
         value,
     );
   }
-  if (category === "discipline") {
+  if (category === "discipline" || category === "department") {
     const key = resolveDisciplineKey(value);
     return withMin(
       (key && DISCIPLINE_LABELS[key]) ||
@@ -158,7 +158,11 @@ function _buildFacets(requirements) {
       // Keep numeric-category filters clean: only list real attributes/departments/
       // systems so a mis-entered species value can't pollute those dropdowns.
       if (category === "attribute" && !resolveAttributeKey(value)) continue;
-      if (category === "discipline" && !resolveDisciplineKey(value)) continue;
+      if (
+        (category === "discipline" || category === "department") &&
+        !resolveDisciplineKey(value)
+      )
+        continue;
       if (category === "systems" && !STA_SYSTEM_KEYS.has(value)) continue;
       const minimum = Number(clause?.minimum);
       clauses.push({
@@ -171,7 +175,7 @@ function _buildFacets(requirements) {
   return { categories: Array.from(categories), clauses };
 }
 
-function _sourceLabelFromUuid(uuid) {
+function _compendiumLabelFromUuid(uuid) {
   const raw = String(uuid ?? "");
   if (!raw.startsWith("Compendium.")) return "";
   const parts = raw.slice("Compendium.".length).split(".");
@@ -179,6 +183,26 @@ function _sourceLabelFromUuid(uuid) {
   const collection = `${parts[0]}.${parts[1]}`;
   const pack = game.packs?.get?.(collection);
   return String(pack?.title ?? pack?.metadata?.label ?? collection);
+}
+
+function _talentSourceLabel(talent) {
+  const item = talent?.item;
+  const source =
+    item?.flags?.[MODULE_ID]?.source ??
+    item?.system?.source?.value ??
+    item?.system?.source ??
+    "";
+  return String(source ?? "").trim();
+}
+
+function _talentType(talent) {
+  return normalizeRequirementString(
+    talent?.talenttype?.typeenum ??
+      talent?.talenttype?.type ??
+      talent?.item?.system?.talenttype?.typeenum ??
+      talent?.item?.system?.talenttype?.type ??
+      talent?.item?.system?.type,
+  );
 }
 
 function _descriptionText(item) {
@@ -206,7 +230,9 @@ function _analyzeTalent(actor, talent) {
     uuid: String(talent?.uuid ?? talent?.name ?? ""),
     name: String(talent?.name ?? ""),
     img: talent?.img ?? null,
-    source: _sourceLabelFromUuid(talent?.uuid),
+    source: _talentSourceLabel(talent),
+    compendium: _compendiumLabelFromUuid(talent?.uuid),
+    type: _talentType(talent),
     eligible: doesActorMeetTalentRequirements(actor, talent),
     requirementLines,
     descriptionText: _descriptionText(talent?.item),

@@ -51,6 +51,7 @@ import { isUnlinkedTokenActor } from "../core/utils.js";
 import { t } from "../core/i18n.js";
 import { installIntroducedCrewList } from "../ship/introducedCrewList.js";
 import { getGroupShipActorId } from "../missions/mission.js";
+import { installHouseAssignmentControl } from "../house/house-assignment.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Handler: STA Tracker
@@ -140,6 +141,12 @@ function handleCharacterSheetRender(app, root) {
   }
 
   if (!actor || actor.type !== "character") return;
+
+  try {
+    installHouseAssignmentControl(root, actor);
+  } catch (_) {
+    // House assignment is an optional enhancement.
+  }
 
   // Show a persistent warning banner if this sheet belongs to an unlinked token (GM only).
   try {

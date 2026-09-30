@@ -442,6 +442,10 @@ export async function setUsedCallbackThisMission(userId, used) {
   if (actor) {
     try {
       await actor.update({ "system.usedCallbackThisMission": Boolean(used) });
+      // Clear the legacy flag so it can't shadow the system field (see hasUsedCallbackThisMission).
+      if (actor.getFlag?.(MODULE_ID, "usedCallbackThisMission") !== undefined) {
+        await actor.unsetFlag(MODULE_ID, "usedCallbackThisMission");
+      }
     } catch (err) {
       console.warn(
         `${MODULE_ID} | Failed to set usedCallbackThisMission on actor:`,
@@ -460,6 +464,12 @@ export async function resetMissionCallbacks({ notify = true } = {}) {
       flagUpdates.push(
         actor.update({ "system.usedCallbackThisMission": false }),
       );
+      // Also clear the legacy flag left behind by the flags→system migration;
+      // hasUsedCallbackThisMission still reads it, so a stale true would keep
+      // the actor stuck as "already made a callback" after every reset.
+      if (actor.getFlag?.(MODULE_ID, "usedCallbackThisMission") !== undefined) {
+        flagUpdates.push(actor.unsetFlag(MODULE_ID, "usedCallbackThisMission"));
+      }
     } catch (err) {
       console.warn(
         `${MODULE_ID} | Failed to reset usedCallbackThisMission on actor:`,

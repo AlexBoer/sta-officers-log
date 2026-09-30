@@ -487,10 +487,14 @@ async function _listTraitItems(items, emptyLabel) {
         const tooltipAttributes = descriptionTooltip
           ? ` data-tooltip="${_escapeHtml(descriptionTooltip)}" data-tooltip-direction="UP"`
           : "";
+        const isVisible = item.getFlag(STA_UTILS_MODULE_ID, "visible") ?? true;
+        const visibilityIcon = isVisible
+          ? ""
+          : `<i class="fas fa-eye-slash sta-tracker-trait-hidden-icon" aria-hidden="true" data-tooltip="${_escapeHtml(t("sta-officers-log.tracker.hiddenFromPlayers"))}"></i>`;
 
         return (
           `<li class="sta-tracker-directive-item">` +
-          `<button type="button" class="sta-tracker-trait-btn" data-action="openTraitSheet" data-uuid="${_escapeHtml(item.uuid)}"${tooltipAttributes}>${_escapeHtml(displayName)}</button>` +
+          `${visibilityIcon}<button type="button" class="sta-tracker-trait-btn" data-action="openTraitSheet" data-uuid="${_escapeHtml(item.uuid)}"${tooltipAttributes}>${_escapeHtml(displayName)}</button>` +
           `</li>`
         );
       }),

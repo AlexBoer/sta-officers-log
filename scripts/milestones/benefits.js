@@ -37,6 +37,26 @@ import {
   handleShipTalentSwap,
 } from "../ship/shipSwapHandlers.js";
 
+async function recordAppliedShipBenefit(character, shipId, result) {
+  if (
+    !result?.applied ||
+    !shipId ||
+    String(result.action ?? "").endsWith("Manual") ||
+    result.action === "shipManual" ||
+    !game.staUtils?.recordShipAdvancement
+  )
+    return;
+  const description = formatChosenBenefitLabel(result);
+  if (!description) return;
+  const ship = game.actors?.get?.(shipId);
+  if (!ship) return;
+  try {
+    await game.staUtils.recordShipAdvancement(ship, character, description);
+  } catch (error) {
+    console.warn("sta-officers-log | Unable to record ship advancement", error);
+  }
+}
+
 function _getEligibleSupportingCharacters() {
   const eligible = [];
 
@@ -109,6 +129,7 @@ export async function applyArcMilestoneBenefit(
         if (isSingleAction) return { applied: false, back: true };
         continue;
       }
+      await recordAppliedShipBenefit(actor, result.shipId, result);
       return result;
     }
 
@@ -118,6 +139,7 @@ export async function applyArcMilestoneBenefit(
         if (isSingleAction) return { applied: false, back: true };
         continue;
       }
+      await recordAppliedShipBenefit(actor, result.shipId, result);
       return result;
     }
 
@@ -127,6 +149,7 @@ export async function applyArcMilestoneBenefit(
         if (isSingleAction) return { applied: false, back: true };
         continue;
       }
+      await recordAppliedShipBenefit(actor, result.shipId, result);
       return result;
     }
   }
@@ -378,16 +401,21 @@ export async function applyNonArcMilestoneBenefitInternal(
         }
 
         if (shipAction === "systemSwap") {
-          return handleShipSystemSwap(ship);
+          const result = await handleShipSystemSwap(ship);
+          await recordAppliedShipBenefit(actor, result.shipId, result);
+          return result;
         }
 
         if (shipAction === "deptSwap") {
-          return handleShipDepartmentSwap(ship);
+          const result = await handleShipDepartmentSwap(ship);
+          await recordAppliedShipBenefit(actor, result.shipId, result);
+          return result;
         }
 
         if (shipAction === "talentSwap") {
           const result = await handleShipTalentSwap(ship);
           if (result.back) continue;
+          await recordAppliedShipBenefit(actor, result.shipId, result);
           return result;
         }
 

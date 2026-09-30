@@ -28,13 +28,19 @@ import { openAwardTalentSelector } from "./awardTalentSelectorApp.js";
 
 export const CUSTOM_ACCLAIM_OPTIONS_SETTING = "customAcclaimOptions";
 export const CUSTOM_REPRIMAND_OPTIONS_SETTING = "customReprimandOptions";
+export const CUSTOM_HOUSE_GLORY_OPTIONS_SETTING = "houseGlorySpends";
+export const CUSTOM_HOUSE_SHAME_OPTIONS_SETTING = "houseShameSpends";
 export const DISABLED_ACCLAIM_DEFAULTS_SETTING =
   "disabledAcclaimDefaultActions";
 export const DISABLED_REPRIMAND_DEFAULTS_SETTING =
   "disabledReprimandDefaultActions";
+export const DISABLED_HOUSE_GLORY_DEFAULTS_SETTING =
+  "disabledHouseGloryActions";
+export const DISABLED_HOUSE_SHAME_DEFAULTS_SETTING =
+  "disabledHouseShameActions";
 export const CUSTOM_SPEND_OPTIONS_VERSION_SETTING = "customSpendOptionsVersion";
 
-const CURRENT_SPEND_OPTIONS_VERSION = 4;
+const CURRENT_SPEND_OPTIONS_VERSION = 5;
 
 const DEFAULT_ACCLAIM_ACTIONS = [
   "commendAnother",
@@ -62,6 +68,61 @@ function _withActions(rows, actions, extra = {}) {
     ...row,
     action: String(row?.action ?? actions[index] ?? "").trim(),
   }));
+}
+
+export function getDefaultHouseGloryOptions() {
+  return [
+    {
+      action: "houseForgeAllianceLesser",
+      name: "Forge Alliance (Lesser House)",
+      cost: 2,
+      description: "Spend Glory to secure a lesser House as an ally.",
+    },
+    {
+      action: "houseForgeAllianceGreat",
+      name: "Forge Alliance (Great House)",
+      cost: 3,
+      description: "Spend Glory to secure another Great House as an ally.",
+    },
+    {
+      action: "houseForgeAllianceCouncil",
+      name: "Forge Alliance (High Council House)",
+      cost: 4,
+      description:
+        "Spend Glory to secure a House with a High Council seat as an ally.",
+    },
+  ];
+}
+
+export function getDefaultHouseShameOptions() {
+  return [
+    {
+      action: "houseInciteDivisionLesser",
+      name: "Incite Division (Lesser House)",
+      cost: 2,
+      description: "Spend Shame to incite enmity with a lesser House.",
+    },
+    {
+      action: "houseInciteDivisionGreat",
+      name: "Incite Division (Great House)",
+      cost: 3,
+      description: "Spend Shame to incite enmity with another Great House.",
+    },
+    {
+      action: "houseInciteDivisionCouncil",
+      name: "Incite Division (High Council House)",
+      cost: 4,
+      description:
+        "Spend Shame to incite enmity with a House with a High Council seat.",
+    },
+    {
+      action: "houseDisgraceByAssociation",
+      name: "Disgrace by Association",
+      cost: 2,
+      description:
+        "Spend Shame to impose one additional negative influence on another House member's Reputation roll.",
+    },
+  ];
 }
 
 function _sanitizeOption(option) {
@@ -340,6 +401,35 @@ async function _migrateStoredOptions(key, defaultsFn) {
   return true;
 }
 
+async function _migrateLegacyHouseOptions(key, defaultsFn, prefix) {
+  const stored = _getStoredOptions(key);
+  if (!stored.some((option) => typeof option === "string")) return false;
+
+  const defaults = defaultsFn();
+  const defaultsByName = new Map(
+    defaults.map((option) => [option.name.trim().toLowerCase(), option]),
+  );
+  const converted = stored
+    .map((option) => (typeof option === "string" ? _parseLine(option) : option))
+    .filter(Boolean)
+    .map((option) => {
+      const matchingDefault = defaultsByName.get(
+        String(option.name ?? "")
+          .trim()
+          .toLowerCase(),
+      );
+      return matchingDefault
+        ? { ...option, action: matchingDefault.action }
+        : option;
+    });
+  const defaultActions = new Set(defaults.map((option) => option.action));
+  const customOnly = _prepareSaveOptions(converted, prefix).filter(
+    (option) => !defaultActions.has(option.action),
+  );
+  await game.settings.set(MODULE_ID, key, customOnly);
+  return true;
+}
+
 export async function migrateCustomSpendOptions() {
   if (!game.user?.isGM) return;
   if (_getStoredVersion() >= CURRENT_SPEND_OPTIONS_VERSION) return;
@@ -351,6 +441,16 @@ export async function migrateCustomSpendOptions() {
   await _migrateStoredOptions(
     CUSTOM_REPRIMAND_OPTIONS_SETTING,
     getDefaultReprimandOptions,
+  );
+  await _migrateLegacyHouseOptions(
+    CUSTOM_HOUSE_GLORY_OPTIONS_SETTING,
+    getDefaultHouseGloryOptions,
+    "houseGlory",
+  );
+  await _migrateLegacyHouseOptions(
+    CUSTOM_HOUSE_SHAME_OPTIONS_SETTING,
+    getDefaultHouseShameOptions,
+    "houseShame",
   );
 
   await game.settings.set(
@@ -521,6 +621,44 @@ function _openAwardEditorDialog(category, { title, award }) {
 
 function _getSpendOptionCategoryConfig(category) {
   switch (category) {
+    case "houseGlory":
+      return {
+        key: CUSTOM_HOUSE_GLORY_OPTIONS_SETTING,
+        disabledDefaultsKey: DISABLED_HOUSE_GLORY_DEFAULTS_SETTING,
+        defaultsFn: getDefaultHouseGloryOptions,
+        prefix: "houseGlory",
+        title: "House Glory Spend Editor",
+        createLabel: "Create House Glory Option",
+        emptyLabel: "No House Glory options have been created yet.",
+        saveLabel: "House Glory option saved.",
+        removedLabel: "House Glory option removed.",
+        removeConfirm: "Remove this House Glory option?",
+        fieldNameLabel: "Option Name",
+        fieldCostLabel: "Cost",
+        fieldMaxCostLabel: "Max Cost (optional)",
+        fieldMaxCostPlaceholder: "Same as Cost",
+        fieldDescriptionLabel: "Description",
+        saveOptionLabel: "Save Option",
+      };
+    case "houseShame":
+      return {
+        key: CUSTOM_HOUSE_SHAME_OPTIONS_SETTING,
+        disabledDefaultsKey: DISABLED_HOUSE_SHAME_DEFAULTS_SETTING,
+        defaultsFn: getDefaultHouseShameOptions,
+        prefix: "houseShame",
+        title: "House Shame Spend Editor",
+        createLabel: "Create House Shame Option",
+        emptyLabel: "No House Shame options have been created yet.",
+        saveLabel: "House Shame option saved.",
+        removedLabel: "House Shame option removed.",
+        removeConfirm: "Remove this House Shame option?",
+        fieldNameLabel: "Option Name",
+        fieldCostLabel: "Cost",
+        fieldMaxCostLabel: "Max Cost (optional)",
+        fieldMaxCostPlaceholder: "Same as Cost",
+        fieldDescriptionLabel: "Description",
+        saveOptionLabel: "Save Option",
+      };
     case "reprimand":
       return {
         key: CUSTOM_REPRIMAND_OPTIONS_SETTING,
@@ -601,6 +739,14 @@ export function getCustomAcclaimOptions() {
  */
 export function getCustomReprimandOptions() {
   return _getEnabledSpendOptions("reprimand");
+}
+
+export function getCustomHouseGloryOptions() {
+  return _getEnabledSpendOptions("houseGlory");
+}
+
+export function getCustomHouseShameOptions() {
+  return _getEnabledSpendOptions("houseShame");
 }
 
 /* ------------------------------------------------------------------ */
@@ -872,6 +1018,10 @@ export class CustomSpendOptionsSettingsApp extends HandlebarsApplicationMixin(
       reprimandEditorHint:
         t("sta-officers-log.settings.customSpendOptions.reprimandEditorHint") ||
         "Open the Reprimand Spend Editor to add, edit, or remove options.",
+      houseGloryEditorHint:
+        "Configure the House options shown when spending Glory.",
+      houseShameEditorHint:
+        "Configure the House options shown when spending Shame.",
     };
   }
 
@@ -896,6 +1046,18 @@ export class CustomSpendOptionsSettingsApp extends HandlebarsApplicationMixin(
         event.preventDefault();
         openAwardEditor("reprimand");
       });
+    html
+      ?.querySelector('[data-action="open-house-glory-editor"]')
+      ?.addEventListener("click", (event) => {
+        event.preventDefault();
+        openAwardEditor("houseGlory");
+      });
+    html
+      ?.querySelector('[data-action="open-house-shame-editor"]')
+      ?.addEventListener("click", (event) => {
+        event.preventDefault();
+        openAwardEditor("houseShame");
+      });
   }
 
   static async #onSubmit(_event, form, formData) {
@@ -914,6 +1076,37 @@ export class CustomSpendOptionsSettingsApp extends HandlebarsApplicationMixin(
  * Register the three world settings and the settings menu entry.
  */
 export function registerCustomSpendOptionsSettings() {
+  game.settings.register(MODULE_ID, CUSTOM_HOUSE_GLORY_OPTIONS_SETTING, {
+    name: "House Glory Spends",
+    hint: "Editable House Glory spend options.",
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
+  });
+  game.settings.register(MODULE_ID, CUSTOM_HOUSE_SHAME_OPTIONS_SETTING, {
+    name: "House Shame Spends",
+    hint: "Editable House Shame spend options.",
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
+  });
+  game.settings.register(MODULE_ID, DISABLED_HOUSE_GLORY_DEFAULTS_SETTING, {
+    name: "Disabled House Glory Defaults",
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
+  });
+  game.settings.register(MODULE_ID, DISABLED_HOUSE_SHAME_DEFAULTS_SETTING, {
+    name: "Disabled House Shame Defaults",
+    scope: "world",
+    config: false,
+    type: Array,
+    default: [],
+  });
+
   game.settings.register(MODULE_ID, CUSTOM_ACCLAIM_OPTIONS_SETTING, {
     name: "Acclaim Spend Options",
     hint: "Custom acclaim spend options (built-in options are not stored here).",

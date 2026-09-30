@@ -123,6 +123,11 @@ const TALENT_TYPE_OPTIONS = [
     key: "sta-officers-log.talents.type.award",
     fallback: "Award",
   },
+  {
+    value: "house",
+    key: "sta-officers-log.talents.type.house",
+    fallback: "House",
+  },
 ];
 
 // Talent types that auto-insert a backing requirement when chosen.

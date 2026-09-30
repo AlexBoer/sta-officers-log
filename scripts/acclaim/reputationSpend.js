@@ -15,6 +15,11 @@ import {
   getCustomReprimandOptions,
 } from "./customSpendOptions.js";
 import { getEnabledAwardOptions } from "./awardTalents.js";
+import { isHouseReputationSpendsEnabled } from "../house/house-settings.js";
+import {
+  applyHouseReputationSpend,
+  getHouseReputationSpendOptions,
+} from "../house/house-reputation-spends.js";
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -23,6 +28,11 @@ import { getEnabledAwardOptions } from "./awardTalents.js";
 // Reputation is capped at 5 (STA core rules); "Increase Reputation" is
 // hidden once the actor is already at the cap.
 const MAX_REPUTATION = 5;
+
+function _filterReputationSpendOptions(options) {
+  if (isHouseReputationSpendsEnabled()) return options;
+  return options.filter((option) => option.isHouseReputationSpend !== true);
+}
 
 /* ------------------------------------------------------------------ */
 /*  Outcome detection                                                  */
@@ -183,11 +193,19 @@ function _buildSpendContent(
   let rows = "";
   let awardHeaderInserted = false;
   let customHeaderInserted = false;
+  let houseHeaderInserted = false;
   for (const opt of options) {
     const effCost = effectiveCosts[opt.action];
 
     // Only show options the player can afford (base/minimum cost ≤ budget)
     if (effCost > totalBudget) continue;
+
+    if (opt.isHouseReputationSpend && !houseHeaderInserted) {
+      houseHeaderInserted = true;
+      const houseHeaderText =
+        t("sta-officers-log.reputationSpend.houseHeader") || "House";
+      rows += `<h4 class="sta-spend-subheader sta-spend-house-subheader">${houseHeaderText}</h4>`;
+    }
 
     // Reputation cannot go above the cap, so hide the option once reached.
     if (
@@ -329,9 +347,19 @@ export async function openSpendDialog(type, amount, actor) {
     : parseInt(actor.system?.reprimand ?? 0, 10);
   const totalBudget = amount + savedAmount;
 
-  const options = isAcclaim
-    ? [...getCustomAcclaimOptions(), ...(await getEnabledAwardOptions())]
-    : [...getCustomReprimandOptions()];
+  const houseOptions = await getHouseReputationSpendOptions(
+    actor,
+    isAcclaim ? "acclaim" : "reprimand",
+  );
+  const options = _filterReputationSpendOptions(
+    isAcclaim
+      ? [
+          ...getCustomAcclaimOptions(),
+          ...(await getEnabledAwardOptions()),
+          ...houseOptions,
+        ]
+      : [...getCustomReprimandOptions(), ...houseOptions],
+  );
 
   const content = _buildSpendContent(
     type,
@@ -481,9 +509,6 @@ export async function openSpendDialog(type, amount, actor) {
     ? t("sta-officers-log.reputationSpend.acclaimLabel") || "Acclaim"
     : t("sta-officers-log.reputationSpend.reprimandLabel") || "Reprimands";
 
-  const totalCost = result.reduce((sum, r) => sum + (r.cost ?? 0), 0);
-  const remaining = totalBudget - totalCost;
-
   const awardAddedNote =
     t("sta-officers-log.reputationSpend.awardAddedNote") ||
     "Added to character sheet.";
@@ -511,6 +536,50 @@ export async function openSpendDialog(type, amount, actor) {
     }
   }
 
+  const houseOutcomes = new Map();
+  for (const r of result) {
+    const opt = options.find((o) => o.action === r.action);
+    if (!opt?.isHouseReputationSpend || opt.isHouseManualSpend) continue;
+
+    try {
+      const applied = await applyHouseReputationSpend(opt);
+      houseOutcomes.set(r.action, { ok: applied });
+    } catch (err) {
+      console.error(
+        `${MODULE_ID} | failed to apply House reputation spend`,
+        err,
+      );
+      houseOutcomes.set(r.action, { ok: false });
+    }
+  }
+
+  const failedAutomaticActions = new Set(
+    [...awardOutcomes, ...houseOutcomes]
+      .filter(([, outcome]) => !outcome.ok)
+      .map(([action]) => action),
+  );
+  const failedAutomaticCost = result.reduce(
+    (sum, selection) =>
+      failedAutomaticActions.has(selection.action)
+        ? sum + (selection.cost ?? 0)
+        : sum,
+    0,
+  );
+  const totalCost = result.reduce(
+    (sum, selection) =>
+      failedAutomaticActions.has(selection.action)
+        ? sum
+        : sum + (selection.cost ?? 0),
+    0,
+  );
+  const remaining = totalBudget - totalCost;
+
+  if (failedAutomaticActions.size) {
+    ui.notifications?.error?.(
+      "One or more automatic Reputation spends failed. Their cost was not spent and has been saved so you can try again.",
+    );
+  }
+
   let hasNonAwardSelection = false;
 
   // Build list items with option name, cost, and description
@@ -524,14 +593,23 @@ export async function openSpendDialog(type, amount, actor) {
     const lbl = opt?.label || r.action;
     const desc = opt?.desc || "";
     const outcome = awardOutcomes.get(r.action);
-    if (!outcome) hasNonAwardSelection = true;
+    const houseOutcome = houseOutcomes.get(r.action);
+    const manualHouseSpend = opt?.isHouseManualSpend === true;
+    if (!outcome && !houseOutcome && !manualHouseSpend)
+      hasNonAwardSelection = true;
     const outcomeNote = outcome
       ? `<br/><em class="${outcome.ok ? "sta-spend-chat-award-ok" : "sta-spend-chat-award-failed"}">${
           outcome.ok
             ? awardAddedNote
             : awardImportFailedTemplate.replace("{name}", lbl)
         }</em>`
-      : "";
+      : houseOutcome
+        ? `<br/><em class="${houseOutcome.ok ? "sta-spend-chat-award-ok" : "sta-spend-chat-award-failed"}">${
+            houseOutcome.ok ? "Applied to House." : "Could not apply to House."
+          }</em>`
+        : manualHouseSpend
+          ? `<br/><em class="sta-spend-chat-manual">Recorded for GM adjudication.</em>`
+          : "";
     return `<li><strong>${lbl}</strong> (${r.cost})${desc ? `<br/><em>${desc}</em>` : ""}${outcomeNote}</li>`;
   });
 
@@ -541,24 +619,21 @@ export async function openSpendDialog(type, amount, actor) {
 
   let remainingNote = "";
   if (isAcclaim) {
-    // Unspent acclaim is wasted
-    if (remaining > 0) {
+    const wastedAmount = Math.max(0, remaining - failedAutomaticCost);
+    await actor.update({ "system.acclaim": failedAutomaticCost });
+    if (wastedAmount > 0) {
       const wastedText =
         t("sta-officers-log.reputationSpend.acclaimWasted") ||
         "{amount} acclaim wasted.";
-      remainingNote = `<p class="sta-spend-chat-remaining sta-spend-chat-wasted">${wastedText.replace("{amount}", String(remaining))}</p>`;
+      remainingNote = `<p class="sta-spend-chat-remaining sta-spend-chat-wasted">${wastedText.replace("{amount}", String(wastedAmount))}</p>`;
     }
   } else {
-    // Unspent reprimands are saved to the character sheet
+    await actor.update({ "system.reprimand": remaining });
     if (remaining > 0) {
       const savedText =
         t("sta-officers-log.reputationSpend.reprimandSaved") ||
         "{amount} reprimands saved.";
       remainingNote = `<p class="sta-spend-chat-remaining sta-spend-chat-saved">${savedText.replace("{amount}", String(remaining))}</p>`;
-      // Persist unspent reprimands to the actor.
-      // `remaining` already accounts for the previously-saved amount
-      // (totalBudget = rollAmount + savedAmount), so write it directly.
-      await actor.update({ "system.reprimand": remaining });
     }
   }
 
@@ -776,22 +851,13 @@ export async function triggerAllPlayersAcclaimSurvey() {
     return;
   }
 
-  // Build the player list for the GM monitor
-  const playerList = onlinePlayers.map((u) => ({
-    userId: u.id,
-    playerName: u.name,
-    actorName: u.character?.name ?? "—",
-  }));
+  // Add each assigned character to the shared monitor once.
+  const { openSurveyMonitorForActor } = await import("./gmSurveyMonitor.js");
+  for (const user of onlinePlayers) {
+    await openSurveyMonitorForActor(user.character);
+  }
 
-  // Open the GM monitoring dialog FIRST so it's ready for live updates
-  const { showGMSurveyMonitor } = await import("./gmSurveyMonitor.js");
-  // Don't await — let it stay open while players work
-  showGMSurveyMonitor(playerList);
-
-  // Fire survey requests without awaiting each player's dialog result.
-  // executeAsUser returns a promise that resolves when the remote handler
-  // finishes (i.e. when the player closes/submits). We intentionally don't
-  // await those so the GM monitor opens immediately.
+  // Open the shared monitor for each player without waiting for it to close.
   let sent = 0;
   for (const user of onlinePlayers) {
     try {

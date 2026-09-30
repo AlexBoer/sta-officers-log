@@ -52,14 +52,19 @@ import {
   registerCustomSpendOptionsSettings,
 } from "./acclaim/customSpendOptions.js";
 import { registerAwardTalentSettings } from "./acclaim/awardTalents.js";
+import { registerHouseSettings } from "./house/house-settings.js";
+import { warnMissingHouseOwnership } from "./house/house-assignment.js";
 import { useValue } from "./values/useValue.js";
+import { promptShipTalentChoiceFromCompendium } from "./milestones/talentPickerDialog.js";
 import { CreationWizardApp } from "./creation/creation-wizard-app.mjs";
 import { preloadCreationTabTemplate } from "./creation/creation-tab.mjs";
 import { registerOfficersLogDataModel } from "./data/logDataModel.js";
 import { registerOfficersTraitDataModel } from "./data/traitDataModel.js";
 import { registerOfficersCharacterDataModel } from "./data/characterDataModel.js";
+import { registerHouseDataModel } from "./data/houseDataModel.js";
 import { OfficersLogSheet } from "./sheet/OfficersLogSheet.mjs";
 import { OfficersTalentSheet } from "./sheet/OfficersTalentSheet.mjs";
+import { HouseSheet } from "./house/house-sheet.mjs";
 import {
   registerMigrationSetting,
   runLogFlagMigration,
@@ -107,6 +112,13 @@ function registerApi() {
     // Open Group Ship sheet
     openGroupShip,
 
+    // Pick a starship talent with ship requirements evaluated against the actor.
+    pickShipTalent: (actor, options = {}) =>
+      promptShipTalentChoiceFromCompendium({
+        actor,
+        allowCustom: options.allowCustom === true,
+      }),
+
     // Open Mission Manager directly
     openMissionManager: () => new MissionManagerApp().render(true),
 
@@ -128,10 +140,40 @@ function registerApi() {
 
     // Creation in Play wizard
     openCreationWizard: () => new CreationWizardApp().render(true),
+
+    // Optional sheet integrations can subclass this without importing a
+    // deployment-root URL from another module.
+    HouseSheet,
+
+    openHouse: async (actorOrUuid) => {
+      if (!game.user?.isGM) return null;
+      const actor =
+        typeof actorOrUuid === "string"
+          ? await fromUuid(actorOrUuid)
+          : actorOrUuid;
+      if (actor?.type !== `${MODULE_ID}.house`) return null;
+      await actor.sheet?.render(true);
+      return actor;
+    },
+
+    // Open the requirement-aware talent picker to define a talent on an actor
+    openDefineTalentDialog: async (actor) => {
+      const { openDefineTalentDialog } =
+        await import("./creation/define-dialogs.mjs");
+      return openDefineTalentDialog(actor);
+    },
   };
 
   // Back-compat for macros that reference a global symbol.
   globalThis.staofficerslog = game.staofficerslog;
+}
+
+function isPrimaryActiveGM() {
+  if (!game.user?.isGM) return false;
+  const primaryGm = [...(game.users ?? [])]
+    .filter((user) => user.active && user.isGM)
+    .sort((left, right) => left.id.localeCompare(right.id))[0];
+  return primaryGm?.id === game.user.id;
 }
 
 function safeInstallUiHooks() {
@@ -272,6 +314,12 @@ function safeRegisterSettings() {
   }
 
   try {
+    registerHouseSettings();
+  } catch (err) {
+    console.error(`${MODULE_ID} | failed to register House settings`, err);
+  }
+
+  try {
     registerFocusPickerSettings();
   } catch (err) {
     console.error(
@@ -379,6 +427,26 @@ async function checkPendingShipBenefits() {
   }
 }
 
+/**
+ * Warn the primary GM when Player users cannot create items required by
+ * character advancement workflows.
+ */
+async function warnWhenPlayersCannotCreateItems() {
+  const permissions = await game.settings.get("core", "permissions");
+  const itemCreateRoles =
+    permissions?.ITEM_CREATE ??
+    Array.fromRange(CONST.USER_ROLES.GAMEMASTER + 1).slice(
+      CONST.USER_PERMISSIONS.ITEM_CREATE.defaultRole,
+    );
+
+  if (itemCreateRoles.includes(CONST.USER_ROLES.PLAYER)) return;
+
+  ui.notifications?.warn?.(
+    t("sta-officers-log.notifications.playersCannotCreateItems"),
+    { permanent: true },
+  );
+}
+
 // Ensure API exists even if init/ready already fired (late-load resilience)
 try {
   registerApi();
@@ -392,11 +460,27 @@ Hooks.once("init", () => {
     registerOfficersLogDataModel();
     registerOfficersTraitDataModel();
     registerOfficersCharacterDataModel();
+    registerHouseDataModel();
   } catch (err) {
     console.error(`${MODULE_ID} | failed to register data model`, err);
   }
 
   // Register opt-in log sheet (makeDefault:false — existing users unaffected).
+  try {
+    foundry.applications.apps.DocumentSheetConfig.registerSheet(
+      Actor,
+      MODULE_ID,
+      HouseSheet,
+      {
+        types: [`${MODULE_ID}.house`],
+        label: "House (Officers Log)",
+        makeDefault: true,
+      },
+    );
+  } catch (err) {
+    console.error(`${MODULE_ID} | failed to register HouseSheet`, err);
+  }
+
   try {
     foundry.applications.apps.DocumentSheetConfig.registerSheet(
       Item,
@@ -450,32 +534,41 @@ Hooks.once("init", () => {
   safeInstallChatHooks();
 });
 
-Hooks.once("ready", () => {
+Hooks.once("ready", async () => {
   console.log(
     `${MODULE_ID} | ready on ${game.user.name} | id=${game.user.id} | GM? ${game.user.isGM}`,
   );
 
   safeInitSocket();
 
-  // Migrate flag data → system fields (GM only, runs once per world).
-  try {
-    if (game.user.isGM) {
-      runLogFlagMigration().catch((err) => {
-        console.error(`${MODULE_ID} | data migration failed`, err);
-      });
+  // A single deterministic GM runs world migrations. Awaiting them prevents
+  // later ready-time work from observing partially migrated documents.
+  if (isPrimaryActiveGM()) {
+    try {
+      await runLogFlagMigration();
+      await migrateCustomSpendOptions();
+    } catch (err) {
+      console.error(`${MODULE_ID} | world migration failed`, err);
+      ui.notifications?.error?.(
+        "STA Officers Log migration did not finish and will retry next startup. Check the console for details.",
+        { permanent: true },
+      );
     }
-  } catch (err) {
-    console.error(`${MODULE_ID} | data migration startup failed`, err);
-  }
 
-  try {
-    if (game.user.isGM) {
-      migrateCustomSpendOptions().catch((err) => {
-        console.error(`${MODULE_ID} | spend options migration failed`, err);
-      });
+    try {
+      await warnMissingHouseOwnership();
+    } catch (err) {
+      console.error(`${MODULE_ID} | House ownership check failed`, err);
     }
-  } catch (err) {
-    console.error(`${MODULE_ID} | spend options migration startup failed`, err);
+
+    try {
+      await warnWhenPlayersCannotCreateItems();
+    } catch (err) {
+      console.error(
+        `${MODULE_ID} | Item creation permission check failed`,
+        err,
+      );
+    }
   }
 
   try {
@@ -542,6 +635,11 @@ Hooks.on("userConnected", (user, active) => {
           err,
         );
       });
+      if (isPrimaryActiveGM()) {
+        warnMissingHouseOwnership([user]).catch((err) => {
+          console.error(`${MODULE_ID} | House ownership check failed`, err);
+        });
+      }
     }, 1000);
   } catch (err) {
     console.error(`${MODULE_ID} | userConnected hook failed`, err);

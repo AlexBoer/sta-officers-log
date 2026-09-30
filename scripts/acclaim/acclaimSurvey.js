@@ -14,6 +14,8 @@ import { applyKlingonMode, t } from "../core/i18n.js";
 export const ACCLAIM_POSITIVE_QUESTIONS_SETTING = "acclaimPositiveQuestions";
 export const ACCLAIM_NEGATIVE_QUESTIONS_SETTING = "acclaimNegativeQuestions";
 export const ACCLAIM_SURVEY_ENABLED_SETTING = "acclaimSurveyEnabled";
+export const ACCLAIM_SURVEY_MONITOR_PLAYERS_SETTING =
+  "acclaimSurveyMonitorPlayers";
 
 /** Default positive influence questions (STA 2e rulebook). */
 const DEFAULT_POSITIVE_QUESTIONS = [
@@ -49,6 +51,21 @@ export function isAcclaimSurveyEnabled() {
   try {
     return Boolean(
       game.settings.get(MODULE_ID, ACCLAIM_SURVEY_ENABLED_SETTING),
+    );
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
+ * Check whether players may open the acclaim survey monitor.
+ *
+ * @returns {boolean} Whether player access to the monitor is enabled.
+ */
+export function canPlayersUseAcclaimSurveyMonitor() {
+  try {
+    return Boolean(
+      game.settings.get(MODULE_ID, ACCLAIM_SURVEY_MONITOR_PLAYERS_SETTING),
     );
   } catch (_) {
     return false;
@@ -226,6 +243,15 @@ export function registerAcclaimSurveySettings() {
         // safe to fail silently
       }
     },
+  });
+
+  game.settings.register(MODULE_ID, ACCLAIM_SURVEY_MONITOR_PLAYERS_SETTING, {
+    name: t("sta-officers-log.settings.acclaimSurvey.monitorPlayersName"),
+    hint: t("sta-officers-log.settings.acclaimSurvey.monitorPlayersHint"),
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true,
   });
 
   game.settings.register(MODULE_ID, ACCLAIM_POSITIVE_QUESTIONS_SETTING, {

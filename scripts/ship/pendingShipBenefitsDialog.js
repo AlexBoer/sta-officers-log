@@ -13,6 +13,15 @@ function _getBenefitIdentifier(benefit) {
   }:${benefit.label ?? ""}`;
 }
 
+async function recordAppliedShipBenefit(ship, character, description) {
+  if (!game.staUtils?.recordShipAdvancement || !description) return;
+  try {
+    await game.staUtils.recordShipAdvancement(ship, character, description);
+  } catch (error) {
+    console.warn(`${MODULE_ID} | Unable to record ship advancement`, error);
+  }
+}
+
 /**
  * Dialog for GM to review and apply pending ship benefits across all characters.
  * Benefits are queued when players lack OWNER permission on the Group Ship.
@@ -211,6 +220,11 @@ async function applyShipBenefit(benefit, characterActor) {
       await ship.update({
         [`system.systems.${systemKey}`]: Math.min(currentValue + 1, 5),
       });
+      await recordAppliedShipBenefit(
+        ship,
+        characterActor,
+        `Ship System +1: ${systemKey}`,
+      );
 
       ui.notifications?.info(
         tf(
@@ -236,6 +250,11 @@ async function applyShipBenefit(benefit, characterActor) {
       await ship.update({
         [`system.departments.${departmentKey}`]: Math.min(currentValue + 1, 5),
       });
+      await recordAppliedShipBenefit(
+        ship,
+        characterActor,
+        `Ship Department +1: ${departmentKey}`,
+      );
 
       ui.notifications?.info(
         tf(
@@ -264,6 +283,11 @@ async function applyShipBenefit(benefit, characterActor) {
         [`system.systems.${fromKey}`]: Math.max(fromValue - 1, 0),
         [`system.systems.${toKey}`]: Math.min(toValue + 1, 5),
       });
+      await recordAppliedShipBenefit(
+        ship,
+        characterActor,
+        `Ship Systems (-1/+1): ${fromKey} -> ${toKey}`,
+      );
 
       ui.notifications?.info(
         tf(
@@ -295,6 +319,11 @@ async function applyShipBenefit(benefit, characterActor) {
         [`system.departments.${fromKey}`]: Math.max(fromValue - 1, 0),
         [`system.departments.${toKey}`]: Math.min(toValue + 1, 5),
       });
+      await recordAppliedShipBenefit(
+        ship,
+        characterActor,
+        `Ship Departments (-1/+1): ${fromKey} -> ${toKey}`,
+      );
 
       ui.notifications?.info(
         tf(

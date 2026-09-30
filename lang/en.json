@@ -3,6 +3,58 @@
     "common": {
       "gmOnly": "GM only."
     },
+    "house": {
+      "name": "House Name",
+      "members": "members",
+      "member": "Member",
+      "openMember": "Open Member",
+      "department": "Department",
+      "talentsStoredAsItems": "Manage House Talents as embedded Talent items below.",
+      "attributes": "House Attributes",
+      "attribute": "Attribute",
+      "total": "House Bonus",
+      "value": "Value",
+      "state": "House State",
+      "assignment": "House",
+      "noAssignment": "No House",
+      "missingOwnershipWarning": "House ownership: {user}'s assigned character {character} belongs to {house}, but {user} does not own that House actor.",
+      "status": "Status",
+      "legacy": "Legacy",
+      "temperament": "Temperament",
+      "reputation": "Reputation",
+      "influence": "Influence",
+      "might": "Might",
+      "wealth": "Wealth",
+      "isGreatHouse": "Great House",
+      "highCouncilSeat": "High Council Seat",
+      "dissolved": "Dissolved",
+      "leader": "House Leader",
+      "noLeader": "No Leader Assigned",
+      "freeDepartmentBonus": "Free Department Bonus",
+      "reputationModifier": "Starting Reputation Modifier",
+      "suggestedValues": "Suggested Values",
+      "suggestedFocuses": "Suggested Focuses",
+      "suggestedTalents": "Suggested House Talents",
+      "temperamentDepartmentHint": "Temperament grants +1 to one department chosen during character creation.",
+      "choiceValue": "Selected Option",
+      "choiceDescription": "Description",
+      "attributeBonuses": "Attribute Bonuses",
+      "departmentBonuses": "Department Bonuses",
+      "description": "Description",
+      "history": "History",
+      "membersDerived": "Members are derived from character House assignments.",
+      "noMembers": "No characters are assigned to this House.",
+      "tabs": {
+        "label": "House sections",
+        "details": "Details",
+        "development": "House Development",
+        "members": "Members"
+      },
+      "development": {
+        "title": "House Development",
+        "empty": "No House development milestones recorded."
+      }
+    },
     "settings": {
       "enableSheetEnhancements": {
         "name": "Enable STA Officers Log Sheet Enhancements",
@@ -85,6 +137,8 @@
       "acclaimSurvey": {
         "enabledName": "Enable Reputation Survey",
         "enabledHint": "When enabled, the Roll Reputation button on character sheets opens a survey dialog instead of the default Reputation roll.",
+        "monitorPlayersName": "Allow Players to Use Survey Monitor",
+        "monitorPlayersHint": "Allows players to open the Acclaim Survey Monitor and view live survey updates.",
         "name": "Reputation Survey Questions",
         "label": "Edit Questions",
         "hint": "Define the survey questions shown when rolling reputation.",
@@ -96,6 +150,10 @@
         "negativePlaceholder": "e.g. Did you disobey orders?\nDid you put the crew at risk?\nDid you act selfishly?",
         "save": "Save",
         "saved": "Reputation survey questions saved."
+      },
+      "houseReputationSpends": {
+        "name": "House Reputation Spends",
+        "hint": "Allow House-specific advancement options to appear in Reputation spend flows."
       },
       "customSpendOptions": {
         "name": "Awards & Spend Options",
@@ -205,6 +263,7 @@
       "deleteTraitTitle": "Delete Trait",
       "deleteTraitConfirm": "Delete trait \"{name}\"?",
       "deleteTraitFailed": "Could not delete trait item.",
+      "hiddenFromPlayers": "Hidden from players",
       "editTraits": "Edit Traits",
       "noSimpleTraits": "No traits set.",
       "simpleTraitsPlaceholder": "Enter one trait per line...",
@@ -263,6 +322,7 @@
         "starshipSpecialRule": "Starship Special Rule",
         "role": "Role",
         "award": "Award",
+        "house": "House",
         "hint": "Choosing Species Ability adds a Species requirement below that you can fill in."
       },
       "npcSpeciesTitle": "Requires Species (optional)",
@@ -281,6 +341,7 @@
       "title": "STA"
     },
     "notifications": {
+      "playersCannotCreateItems": "Players cannot create Items under the current world permissions. This can prevent character advancement from working correctly. Enable Item Create for the Player role in User Management.",
       "noValues": "No Value items found on this character.",
       "labeledValues": "Labeled {count} Value icon(s) on {actor}.",
       "reiconedArtifacts": "Updated {count} log/milestone icon(s) on {actor}.",
@@ -304,7 +365,6 @@
       "pendingShipBenefitsReview": "{count} pending ship benefit to review. Click here to review it.",
       "pendingShipBenefitsReviewMany": "{count} pending ship benefits to review. Click here to review them.",
       "scarsReset": "All scars marked as unused.",
-
       "pendingShipBenefitsAllProcessed": "All pending ship benefits have been processed.",
       "pendingShipBenefitsAllRemoved": "All pending benefits removed.",
       "pendingShipBenefitsAppliedSystemIncrease": "Applied ship system increase: {key} for {character}.",
@@ -329,6 +389,10 @@
       "rollReputation": "Roll Reputation",
       "modifier": "Modifier",
       "noPositiveInfluences": "You need at least 1 positive influence to roll reputation.",
+      "zeroPositiveTitle": "Submit Reputation Survey?",
+      "zeroPositiveConfirm": "Are you sure you wish to submit the survey? You do not have any positive influences.",
+      "submitSurvey": "Submit Survey",
+      "cancel": "Cancel",
       "surveyingFor": "Surveying for:"
     },
     "gmMonitor": {
@@ -337,7 +401,10 @@
       "waiting": "Waiting…",
       "answering": "Answering…",
       "rolled": "Rolled!",
-      "gmOnly": "Only the GM can use the survey monitor."
+      "interactionHint": "Left-click for YES. Right-click for NO. Click again to undo",
+      "gmOnly": "Only the GM can use the survey monitor.",
+      "playerAccessDisabled": "The GM has not enabled player access to the survey monitor.",
+      "actorOwnerOnly": "You must have owner permission for this character to use its survey."
     },
     "reputationSpend": {
       "spendAcclaimBtn": "Spend Acclaim",
@@ -346,6 +413,7 @@
       "reprimandTitle": "Spend Reprimands",
       "acclaimHeader": "Choose how to spend your acclaim:",
       "reprimandHeader": "Choose how to apply your reprimands:",
+      "houseHeader": "House",
       "acclaimLabel": "Acclaim",
       "reprimandLabel": "Reprimands",
       "customHeader": "Custom",
@@ -391,7 +459,8 @@
       "acclaimPromotion": "Promotion",
       "acclaimPromotionDesc": "Promoted to a higher rank. If the commanding officer refuses, no Acclaim is spent. A commander cannot promote above commander; a captain cannot promote above captain.",
       "acclaimStatus": "Status",
-      "acclaimStatusDesc": "Create an additional trait reflecting achievements, recognition, or special status — or remove a negative/detrimental trait. Commanding officers may add a trait to their ship instead.",      "awardsHeader": "Awards",
+      "acclaimStatusDesc": "Create an additional trait reflecting achievements, recognition, or special status — or remove a negative/detrimental trait. Commanding officers may add a trait to their ship instead.",
+      "awardsHeader": "Awards",
       "awardPikeMedal": "Christopher Pike Medal of Valor",
       "awardPikeMedalDesc": "<strong>Cost 4.</strong> Requires command/leadership officer who led crew through several difficult missions with personal danger on at least two. <em>Benefit:</em> Once per mission, when using the Direct task, treat your d20 as if it rolled a 1.",
       "awardCochraneMedal": "Cochrane Medal of Excellence",
@@ -399,21 +468,22 @@
       "awardGrankiteOrder": "Grankite Order of Tactics",
       "awardGrankiteOrderDesc": "<strong>Cost 3.</strong> Awarded for exceptional tactical acumen. <em>Benefit:</em> Once per mission, when creating a strategy/tactic trait, automatically add a level of Potency to it.",
       "awardKaragiteOrder": "Karagite Order of Heroism",
-      "awardKaragiteOrderDesc": "<strong>Cost 3.</strong> Must have faced extreme danger and defended a Federation world/outpost. <em>Benefit:</em> Once per mission, Avoid an Injury for free \u2014 or spend 2 Momentum (Immediate) + complication to ignore one ship breach.",
+      "awardKaragiteOrderDesc": "<strong>Cost 3.</strong> Must have faced extreme danger and defended a Federation world/outpost. <em>Benefit:</em> Once per mission, Avoid an Injury for free — or spend 2 Momentum (Immediate) + complication to ignore one ship breach.",
       "awardLegionOfHonor": "Legion of Honor",
       "awardLegionOfHonorDesc": "<strong>Cost 4.</strong> No conditions. <em>Benefit:</em> Once per mission, gain 2 bonus Momentum on a successful task (not saveable), or ignore a single complication before its effect is announced.",
       "awardPalmLeaf": "Palm Leaf of Peace Mission",
       "awardPalmLeafDesc": "<strong>Cost 3.</strong> Mission must have involved securing peace or signing a peace treaty; all characters in that mission are eligible. <em>Benefit:</em> Once per mission, auto-succeed a Persuade task to prevent violence by spending Momentum equal to Difficulty.",
       "awardStarCross": "Star Cross",
-      "awardStarCrossDesc": "<strong>Cost 3.</strong> No conditions. <em>Benefit:</em> Once per mission, before a task where a focus applies, double your focus range \u2014 score 2 successes for dice equal to or less than twice your department rating.",
+      "awardStarCrossDesc": "<strong>Cost 3.</strong> No conditions. <em>Benefit:</em> Once per mission, before a task where a focus applies, double your focus range — score 2 successes for dice equal to or less than twice your department rating.",
       "awardConspicuousGallantry": "Citation for Conspicuous Gallantry",
-      "awardConspicuousGallantryDesc": "<strong>Cost 2.</strong> Must have succeeded at a heroic, risky, or daring action. <em>Benefit:</em> Once per mission, when paying for Immediate Momentum by adding Threat, roll 1d20; if \u2264 Daring, remove 1 Threat.",
+      "awardConspicuousGallantryDesc": "<strong>Cost 2.</strong> Must have succeeded at a heroic, risky, or daring action. <em>Benefit:</em> Once per mission, when paying for Immediate Momentum by adding Threat, roll 1d20; if ≤ Daring, remove 1 Threat.",
       "awardDecorationGallantry": "Decoration of Gallantry",
       "awardDecorationGallantryDesc": "<strong>Cost 2.</strong> Must have faced an extremely difficult/dangerous situation and triumphed. <em>Benefit:</em> Once per mission, when suffering an Injury, halve its Severity before avoiding it.",
       "awardMedalOfHonor": "Starfleet Medal of Honor",
       "awardMedalOfHonorDesc": "<strong>Cost 5.</strong> No conditions. May be earned multiple times. <em>Benefit:</em> Once per mission (per medal), gain 2 bonus Momentum on a successful task (not saveable, max once per task).",
       "awardSurgeonsDecoration": "Surgeons' Decoration",
-      "awardSurgeonsDecorationDesc": "<strong>Cost 3.</strong> Must be a Medical officer who acted above and beyond to save patients or alleviate a medical crisis. <em>Benefit:</em> Once per mission, reduce the Difficulty of a single Medical task by 2 (min 1).",      "reprimandCourtMartial": "Court-Martial",
+      "awardSurgeonsDecorationDesc": "<strong>Cost 3.</strong> Must be a Medical officer who acted above and beyond to save patients or alleviate a medical crisis. <em>Benefit:</em> Once per mission, reduce the Difficulty of a single Medical task by 2 (min 1).",
+      "reprimandCourtMartial": "Court-Martial",
       "reprimandCourtMartialDesc": "Arrested and placed on trial. You have the right to legal counsel, and proceedings should be resolved in-game. The court determines guilt or innocence and passes sentence, which can include dishonorable discharge and incarceration.",
       "reprimandDemotion": "Demotion",
       "reprimandDemotionDesc": "Accept demotion from your current rank by one step (e.g. commander to lieutenant commander, or lieutenant to lieutenant junior grade).",
@@ -422,7 +492,7 @@
       "reprimandGainAntipathy": "Gain Antipathy",
       "reprimandGainAntipathyDesc": "Declare an allied NPC from the adventure regards you poorly. Costs 1 normally; +1 if the NPC commands a starship, or +2 if the NPC is an admiral, general, or high-ranking figure.",
       "reprimandReduceReputation": "Reduce Reputation",
-      "reprimandReduceReputationDesc": "Reduce your Reputation by 1. Costs Reprimands equal to the Reputation you previously held (e.g. 3\u21922 costs 3). Once per adventure.",
+      "reprimandReduceReputationDesc": "Reduce your Reputation by 1. Costs Reprimands equal to the Reputation you previously held (e.g. 3→2 costs 3). Once per adventure.",
       "reprimandShameByAssociation": "Shame by Association",
       "reprimandShameByAssociationDesc": "Commanding officer only. Stain the reputation of others aboard your ship — counts as one extra negative influence on each other main character's reputation roll. Must be done before they roll.",
       "reprimandStatus": "Status",
@@ -741,7 +811,8 @@
         "deleteLog": "Also delete this character's mission log (cannot be undone)",
         "ok": "Remove",
         "cancel": "Cancel"
-      },      "unaddedPlayers": {
+      },
+      "unaddedPlayers": {
         "title": "Active Players Not in Mission",
         "hint": "The following player(s) are online but not part of the current mission. Would you like to add them?",
         "missionLabel": "Mission:",
@@ -749,7 +820,8 @@
         "createLog": "Create mission logs for added players",
         "add": "Add Selected",
         "ignore": "Ignore"
-      },      "newMission": {
+      },
+      "newMission": {
         "title": "Start New Mission",
         "missionTitle": "Mission Title",
         "missionTitlePlaceholder": "e.g. Journey to Alpha Centauri",
@@ -839,13 +911,15 @@
         "playerLabel": "Player",
         "usedHint": "Players marked “already used” cannot make another callback this mission.",
         "send": "Send",
-        "cancel": "Cancel"      },
+        "cancel": "Cancel"
+      },
       "pickValue": {
         "title": "Choose a Value for the Callback",
         "valueLabel": "Value",
         "hint": "The player will make a callback using this value.",
         "send": "Send Prompt",
-        "cancel": "Cancel"      }
+        "cancel": "Cancel"
+      }
     },
     "callback": {
       "title": "Making a callback",
@@ -870,8 +944,9 @@
       "noInvokedValues": "No invoked values recorded in this log.",
       "warnNoValue": "No value selected for callback.",
       "warnNoLog": "No log selected for callback.",
-      "bodyHtml": "<h2>Make a Callback</h2><p></p><p>Build a character arc! Link this mission to a previous one where you were motivated by the same value.</p>",
-      "rewardHtml": "<h5>You made a callback!</h5>\n<ul>\n<li>+1 Determination.</li>\n<li>At the end of the mission, choose a new Milestone!</li>\n</ul>"
+      "bodyHtml": "<h2 style=\"text-align: center;\">LEVEL UP!</h2><div style=\"text-align: left;\"><p>Click a mission below to make a <strong>Callback</strong> to it! Callbacks link missions to previous ones where you were motivated by the same value.</p><p>When the mission is finished, <strong>you can choose a milestone advancement</strong> on the Development tab of your character sheet.</p><p><strong>You will also gain 1 Determination immediately.</strong></p></div>",
+      "rewardHtml": "<h5>You made a callback!</h5>\n<ul>\n<li>+1 Determination.</li>\n<li>At the end of the mission, choose a new Milestone!</li>\n</ul>",
+      "chooseLog": "Choose a previous mission below:"
     },
     "flowchart": {
       "title": "Mission Log Flowchart",
@@ -946,7 +1021,6 @@
       "callbackUniquenessFailed": "Callback rejected: unable to validate callback target uniqueness.",
       "callbackChainMismatch": "Callback rejected: {log} is in a different primary-value chain.",
       "callbackChainFailed": "Callback rejected: unable to validate chain rules.",
-
       "pendingShipBenefitsTalentSwapManual": "Ship talent swap for {character} requires manual application. The talent selection dialog should be shown.",
       "pendingShipBenefitsUnknownAction": "Unknown ship benefit action: {action}. Please apply manually.",
       "noActiveMission": "No active mission.",
@@ -968,7 +1042,6 @@
       "noCharacter": "No character assigned. Set your character in User Configuration.",
       "socketNotAvailable": "SocketLib socket not available. Is the module initialized on GM and player?",
       "socketLibRequired": "STA Officers Log requires the SocketLib module. Please install and activate it.",
-
       "pendingShipBenefitsShipNotFound": "Could not find ship actor (ID: {id}) to apply benefit.",
       "pendingShipBenefitsMissingSystemKeyIncrease": "Missing system key for ship system increase.",
       "pendingShipBenefitsMissingDepartmentKeyIncrease": "Missing department key for ship department increase.",
@@ -988,7 +1061,6 @@
       "step6Title": "Summary",
       "tabLabel": "Creation in Play",
       "tabTitle": "Complete character creation during play",
-
       "fieldName": "Character Name",
       "fieldRole": "Role",
       "fieldRoleCustom": "Custom Role",
@@ -1001,7 +1073,6 @@
       "fieldDeptSplit": "Department Split",
       "fieldPrimaryDept1": "Primary Department 1",
       "fieldPrimaryDept2": "Primary Department 2",
-
       "attrChipsHint": "Drag attribute chips to the attribute slots below. Your species bonus is shown in the Bonus column.",
       "attrPool": "Unassigned Chips",
       "attrBonus": "Bonus",
@@ -1010,38 +1081,31 @@
       "speciesCustomToggle": "Use custom species instead",
       "speciesCustomName": "Custom Species Name",
       "speciesTalent": "Species Talent",
-
       "deptSplit53": "5 / 3 split",
       "deptSplit44": "4 / 4 split",
       "deptSplitHint": "Choose how to split your two primary department ratings.",
-
       "summaryAttributes": "Attributes",
       "summaryDisciplines": "Departments",
       "summaryItems": "Starting Items",
       "summaryEquipment": "Equipment Notes",
-
       "btnBack": "Back",
       "btnNext": "Next",
       "btnCreate": "Create Character",
-
       "progressValues": "Values",
       "progressDepartments": "Departments",
       "progressFocuses": "Focuses",
       "progressTalents": "Talents",
       "progressPasstime": "Pastime",
-
       "defineValue": "Define This Now",
       "defineDepartment": "Define This Now",
       "defineFocus": "Define This Now",
       "defineTalent": "Define This Now",
       "definePasstime": "Define This Now",
-
       "hintValues": "You need at least {target} Values defined.",
       "hintDepartments": "All 6 departments must have a rating above 0.",
       "hintFocuses": "You need at least {target} Focuses.",
       "hintTalents": "You need at least {target} Talents.",
       "hintPasstime": "Optional — define when you know.",
-
       "dialogValueTitle": "Define a Value",
       "dialogValueLabel": "Enter your new Value:",
       "dialogValuePlaceholder": "e.g. The Needs of the Many",
@@ -1059,19 +1123,15 @@
       "dialogPastimeTitle": "Define a Pastime",
       "dialogPastimeLabel": "Enter your Pastime:",
       "dialogPasttimePlaceholder": "e.g. Holodeck Fiction Writing",
-
       "warnNoDeptRatingsAvailable": "No remaining department ratings available.",
       "warnAllDeptsAlreadyDefined": "All departments have already been defined.",
       "notifPastimeUpdated": "Pastime updated.",
-
       "equipmentNotes": "Equipment Notes",
-
       "finishBtn": "Finish Character Creation",
       "finishConfirmTitle": "Complete Character Creation",
       "finishConfirmContent": "Are you sure? This will restore the Development tab and mark this character as fully created.",
       "finishConfirmYes": "Yes, I'm Done",
       "finishConfirmNo": "Keep Working",
-
       "errorNoName": "Please enter a character name.",
       "errorNoDivision": "Please choose a division.",
       "errorNoAttributes": "Please assign all attribute chips.",
@@ -1079,14 +1139,12 @@
       "errorNoDepts": "Please choose both primary departments.",
       "errorSameDepts": "Primary departments must be different.",
       "errorNoValue": "Please enter a starting Value.",
-
       "attrControl": "Control",
       "attrDaring": "Daring",
       "attrFitness": "Fitness",
       "attrInsight": "Insight",
       "attrPresence": "Presence",
       "attrReason": "Reason",
-
       "deptCommand": "Command",
       "deptConn": "Conn",
       "deptEngineering": "Engineering",

@@ -33,6 +33,10 @@ export function registerOfficersCharacterDataModel() {
           nullable: true,
           initial: null,
         }),
+        houseActorUuid: new fields.StringField({
+          nullable: true,
+          initial: null,
+        }),
         usedCallbackThisMission: new fields.BooleanField({ initial: false }),
         pendingShipBenefits: new fields.ArrayField(new fields.ObjectField(), {
           initial: [],

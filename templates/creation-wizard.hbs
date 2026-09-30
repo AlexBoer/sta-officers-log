@@ -39,6 +39,16 @@
     </div>
 
     <div class="cw-field-row">
+      <label class="cw-label">Klingon House</label>
+      <select class="cw-input" name="cw-house">
+        <option value="">No House</option>
+        {{#each houseOptions}}
+        <option value="{{uuid}}" {{#if selected}}selected{{/if}}>{{name}}</option>
+        {{/each}}
+      </select>
+    </div>
+
+    <div class="cw-field-row">
       <label class="cw-label">
         Career Trait <span class="cw-hint">(e.g. "Starfleet Officer")</span>
       </label>
@@ -301,6 +311,12 @@
       <div class="cw-summary-row"><span class="cw-summary-label">Name</span><span class="cw-summary-value">{{summaryName}}</span></div>
       <div class="cw-summary-row"><span class="cw-summary-label">Role</span><span class="cw-summary-value">{{summaryRole}}</span></div>
       <div class="cw-summary-row"><span class="cw-summary-label">Species</span><span class="cw-summary-value">{{summarySpecies}}</span></div>
+      {{#if selectedHouseName}}
+      <div class="cw-summary-row"><span class="cw-summary-label">House</span><span class="cw-summary-value">{{selectedHouseName}}</span></div>
+      <div class="cw-summary-row"><span class="cw-summary-label">House Status</span><span class="cw-summary-value">{{selectedHouseStatus}}</span></div>
+      <div class="cw-summary-row"><span class="cw-summary-label">House Legacy</span><span class="cw-summary-value">{{selectedHouseLegacy}}</span></div>
+      <div class="cw-summary-row"><span class="cw-summary-label">House Temperament</span><span class="cw-summary-value">{{selectedHouseTemperament}}</span></div>
+      {{/if}}
       {{#if summaryCareerTrait}}<div class="cw-summary-row"><span class="cw-summary-label">Career Trait</span><span class="cw-summary-value">{{summaryCareerTrait}}</span></div>{{/if}}
       {{#if summaryDivision}}<div class="cw-summary-row"><span class="cw-summary-label">Division</span><span class="cw-summary-value">{{summaryDivision}}</span></div>{{/if}}
       <div class="cw-summary-row"><span class="cw-summary-label">Dept. 1</span><span class="cw-summary-value">{{summaryDept1}}</span></div>

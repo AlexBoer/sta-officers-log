@@ -48,6 +48,7 @@ export class CreationWizardApp extends fapi.HandlebarsApplicationMixin(
       name: "",
       role: "",
       division: "",
+      houseActorUuid: "",
       careerTrait: "Starfleet Officer",
       equipmentNotes: "",
       // attributes: key → null (unassigned) or number
@@ -199,6 +200,13 @@ export class CreationWizardApp extends fapi.HandlebarsApplicationMixin(
     const dept1Rating = ratings[0];
     const dept2Rating = ratings[1];
 
+    const selectedHouse = state.houseActorUuid
+      ? await fromUuid(state.houseActorUuid)
+      : null;
+    const houseAttributeBonuses = selectedHouse?.system?.attributeBonuses ?? {};
+    const houseDepartmentBonuses =
+      selectedHouse?.system?.departmentBonuses ?? {};
+
     // Compute attribute total for summary
     const attrTotal = ATTRIBUTE_KEYS.reduce((sum, k) => {
       const base = state.attributes[k] ?? 0;
@@ -212,11 +220,19 @@ export class CreationWizardApp extends fapi.HandlebarsApplicationMixin(
       } else if (needsAttributeBonusSelection) {
         bonus = state.selectedAttributeBonuses.includes(k) ? 1 : 0;
       }
-      return sum + base + bonus;
+      return sum + base + bonus + (houseAttributeBonuses[k] ?? 0);
     }, 0);
 
     const effectiveRole = this._getEffectiveRole();
     const effectiveSpecies = this._getEffectiveSpeciesName();
+    const houseOptions = [...(game.actors ?? [])]
+      .filter((actor) => actor.type === "sta-officers-log.house")
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((actor) => ({
+        uuid: actor.uuid,
+        name: actor.name,
+        selected: actor.uuid === state.houseActorUuid,
+      }));
 
     return {
       currentStep: this._currentStep,
@@ -239,6 +255,12 @@ export class CreationWizardApp extends fapi.HandlebarsApplicationMixin(
         label: d.label,
       })),
       division: state.division,
+      houseActorUuid: state.houseActorUuid,
+      houseOptions,
+      selectedHouseName: selectedHouse?.name ?? "",
+      selectedHouseStatus: selectedHouse?.system?.status?.value ?? "",
+      selectedHouseLegacy: selectedHouse?.system?.legacy?.value ?? "",
+      selectedHouseTemperament: selectedHouse?.system?.temperament?.value ?? "",
       careerTrait: state.careerTrait,
       equipmentNotes: state.equipmentNotes,
       phaserChoice: state.phaserChoice,
@@ -314,10 +336,10 @@ export class CreationWizardApp extends fapi.HandlebarsApplicationMixin(
       summaryCareerTrait: state.careerTrait,
       summaryDivision: state.division,
       summaryDept1: state.primaryDept1
-        ? `${DISCIPLINE_LABELS[state.primaryDept1] ?? state.primaryDept1} (${dept1Rating})`
+        ? `${DISCIPLINE_LABELS[state.primaryDept1] ?? state.primaryDept1} (${dept1Rating + (houseDepartmentBonuses[state.primaryDept1] ?? 0)})`
         : "—",
       summaryDept2: state.primaryDept2
-        ? `${DISCIPLINE_LABELS[state.primaryDept2] ?? state.primaryDept2} (${dept2Rating})`
+        ? `${DISCIPLINE_LABELS[state.primaryDept2] ?? state.primaryDept2} (${dept2Rating + (houseDepartmentBonuses[state.primaryDept2] ?? 0)})`
         : "—",
       summaryValue: state.value,
       summaryAttrTotal: attrTotal,
@@ -335,9 +357,9 @@ export class CreationWizardApp extends fapi.HandlebarsApplicationMixin(
         }
         return {
           label: ATTRIBUTE_LABELS[k],
-          total: base + bonus,
+          total: base + bonus + (houseAttributeBonuses[k] ?? 0),
           base,
-          bonus,
+          bonus: bonus + (houseAttributeBonuses[k] ?? 0),
         };
       }),
       summaryEquipment: (() => {
@@ -477,6 +499,7 @@ export class CreationWizardApp extends fapi.HandlebarsApplicationMixin(
         phaserChoice: state.phaserChoice,
         includeEngineeringKit: state.includeEngineeringKit,
         includeMedKit: state.includeMedKit,
+        houseActorUuid: state.houseActorUuid,
       });
       this.close();
     } catch (err) {
@@ -580,6 +603,12 @@ export class CreationWizardApp extends fapi.HandlebarsApplicationMixin(
         this._refreshNextButton(html);
       });
     }
+
+    html
+      .querySelector("[name='cw-house']")
+      ?.addEventListener("change", (event) => {
+        this._wizardState.houseActorUuid = event.target.value;
+      });
 
     // Role combobox
     const roleInput = html.querySelector("[name='cw-role']");

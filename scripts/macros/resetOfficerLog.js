@@ -64,6 +64,9 @@ new Dialog({
           "missionLogSortMode",
           "challengedDirectives",
           "collapsedArcIds",
+          // Legacy flag still read by hasUsedCallbackThisMission; must be cleared
+          // or a stale true keeps the actor stuck as "already made a callback".
+          "usedCallbackThisMission",
         ];
         for (const key of flagKeys) {
           try {

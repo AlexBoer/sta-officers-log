@@ -237,7 +237,12 @@ export async function createCreationInPlayActor(state) {
     phaserChoice,
     includeEngineeringKit,
     includeMedKit,
+    houseActorUuid,
   } = state;
+
+  const house = houseActorUuid ? await fromUuid(houseActorUuid) : null;
+  const houseBonus = (category, key) =>
+    Number(house?.system?.[category]?.[key] ?? 0);
 
   // Resolve species catalog entry for bonuses
   const catalog = await loadSpeciesCatalog();
@@ -265,13 +270,17 @@ export async function createCreationInPlayActor(state) {
     } else {
       bonus = (selectedAttributeBonuses ?? []).includes(key) ? 1 : 0;
     }
-    attributeUpdate[key] = { value: base + bonus };
+    attributeUpdate[key] = {
+      value: base + bonus + houseBonus("attributeBonuses", key),
+    };
   }
 
   // Build discipline values
   const disciplineUpdate = {};
   for (const key of DISCIPLINE_KEYS) {
-    disciplineUpdate[key] = { value: departments[key] ?? 0 };
+    disciplineUpdate[key] = {
+      value: (departments[key] ?? 0) + houseBonus("departmentBonuses", key),
+    };
   }
 
   // Build stress (Fitness attribute value, calculated with bonus)
@@ -283,12 +292,19 @@ export async function createCreationInPlayActor(state) {
     type: "character",
     system: {
       species: species || "",
+      houseActorUuid: house?.uuid ?? null,
+      house: house?.name ?? "",
+      showklingon: Boolean(house),
       characterrole: role || "",
       attributes: attributeUpdate,
       disciplines: disciplineUpdate,
       stress: { value: 0, max: fitnessValue },
       determination: { value: 1, max: 3 },
-      reputation: 10,
+      reputation: Math.max(
+        0,
+        Number(house?.system?.reputation ?? 3) +
+          Number(house?.system?.status?.reputationModifier ?? 0),
+      ),
     },
     flags: {
       core: {
@@ -308,6 +324,14 @@ export async function createCreationInPlayActor(state) {
     embeddedItems.push({
       type: "trait",
       name: careerTrait.trim(),
+      system: { description: "" },
+    });
+  }
+
+  if (house?.name) {
+    embeddedItems.push({
+      type: "trait",
+      name: `House of ${house.name}`,
       system: { description: "" },
     });
   }

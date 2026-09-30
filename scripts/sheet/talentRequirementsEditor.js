@@ -651,6 +651,11 @@ function wireEditorEvents(root, item) {
     const el = event.target;
     if (!(el instanceof Element)) return;
 
+    // The "add category" select is a pending choice, not a saved requirement;
+    // persisting on its change would rerender the editor and reset it before
+    // the Add button can be clicked.
+    if (el === state.addSelect) return;
+
     // Free-typing fields save on explicit actions (e.g. Done) to avoid rerender while typing.
     if (el instanceof HTMLTextAreaElement) return;
     if (el instanceof HTMLInputElement) {

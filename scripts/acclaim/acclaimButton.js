@@ -56,7 +56,8 @@ export function installAcclaimButtonOverride(root, actor, app) {
   replacement.addEventListener("click", async (ev) => {
     ev.preventDefault();
     ev.stopPropagation();
-    await _showAcclaimDialog(actor);
+    const { openSurveyMonitorForActor } = await import("./gmSurveyMonitor.js");
+    await openSurveyMonitorForActor(actor);
   });
 
   // Insert the replacement after the hidden original
@@ -114,7 +115,7 @@ async function _broadcastSurveyState(html, actor, extra = {}) {
     if (!sock) return;
 
     const choices = _gatherChoices(html);
-    await sock.executeAsGM("acclaimSurveyUpdate", {
+    await _publishSurveyMonitorUpdate(sock, {
       userId: game.user.id,
       playerName: game.user.name,
       actorName: actor.name,
@@ -125,6 +126,25 @@ async function _broadcastSurveyState(html, actor, extra = {}) {
   } catch (err) {
     console.error("sta-officers-log | failed to broadcast survey state", err);
   }
+}
+
+/**
+ * Publish an update to every open survey monitor.
+ * Player updates are relayed by a GM; GM updates can update locally first.
+ *
+ * @param {object} socket
+ * @param {object} data
+ * @private
+ */
+async function _publishSurveyMonitorUpdate(socket, data) {
+  if (game.user.isGM) {
+    const { updateGMMonitor } = await import("./gmSurveyMonitor.js");
+    updateGMMonitor(data);
+    await socket.executeForOthers("acclaimSurveyMonitorUpdate", data);
+    return;
+  }
+
+  await socket.executeAsGM("acclaimSurveyUpdate", data);
 }
 
 /**
@@ -369,18 +389,33 @@ async function _performAcclaimRoll(
   const currentReputation = parseInt(actor.system?.reputation ?? 0, 10);
   const currentReprimand = parseInt(actor.system?.reprimand ?? 0, 10);
 
-  // If no positive influences, nothing to roll
+  // A zero-positive survey is still a valid submission when confirmed. It
+  // produces zero successes, allowing negative influences to award reprimands.
   if (positiveInfluences <= 0) {
-    ui.notifications?.warn?.(
-      t("sta-officers-log.acclaimSurvey.noPositiveInfluences"),
-    );
-    return;
+    const confirmed = await foundry.applications.api.DialogV2.confirm({
+      classes: ["sta-officers-log"],
+      window: {
+        title: t("sta-officers-log.acclaimSurvey.zeroPositiveTitle"),
+      },
+      content: `<p>${t("sta-officers-log.acclaimSurvey.zeroPositiveConfirm")}</p>`,
+      yes: {
+        label: t("sta-officers-log.acclaimSurvey.submitSurvey"),
+        icon: "fa-solid fa-check",
+      },
+      no: {
+        label: t("sta-officers-log.acclaimSurvey.cancel"),
+        icon: "fa-solid fa-times",
+      },
+    });
+    if (!confirmed) return false;
   }
 
   // Roll logic — identical to STA system's _onReputationTest()
   const targetNumber = currentReputation + 7;
   const complicationThreshold = 20 - Math.min(currentReprimand, 5);
-  const roll = new Roll(`${positiveInfluences}d20`);
+  const roll = new Roll(
+    positiveInfluences > 0 ? `${positiveInfluences}d20` : "0",
+  );
   await roll.evaluate();
 
   let diceHtml = "";
@@ -437,6 +472,40 @@ async function _performAcclaimRoll(
 
   const staRoll = new STARoll();
   await staRoll.sendToChat(chatData);
+  return true;
+}
+
+/**
+ * Apply house reputation modifiers and roll using shared monitor results.
+ *
+ * @param {Actor} actor
+ * @param {number} positiveInfluences
+ * @param {number} negativeInfluences
+ */
+export async function performAcclaimSurveyRoll(
+  actor,
+  positiveInfluences,
+  negativeInfluences,
+) {
+  let positive = positiveInfluences;
+  let negative = negativeInfluences;
+  try {
+    const houseUuid = actor.system?.houseActorUuid;
+    const house = houseUuid ? await fromUuid(houseUuid) : null;
+    if (house?.type === "sta-officers-log.house" && !house.system?.dissolved) {
+      const characterReputation = Number(actor.system?.reputation ?? 0);
+      const houseReputation = Number(house.system?.reputation ?? 0);
+      if (characterReputation < houseReputation) negative += 1;
+      if (characterReputation > houseReputation) positive += 1;
+    }
+  } catch (err) {
+    console.warn(
+      "sta-officers-log | could not apply House Reputation modifier",
+      err,
+    );
+  }
+
+  return _performAcclaimRoll(actor, positive, negative);
 }
 
 /**
@@ -471,12 +540,7 @@ async function _showAcclaimDialog(actor, options = {}) {
     content,
     render: (_event, dialog) => {
       _attachCountingLogic(dialog.element);
-      // Always broadcast survey changes to the GM so the monitor
-      // works whether the GM triggered the survey or the player
-      // opened it themselves from their character sheet.
-      if (!game.user.isGM) {
-        _attachBroadcastListeners(dialog.element, actor);
-      }
+      _attachBroadcastListeners(dialog.element, actor);
     },
     buttons: [
       {
@@ -501,42 +565,54 @@ async function _showAcclaimDialog(actor, options = {}) {
   // User closed dialog without rolling
   if (!result) return;
 
-  // Notify the GM monitor that this player has rolled
-  if (!game.user.isGM) {
-    try {
-      const { getModuleSocket } = await import("../core/socket.js");
-      const sock = getModuleSocket();
-      if (sock) {
-        await sock.executeAsGM("acclaimSurveyUpdate", {
-          userId: game.user.id,
-          playerName: game.user.name,
-          actorName: actor.name,
-          actorId: actor.id,
-          rolled: true,
-          positiveCount: result.positiveInfluences,
-          negativeCount: result.negativeInfluences,
-        });
-      }
-    } catch (err) {
-      console.error("sta-officers-log | failed to send rolled status", err);
+  let positiveInfluences = result.positiveInfluences;
+  let negativeInfluences = result.negativeInfluences;
+  try {
+    const houseUuid = actor.system?.houseActorUuid;
+    const house = houseUuid ? await fromUuid(houseUuid) : null;
+    if (house?.type === "sta-officers-log.house" && !house.system?.dissolved) {
+      const characterReputation = Number(actor.system?.reputation ?? 0);
+      const houseReputation = Number(house.system?.reputation ?? 0);
+      if (characterReputation < houseReputation) negativeInfluences += 1;
+      if (characterReputation > houseReputation) positiveInfluences += 1;
     }
+  } catch (err) {
+    console.warn(
+      "sta-officers-log | could not apply House Reputation modifier",
+      err,
+    );
   }
 
-  await _performAcclaimRoll(
-    actor,
-    result.positiveInfluences,
-    result.negativeInfluences,
-  );
+  try {
+    const { getModuleSocket } = await import("../core/socket.js");
+    const sock = getModuleSocket();
+    if (sock) {
+      await _publishSurveyMonitorUpdate(sock, {
+        userId: game.user.id,
+        playerName: game.user.name,
+        actorName: actor.name,
+        actorId: actor.id,
+        rolled: true,
+        positiveCount: positiveInfluences,
+        negativeCount: negativeInfluences,
+      });
+    }
+  } catch (err) {
+    console.error("sta-officers-log | failed to send rolled status", err);
+  }
+
+  await _performAcclaimRoll(actor, positiveInfluences, negativeInfluences);
 }
 
 /**
- * Public entry point for opening the acclaim survey dialog.
- * Used by the socket handler to trigger remotely.
+ * Public entry point for opening a shared acclaim survey.
+ * Retained for API compatibility with integrations that used the old dialog.
  *
  * @param {Actor} actor - The actor rolling acclaim.
  * @param {object} [options]
  * @param {boolean} [options.gmTriggered] - Forward to _showAcclaimDialog.
  */
 export async function showAcclaimDialog(actor, options = {}) {
-  return _showAcclaimDialog(actor, options);
+  const { openSurveyMonitorForActor } = await import("./gmSurveyMonitor.js");
+  return openSurveyMonitorForActor(actor, options);
 }

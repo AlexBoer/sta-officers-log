@@ -540,22 +540,71 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
     return { approved: true };
   });
 
-  // --- RPC: GM -> Player (open acclaim survey dialog) ---
+  // --- RPC: GM -> Player (open shared acclaim survey monitor) ---
   moduleSocket.register("showAcclaimSurvey", async (msg) => {
     const actorId = msg?.actorId;
     if (!actorId) return;
     const actor = game.actors?.get?.(actorId);
     if (!actor) return;
-    // Dynamically import to avoid circular deps
-    const { showAcclaimDialog } = await import("../acclaim/acclaimButton.js");
-    await showAcclaimDialog(actor, { gmTriggered: true });
+    const { openSurveyMonitorForActor } =
+      await import("../acclaim/gmSurveyMonitor.js");
+    await openSurveyMonitorForActor(actor);
   });
 
-  // --- RPC: Player -> GM (live survey state updates) ---
+  // --- RPC: Player -> GM (shared survey state updates) ---
   moduleSocket.register("acclaimSurveyUpdate", async (msg) => {
     if (!game.user.isGM) return;
-    const { updateGMMonitor } = await import("../acclaim/gmSurveyMonitor.js");
-    updateGMMonitor(msg);
+    const actor = game.actors?.get?.(msg?.actorId);
+    const requester = game.users?.get?.(msg?.requestingUserId);
+    if (
+      !actor ||
+      (!requester?.isGM && !actor.testUserPermission?.(requester, "OWNER"))
+    ) {
+      return null;
+    }
+
+    const { updateGMSurveyMonitor } =
+      await import("../acclaim/gmSurveyMonitor.js");
+    const survey = updateGMSurveyMonitor(msg);
+    await moduleSocket.executeForOthers("acclaimSurveyMonitorUpdate", survey);
+    return survey;
+  });
+
+  // --- RPC: Player -> GM (add an owned actor to the shared monitor) ---
+  moduleSocket.register("acclaimSurveyMonitorOpen", async (msg) => {
+    if (!game.user.isGM) return null;
+    const actor = game.actors?.get?.(msg?.actorId);
+    const requester = game.users?.get?.(msg?.requestingUserId);
+    if (
+      !actor ||
+      (!requester?.isGM && !actor.testUserPermission?.(requester, "OWNER"))
+    ) {
+      return null;
+    }
+
+    const { updateGMSurveyMonitor } =
+      await import("../acclaim/gmSurveyMonitor.js");
+    const survey = updateGMSurveyMonitor({
+      actorId: actor.id,
+      actorName: actor.name,
+    });
+    await moduleSocket.executeForOthers("acclaimSurveyMonitorUpdate", survey);
+    return survey;
+  });
+
+  // --- RPC: Player -> GM (retrieve shared state before opening monitor) ---
+  moduleSocket.register("getAcclaimSurveyMonitorState", async () => {
+    if (!game.user.isGM) return [];
+    const { getGMSurveyMonitorState } =
+      await import("../acclaim/gmSurveyMonitor.js");
+    return getGMSurveyMonitorState();
+  });
+
+  // --- Broadcast: update survey monitors on every other client ---
+  moduleSocket.register("acclaimSurveyMonitorUpdate", async (msg) => {
+    const { updateGMSurveyMonitor } =
+      await import("../acclaim/gmSurveyMonitor.js");
+    updateGMSurveyMonitor(msg);
   });
 
   // --- Broadcast: re-render the STA Tracker on this client ---

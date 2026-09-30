@@ -877,6 +877,41 @@ async function _getTalentDescription(uuid) {
   return _extractTalentDescription(doc);
 }
 
+function _isHouseTalent(document) {
+  return [
+    document?.system?.talenttype?.typeenum,
+    document?.system?.talenttype?.type,
+    document?.system?.type,
+  ].some((value) => normalizeRequirementString(value) === "house");
+}
+
+async function _getAssignedHouseTalentEntries(actor) {
+  const houseUuid = String(actor?.system?.houseActorUuid ?? "").trim();
+  if (!houseUuid) return [];
+
+  try {
+    const house = await fromUuid(houseUuid);
+    if (house?.type !== `${MODULE_ID}.house`) return [];
+
+    return [...(house.items ?? [])]
+      .filter((item) => item.type === "talent")
+      .map((item) => ({
+        name: item.name,
+        img: item.img ?? null,
+        uuid: item.uuid,
+        talenttype: item.system?.talenttype ?? null,
+        item: _extractTalentItemData(item),
+        isAssignedHouseTalent: true,
+      }));
+  } catch (err) {
+    console.warn(
+      `${MODULE_ID} | Could not load talents from assigned House`,
+      err,
+    );
+    return [];
+  }
+}
+
 async function _collectTalentPickerEntries({
   packKey = "",
   basePackKeys = [],
@@ -1019,6 +1054,9 @@ async function _collectTalentPickerEntries({
       const isConsolidated = _isConsolidatedTalentPackKey(packKey);
       const shouldFilterByFolder = isConsolidated;
       const doc = await _getTalentDocumentByUuid(talent.uuid);
+      if (wantedKind === "crew" && _isHouseTalent(doc)) {
+        return null;
+      }
       if (_isNpcTalentFromDocument(doc) && !actorIsNpc) {
         return null;
       }
@@ -1056,6 +1094,20 @@ async function _collectTalentPickerEntries({
   );
 
   talents = talents.filter(Boolean);
+
+  if (wantedKind === "crew") {
+    const assignedHouseTalents = await _getAssignedHouseTalentEntries(actor);
+    const byTalentName = new Map(
+      talents.map((talent) => [talent.name.trim().toLowerCase(), talent]),
+    );
+    for (const talent of assignedHouseTalents) {
+      const key = String(talent.name ?? "")
+        .trim()
+        .toLowerCase();
+      if (key) byTalentName.set(key, talent);
+    }
+    talents = Array.from(byTalentName.values());
+  }
 
   return { talents, errors };
 }
@@ -1407,6 +1459,7 @@ const getLegacyHouse = (actor) => {
 const requirementTypeLabels = {
   attribute: "Attribute",
   discipline: "Department",
+  department: "Department",
   species: "Species",
   house: "House",
   system: "System",
@@ -1434,6 +1487,18 @@ const formatRequirementClauseLabel = (category, clause) => {
   }
 
   if (category === "discipline") {
+    const key = resolveDisciplineKey(rawValue);
+    const label =
+      (key && DISCIPLINE_LABELS[key]) ||
+      humanizeRequirementValue(rawValue) ||
+      rawValue;
+    const min = Number.isFinite(Number(clause?.minimum))
+      ? Number(clause.minimum)
+      : null;
+    return min != null ? `${label} ${min}+` : label;
+  }
+
+  if (category === "department") {
     const key = resolveDisciplineKey(rawValue);
     const label =
       (key && DISCIPLINE_LABELS[key]) ||
@@ -1507,10 +1572,14 @@ const evaluateRequirementCategory = (actor, entry, talentEntry) => {
           : null;
         return minimum == null ? true : actorValue >= minimum;
       }
-      case "discipline": {
+      case "discipline":
+      case "department": {
         const key = resolveDisciplineKey(value);
         if (!key) return false;
-        const actorValue = getNumeric(actor, `system.disciplines.${key}.value`);
+        const path = _isStarshipActor(actor)
+          ? `system.departments.${key}.value`
+          : `system.disciplines.${key}.value`;
+        const actorValue = getNumeric(actor, path);
         if (actorValue == null) return false;
         const minimum = Number.isFinite(Number(clause?.minimum))
           ? Number(clause.minimum)
@@ -1626,6 +1695,7 @@ export const formatTalentRequirementLabel = (
 
 export function doesActorMeetTalentRequirements(actor, talentEntry) {
   if (!actor) return true;
+  if (talentEntry?.isAssignedHouseTalent) return true;
   const normalizedRequirements = getNormalizedTalentRequirements(talentEntry, {
     inferSpecies: _inferRequiredSpeciesFromTalent,
   });
@@ -1664,10 +1734,14 @@ export function doesActorMeetTalentRequirements(actor, talentEntry) {
       return true;
     case "system":
       return true;
-    case "discipline": {
+    case "discipline":
+    case "department": {
       const key = resolveDisciplineKey(description);
       if (!key) return false;
-      const value = getNumeric(actor, `system.disciplines.${key}.value`);
+      const path = _isStarshipActor(actor)
+        ? `system.departments.${key}.value`
+        : `system.disciplines.${key}.value`;
+      const value = getNumeric(actor, path);
       if (value == null) return false;
       if (minimum == null) return true;
       return value >= minimum;

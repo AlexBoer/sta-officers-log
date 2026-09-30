@@ -30,9 +30,11 @@ export function applyKlingonMode(value) {
 }
 
 export function t(key) {
-  return applyKlingonMode(game.i18n?.localize?.(key) ?? key);
+  const localized = game.i18n?.localize?.(key) ?? key;
+  return localized === key ? key : applyKlingonMode(localized);
 }
 
 export function tf(key, data) {
-  return applyKlingonMode(game.i18n?.format?.(key, data) ?? key);
+  const formatted = game.i18n?.format?.(key, data) ?? key;
+  return formatted === key ? key : applyKlingonMode(formatted);
 }
