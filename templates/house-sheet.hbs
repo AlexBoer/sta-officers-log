@@ -1,4 +1,4 @@
-<div class="starship-sheet house-sheet {{#if isLcars}}sta-lcars-sheet sta-lcars {{lcarsSchemeClass}}{{/if}}">
+<div class="starship-sheet house-sheet {{#if isLcars}}sta-lcars-sheet sta-lcars{{/if}}">
   <div class="split-section">
     <div class="left-column">
       <div class="image-field">
@@ -35,9 +35,14 @@
       <div class="name-row">
         <div class="name-field"><label class="title" for="house-name">{{localize "sta-officers-log.house.name"}}</label><input name="name" id="house-name" class="text-entry" type="text" value="{{actor.name}}" placeholder="{{localize "sta-officers-log.house.name"}}" /></div>
         <span class="house-member-count">{{memberCount}} {{localize "sta-officers-log.house.members"}}</span>
-        {{#if isLcars}}<button type="button" class="sta-lcars-theme-btn" title="Change LCARS color scheme"><i class="fas fa-palette"></i></button>{{/if}}
+        <button type="button"
+                class="sta-house-palette-btn {{#if isLcars}}sta-lcars-header-btn{{/if}}"
+                title="{{localize 'sta.actor.character.palette'}}"
+                aria-label="{{localize 'sta.actor.character.palette'}}"
+                data-action="onColourPalette">
+          <i class="fas fa-palette" aria-hidden="true"></i>
+        </button>
       </div>
-      {{#if isLcars}}<div class="sta-lcars-theme-picker">{{#each lcarsThemes}}<button type="button" class="sta-lcars-theme-dot {{#if isActive}}active{{/if}}" data-theme="{{key}}" title="{{label}}" style="--dot-color: {{color}}; --dot-secondary-color: {{secondaryColor}}"></button>{{/each}}</div>{{/if}}
 
       <nav class="sheet-tabs tabs house-tabs" aria-label="{{localize 'sta-officers-log.house.tabs.label'}}"><a class="item {{#if (eq activeTab "details")}}active{{/if}}" data-tab="details">{{localize "sta-officers-log.house.tabs.details"}}</a><a class="item {{#if (eq activeTab "development")}}active{{/if}}" data-tab="development">{{localize "sta-officers-log.house.tabs.development"}}</a><a class="item {{#if (eq activeTab "members")}}active{{/if}}" data-tab="members">{{localize "sta-officers-log.house.tabs.members"}}</a></nav>
       <section class="tab house-tab {{#unless (eq activeTab "details")}}hidden{{/unless}}" data-tab-content="details">
@@ -53,9 +58,9 @@
         </div>
 
         <div class="house-two-column-row">
-          <div class="section house-item-section"><div class="title house-item-section-title">{{localize "sta-officers-log.house.suggestedFocuses"}}<a class="control create" data-action="openHouseFocusPicker" title="Choose focus"><i class="fas fa-plus"></i></a></div>{{#each focuses}}<li class="row entry" data-item-id="{{id}}"><div class="image"><img src="{{img}}" title="{{name}}" /></div><button type="button" class="item-name house-item-link" data-action="editHouseItem" data-item-id="{{id}}">{{name}}</button><div class="control"><a data-action="editHouseItem" data-item-id="{{id}}" title="Edit"><i class="fas fa-edit"></i></a><a data-action="deleteHouseItem" data-item-id="{{id}}" title="Delete"><i class="fas fa-trash"></i></a></div></li>{{/each}}</div>
+          <div class="section house-item-section house-focuses-section"><div class="title house-item-section-title">{{localize "sta-officers-log.house.suggestedFocuses"}}<a class="control create" data-action="openHouseFocusPicker" title="Choose focus"><i class="fas fa-plus"></i></a></div>{{#each focuses}}<li class="row entry" data-item-id="{{id}}"><div class="image"><img src="{{img}}" title="{{name}}" /></div><button type="button" class="item-name house-item-link" data-action="editHouseItem" data-item-id="{{id}}">{{name}}</button><div class="control"><a data-action="editHouseItem" data-item-id="{{id}}" title="Edit"><i class="fas fa-edit"></i></a><a data-action="deleteHouseItem" data-item-id="{{id}}" title="Delete"><i class="fas fa-trash"></i></a></div></li>{{/each}}</div>
 
-          <div class="section house-item-section"><div class="title house-item-section-title">{{localize "sta-officers-log.house.suggestedTalents"}}<a class="control create" data-action="openHouseTalentPicker" title="Choose House talent"><i class="fas fa-plus"></i></a></div>{{#each talents}}<li class="row entry" data-item-id="{{id}}"><div class="image"><img src="{{img}}" title="{{name}}" /></div><button type="button" class="item-name house-item-link" data-action="editHouseItem" data-item-id="{{id}}">{{name}}</button><div class="control"><a data-action="editHouseItem" data-item-id="{{id}}" title="Edit"><i class="fas fa-edit"></i></a><a data-action="deleteHouseItem" data-item-id="{{id}}" title="Delete"><i class="fas fa-trash"></i></a></div></li>{{/each}}</div>
+          <div class="section house-item-section house-talents-section"><div class="title house-item-section-title">{{localize "sta-officers-log.house.suggestedTalents"}}<a class="control create" data-action="openHouseTalentPicker" title="Choose House talent"><i class="fas fa-plus"></i></a></div>{{#each talents}}<li class="row entry" data-item-id="{{id}}"><div class="image"><img src="{{img}}" title="{{name}}" /></div><button type="button" class="item-name house-item-link" data-action="editHouseItem" data-item-id="{{id}}">{{name}}</button><div class="control"><a data-action="editHouseItem" data-item-id="{{id}}" title="Edit"><i class="fas fa-edit"></i></a><a data-action="deleteHouseItem" data-item-id="{{id}}" title="Delete"><i class="fas fa-trash"></i></a></div></li>{{/each}}</div>
         </div>
 
         <div class="section house-item-section house-traits-section"><div class="title house-item-section-title">{{localize "sta.actor.character.traits"}}<a class="control create" data-action="createHouseItem" data-type="trait" title="Create trait"><i class="fas fa-plus"></i></a></div>{{#each traits}}<li class="row entry" data-item-id="{{id}}"><div class="image"><img src="{{img}}" title="{{name}}" /></div><button type="button" class="item-name house-item-link" data-action="editHouseItem" data-item-id="{{id}}">{{name}}</button><div class="control"><a data-action="editHouseItem" data-item-id="{{id}}" title="Edit"><i class="fas fa-edit"></i></a><a data-action="deleteHouseItem" data-item-id="{{id}}" title="Delete"><i class="fas fa-trash"></i></a></div></li>{{/each}}</div>

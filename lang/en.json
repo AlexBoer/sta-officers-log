@@ -1,4 +1,11 @@
 {
+  "TYPES": {
+    "Actor": {
+      "sta-officers-log": {
+        "house": "House"
+      }
+    }
+  },
   "sta-officers-log": {
     "common": {
       "gmOnly": "GM only."

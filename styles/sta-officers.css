@@ -57,6 +57,50 @@
   container-type: inline-size;
 }
 
+.house-sheet .name-field {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.house-sheet .title {
+  white-space: nowrap;
+}
+
+.house-sheet .name-field > .title {
+  display: inline-flex !important;
+  align-items: center;
+  white-space: nowrap !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+  align-self: center !important;
+}
+
+.house-sheet .name-field .text-entry {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+
+.house-sheet .sta-house-palette-btn {
+  background: transparent;
+  border: none;
+  color: var(--sta-borderbluedark, currentColor);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  opacity: 0.8;
+  align-self: center;
+}
+
+.house-sheet .sta-house-palette-btn:hover,
+.house-sheet .sta-house-palette-btn:focus-visible {
+  opacity: 1;
+}
+
 .house-sheet .house-member-count {
   align-self: center;
   white-space: nowrap;
@@ -115,18 +159,13 @@
 
 .house-sheet .house-three-column-row {
   display: grid;
-  grid-template-columns: minmax(0, 130px) minmax(0, 140px) minmax(0, 1fr) !important;
+  grid-template-columns: minmax(max-content, 1fr) minmax(max-content, 1fr) minmax(0, 1.2fr) !important;
   align-items: start;
   gap: 0.5rem;
 }
 
 .house-sheet .house-three-column-row > .house-bonus-section {
   min-width: 0;
-  max-width: 130px !important;
-}
-
-.house-sheet .house-three-column-row > .house-bonus-section:nth-child(2) {
-  max-width: 140px !important;
 }
 
 .house-sheet .house-statistics-block .text.list-entry {
@@ -323,9 +362,12 @@
 }
 
 @media (max-width: 700px) {
-  .house-sheet .house-two-column-row,
+  .house-sheet .house-two-column-row {
+    grid-template-columns: 1fr !important;
+  }
+
   .house-sheet .house-three-column-row {
-    grid-template-columns: minmax(0, 130px) minmax(0, 140px) !important;
+    grid-template-columns: minmax(max-content, 1fr) minmax(max-content, 1fr) !important;
   }
 
   .house-sheet .house-three-column-row > .house-stacked-choice-column {
@@ -339,19 +381,11 @@
   }
 
   .house-sheet .house-three-column-row {
-    grid-template-columns: minmax(0, 130px) minmax(0, 140px) !important;
+    grid-template-columns: minmax(max-content, 1fr) minmax(max-content, 1fr) !important;
   }
 
   .house-sheet .house-three-column-row > .house-stacked-choice-column {
     grid-column: 1 / -1;
-  }
-
-  .house-sheet .house-three-column-row > .house-bonus-section {
-    max-width: 130px !important;
-  }
-
-  .house-sheet .house-three-column-row > .house-bonus-section:nth-child(2) {
-    max-width: 140px !important;
   }
 }
 
@@ -389,6 +423,88 @@
   gap: 0.25rem;
 }
 
+.house-sheet .house-tabs {
+  display: flex;
+  gap: 0.35rem;
+  border-bottom: 1px solid var(--sta-borderbluedark, #003399);
+  margin: 0.35rem 0 0.5rem 0;
+}
+
+.house-sheet .house-tabs .item {
+  padding: 0.35rem 0.65rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--color-text-primary, #EFE6D8);
+  cursor: pointer;
+  font-family: var(--lcars-font-heading, "Roboto Condensed", sans-serif);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.85;
+  text-decoration: none;
+}
+
+.house-sheet .house-tabs .item:hover,
+.house-sheet .house-tabs .item:focus-visible {
+  opacity: 1;
+  color: var(--sta-borderblue, #89cff0);
+}
+
+.house-sheet .house-tabs .item.active {
+  border-bottom-color: var(--sta-borderbluedark, #003399);
+  color: var(--sta-borderblue, #89cff0);
+  font-weight: 700;
+  opacity: 1;
+}
+
+/* LCARS tabs styling for House sheet */
+.house-sheet.sta-lcars .house-tabs,
+.house-sheet.sta-lcars-sheet .house-tabs {
+  background: var(--lcars-bg-panel, rgba(0, 0, 0, 0.18));
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  gap: 4px;
+  display: flex;
+  margin: 0.35rem 0 0.5rem 0;
+}
+
+.house-sheet.sta-lcars .house-tabs .item,
+.house-sheet.sta-lcars-sheet .house-tabs .item {
+  font-family: var(--lcars-font-heading, "Roboto Condensed", sans-serif);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--lcars-text-on-primary, var(--lcars-text-title, #000)) !important;
+  background: var(--lcars-chrome, var(--lcars-orange, #d4a050)) !important;
+  border: none !important;
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  transition: background 0.15s ease;
+  flex: 1;
+  text-align: center;
+  min-width: 90px;
+  cursor: pointer;
+  text-decoration: none;
+  opacity: 1 !important;
+}
+
+.house-sheet.sta-lcars .house-tabs .item:hover,
+.house-sheet.sta-lcars .house-tabs .item:focus-visible,
+.house-sheet.sta-lcars-sheet .house-tabs .item:hover,
+.house-sheet.sta-lcars-sheet .house-tabs .item:focus-visible {
+  background: var(--lcars-chrome-hover, var(--lcars-peach, #d8b878)) !important;
+  color: var(--lcars-text-on-tertiary, var(--lcars-text-title, #000)) !important;
+}
+
+.house-sheet.sta-lcars .house-tabs .item.active,
+.house-sheet.sta-lcars-sheet .house-tabs .item.active {
+  background: var(--lcars-chrome-hover, var(--lcars-peach, #d8b878)) !important;
+  color: var(--lcars-text-on-tertiary, var(--lcars-text-title, #000)) !important;
+  font-weight: bold;
+}
+
 .sta-house-tabs {
   display: flex;
   gap: 0.35rem;
@@ -410,6 +526,51 @@
 
 .sta-house-tab.hidden {
   display: none;
+}
+
+/* LCARS House Sheet Section Headers */
+.house-sheet.sta-lcars .section.house-bonus-section > .title,
+.house-sheet.sta-lcars-sheet .section.house-bonus-section > .title {
+  background: var(--lcars-titlebar-attributes, var(--lcars-titlebar, var(--lcars-primary-color))) !important;
+  color: var(--lcars-text-on-attributes, var(--lcars-text-on-primary, var(--lcars-text-title, var(--lcars-text-dark)))) !important;
+}
+
+.house-sheet.sta-lcars .section.house-choice-section > .title,
+.house-sheet.sta-lcars .section.house-description-section > .title,
+.house-sheet.sta-lcars-sheet .section.house-choice-section > .title,
+.house-sheet.sta-lcars-sheet .section.house-description-section > .title {
+  background: var(--lcars-titlebar-biography, var(--lcars-secondary-color)) !important;
+  color: var(--lcars-text-on-biography, var(--lcars-text-on-secondary, var(--lcars-text-title, var(--lcars-text-dark)))) !important;
+}
+
+.house-sheet.sta-lcars .section.house-focuses-section > .title,
+.house-sheet.sta-lcars-sheet .section.house-focuses-section > .title {
+  background: var(--lcars-titlebar-focuses, var(--lcars-primary-color)) !important;
+  color: var(--lcars-text-on-focuses, var(--lcars-text-on-primary, var(--lcars-text-title, var(--lcars-text-dark)))) !important;
+}
+
+.house-sheet.sta-lcars .section.house-talents-section > .title,
+.house-sheet.sta-lcars-sheet .section.house-talents-section > .title {
+  background: var(--lcars-titlebar-talents, var(--lcars-primary-color)) !important;
+  color: var(--lcars-text-on-talents, var(--lcars-text-on-primary, var(--lcars-text-title, var(--lcars-text-dark)))) !important;
+}
+
+.house-sheet.sta-lcars .section.house-traits-section > .title,
+.house-sheet.sta-lcars-sheet .section.house-traits-section > .title {
+  background: var(--lcars-titlebar-traits, var(--lcars-primary-color)) !important;
+  color: var(--lcars-text-on-traits, var(--lcars-text-on-primary, var(--lcars-text-title, var(--lcars-text-dark)))) !important;
+}
+
+.house-sheet.sta-lcars .section.house-development-section > .title,
+.house-sheet.sta-lcars-sheet .section.house-development-section > .title {
+  background: var(--lcars-titlebar-development, var(--lcars-primary-color)) !important;
+  color: var(--lcars-text-on-development, var(--lcars-text-on-primary, var(--lcars-text-title, var(--lcars-text-dark)))) !important;
+}
+
+.house-sheet.sta-lcars .section.house-members-section > .title,
+.house-sheet.sta-lcars-sheet .section.house-members-section > .title {
+  background: var(--lcars-titlebar-values, var(--lcars-primary-color)) !important;
+  color: var(--lcars-text-on-values, var(--lcars-text-on-primary, var(--lcars-text-title, var(--lcars-text-dark)))) !important;
 }
 
 .sta-house-grid {

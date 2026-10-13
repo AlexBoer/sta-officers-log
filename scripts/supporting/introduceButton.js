@@ -87,10 +87,14 @@ function _getMissionTitle() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Returns true if this supporting character has the supervisory flag set.
+ * Returns true if this supporting character is marked as supervising in STA,
+ * falling back to the legacy Officers Log flag for older actors.
  * Supervisors contribute +2 crew support on introduction instead of +1.
  */
 export function isSupervisoryChar(actor) {
+  const npcType = actor?.system?.npcType;
+  if (npcType === "supervising") return true;
+  if (npcType === "supporting") return false;
   return actor?.getFlag?.(MODULE_ID, "isSupervisoryChar") === true;
 }
 

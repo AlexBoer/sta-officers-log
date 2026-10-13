@@ -33,6 +33,7 @@ export function registerHouseDataModel() {
   class HouseData extends foundry.abstract.TypeDataModel {
     static defineSchema() {
       return {
+        palette: new fields.StringField({ initial: "klingon", blank: false }),
         status: houseChoice(),
         legacy: houseChoice(),
         temperament: houseChoice(),

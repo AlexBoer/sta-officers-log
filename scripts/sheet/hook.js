@@ -314,10 +314,13 @@ function _installSupervisoryCheckbox(root, actor) {
 
   cb.addEventListener("change", async () => {
     try {
-      await actor.setFlag(MODULE_ID_FOR_HOOK, "isSupervisoryChar", cb.checked);
+      await actor.update({
+        "system.npcType": cb.checked ? "supervising" : "supporting",
+        [`flags.${MODULE_ID_FOR_HOOK}.isSupervisoryChar`]: cb.checked,
+      });
     } catch (err) {
       console.error(
-        `${MODULE_ID_FOR_HOOK} | Failed to set supervisory flag`,
+        `${MODULE_ID_FOR_HOOK} | Failed to update supervisory status`,
         err,
       );
       cb.checked = !cb.checked; // revert on error

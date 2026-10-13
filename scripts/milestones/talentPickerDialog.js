@@ -814,7 +814,11 @@ function _isNpcActor(actor) {
   const npcType = normalizeRequirementString(
     foundry.utils.getProperty(actor, "system.npcType"),
   );
-  if (["minor", "notable", "incidental", "quick"].includes(npcType)) {
+  if (
+    ["minor", "notable", "incidental", "quick", "supporting", "supervising"].includes(
+      npcType,
+    )
+  ) {
     return true;
   }
 

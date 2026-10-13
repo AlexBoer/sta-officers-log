@@ -3,6 +3,7 @@
  */
 
 import { MODULE_ID } from "../core/constants.js";
+import { STAActors } from "/systems/sta/module/actors/sta-actors.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
@@ -20,6 +21,9 @@ export class HouseSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       openHouseTalentPicker: HouseSheet._onOpenHouseTalentPicker,
       editHouseItem: HouseSheet._onEditHouseItem,
       deleteHouseItem: HouseSheet._onDeleteHouseItem,
+      onColourPalette: function (ev) {
+        return this._onColourPalette(ev);
+      },
     },
     form: {
       submitOnChange: true,
@@ -171,6 +175,8 @@ export class HouseSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     await super._onRender(context, options);
     const root = this.element;
     if (!root) return;
+
+    this._applyPalette();
 
     if (!this._houseDragDrop) {
       this._houseDragDrop = new foundry.applications.ux.DragDrop({
@@ -356,6 +362,76 @@ export class HouseSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     } finally {
       await loadingDialog.close();
     }
+  }
+
+  async _onColourPalette(event, _target) {
+    const palettes = STAActors?.PALETTES ?? [];
+    const defaults = STAActors?.DEFAULT_COLORS ?? {};
+    const current = this.document.system?.palette || "klingon";
+
+    const rows = palettes
+      .map((p) => {
+        const c = { ...defaults, ...p.colors };
+        return `
+        <label class="palette-row">
+          <input type="radio" name="palette" value="${p.id}" ${p.id === current ? "checked" : ""}>
+          <span class="palette-swatch">
+            <i style="background:${c.borderblue}"></i>
+            <i style="background:${c.borderbluedark}"></i>
+            <i style="background:${c.darkestblue}"></i>
+            <i style="background:${c.palestbluedark}"></i>
+          </span>
+          <span class="palette-name">${p.label}</span>
+        </label>`;
+      })
+      .join("");
+
+    const choice = await foundry.applications.api.DialogV2.wait({
+      window: { title: game.i18n.localize("sta.actor.character.palette") },
+      classes: ["dialogue"],
+      position: { left: event.clientX, top: event.clientY, width: 320 },
+      rejectClose: false,
+      content: `<div class="palette-list">${rows}</div>`,
+      buttons: [
+        {
+          action: "apply",
+          label: game.i18n.localize("sta.apps.apply"),
+          icon: "fa-solid fa-check",
+          default: true,
+          callback: (event, button) => button.form.elements.palette.value,
+        },
+      ],
+    });
+    if (choice) await this.document.update({ "system.palette": choice });
+  }
+
+  _applyPalette() {
+    const palettes = STAActors?.PALETTES;
+    if (!Array.isArray(palettes) || !this.element) return;
+    const id = this.document.system?.palette || "klingon";
+    const palette =
+      palettes.find((p) => p.id === id) ??
+      palettes.find((p) => p.id === "klingon") ??
+      palettes[0];
+    const style = this.element.style;
+
+    for (const p of palettes) {
+      for (const key of Object.keys(p.colors)) {
+        style.removeProperty(`--sta-${key}`);
+      }
+    }
+    for (const [key, value] of Object.entries(palette.colors)) {
+      style.setProperty(`--sta-${key}`, value);
+    }
+
+    this.element.dataset.palette = id;
+    const shortId = id.replace(/^sta-utils-lcars-/, "");
+    this.element.dataset.paletteShort = shortId;
+    for (const cls of [...this.element.classList]) {
+      if (cls.startsWith("palette-")) this.element.classList.remove(cls);
+    }
+    this.element.classList.add(`palette-${id}`);
+    if (shortId !== id) this.element.classList.add(`palette-${shortId}`);
   }
 
   static async _onEditHouseItem(_event, target) {
