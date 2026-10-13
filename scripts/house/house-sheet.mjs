@@ -8,6 +8,22 @@ import { STAActors } from "/systems/sta/module/actors/sta-actors.mjs";
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
 
+function _getStaActorsClass() {
+  if (CONFIG?.Actor?.sheetClasses) {
+    for (const typeMap of Object.values(CONFIG.Actor.sheetClasses)) {
+      if (!typeMap || typeof typeMap !== "object") continue;
+      for (const entry of Object.values(typeMap)) {
+        let cls = entry?.cls;
+        while (cls && cls !== Function.prototype && cls !== Object.prototype) {
+          if (Array.isArray(cls.PALETTES)) return cls;
+          cls = Object.getPrototypeOf(cls);
+        }
+      }
+    }
+  }
+  return STAActors;
+}
+
 export class HouseSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   _activeHouseTab = "details";
 
@@ -365,8 +381,9 @@ export class HouseSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   }
 
   async _onColourPalette(event, _target) {
-    const palettes = STAActors?.PALETTES ?? [];
-    const defaults = STAActors?.DEFAULT_COLORS ?? {};
+    const staCls = _getStaActorsClass();
+    const palettes = staCls?.PALETTES ?? STAActors?.PALETTES ?? [];
+    const defaults = staCls?.DEFAULT_COLORS ?? STAActors?.DEFAULT_COLORS ?? {};
     const current = this.document.system?.palette || "klingon";
 
     const rows = palettes
@@ -406,7 +423,8 @@ export class HouseSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   }
 
   _applyPalette() {
-    const palettes = STAActors?.PALETTES;
+    const staCls = _getStaActorsClass();
+    const palettes = staCls?.PALETTES ?? STAActors?.PALETTES;
     if (!Array.isArray(palettes) || !this.element) return;
     const id = this.document.system?.palette || "klingon";
     const palette =
