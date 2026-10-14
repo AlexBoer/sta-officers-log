@@ -494,14 +494,14 @@
 .house-sheet.sta-lcars .house-tabs .item:focus-visible,
 .house-sheet.sta-lcars-sheet .house-tabs .item:hover,
 .house-sheet.sta-lcars-sheet .house-tabs .item:focus-visible {
-  background: var(--lcars-chrome-hover, var(--lcars-peach, #d8b878)) !important;
-  color: var(--lcars-text-on-tertiary, var(--lcars-text-title, #000)) !important;
+  background: var(--lcars-titlebar-tabs-highlight, var(--lcars-chrome-hover, var(--lcars-peach, #d8b878))) !important;
+  color: var(--lcars-text-on-tabs-highlight, var(--lcars-text-on-tertiary, var(--lcars-text-title, #000))) !important;
 }
 
 .house-sheet.sta-lcars .house-tabs .item.active,
 .house-sheet.sta-lcars-sheet .house-tabs .item.active {
-  background: var(--lcars-chrome-hover, var(--lcars-peach, #d8b878)) !important;
-  color: var(--lcars-text-on-tertiary, var(--lcars-text-title, #000)) !important;
+  background: var(--lcars-titlebar-tabs-highlight, var(--lcars-chrome-hover, var(--lcars-peach, #d8b878))) !important;
+  color: var(--lcars-text-on-tabs-highlight, var(--lcars-text-on-tertiary, var(--lcars-text-title, #000))) !important;
   font-weight: bold;
 }
 
