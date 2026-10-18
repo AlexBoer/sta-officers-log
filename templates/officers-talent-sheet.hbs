@@ -26,7 +26,10 @@
 
       {{#if isAward}}
       <div class="sta-talent-award-cost-row">
-        <label class="sta-talent-type-label">{{localize "sta-officers-log.talents.awardCostLabel"}}</label>
+        <label class="sta-talent-type-label">
+          {{localize "sta-officers-log.talents.awardCostLabel"}}
+          <span class="sta-talent-cost-help" title="{{localize 'sta-officers-log.talents.awardCostHint'}}" aria-label="{{localize 'sta-officers-log.talents.awardCostHint'}}"><i class="fa-solid fa-circle-question" aria-hidden="true"></i></span>
+        </label>
         <input type="number" name="flags.sta-officers-log.awardCost.min"
                value="{{awardCostMin}}" min="0" step="1"
                placeholder="{{localize 'sta-officers-log.talents.awardCostMinPlaceholder'}}" />
@@ -35,11 +38,22 @@
                value="{{awardCostMax}}" min="0" step="1"
                placeholder="{{localize 'sta-officers-log.talents.awardCostMaxPlaceholder'}}" />
       </div>
-      <p class="sta-talent-type-hint">{{localize "sta-officers-log.talents.awardCostHint"}}</p>
+      <label class="sta-talent-award-incremental">
+        <input type="checkbox" name="flags.sta-officers-log.awardCost.incremental"
+               {{checked awardIncrementalSpend}} />
+        {{localize "sta-officers-log.talents.awardIncrementalLabel"}}
+        <span class="sta-talent-cost-help" title="{{localize 'sta-officers-log.talents.awardIncrementalHint'}}" aria-label="{{localize 'sta-officers-log.talents.awardIncrementalHint'}}"><i class="fa-solid fa-circle-question" aria-hidden="true"></i></span>
+      </label>
       {{/if}}
 
       <div class="sta-talent-req-compact">
-        <div class="sta-talent-req-compact-summary">{{requirementSummary}}</div>
+        <div class="sta-talent-req-compact-summary">
+          {{#if requirementSummary.main}}<div>{{requirementSummary.main}}</div>{{/if}}
+          {{#each requirementSummary.conditions as |condition|}}
+          <div><strong>{{condition.label}}</strong>: {{condition.value}}</div>
+          {{/each}}
+          {{#if requirementSummary.empty}}{{requirementSummary.emptyText}}{{/if}}
+        </div>
         <button type="button" class="button" data-action="onToggleEdit">
           {{#if compactMode}}
             {{localize "sta-officers-log.talents.sheet.edit"}}
@@ -48,10 +62,6 @@
           {{/if}}
         </button>
       </div>
-      {{#each conditionSummaries as |cond|}}
-      <div class="sta-talent-req-condition-summary">{{cond}}</div>
-      {{/each}}
-
       {{#unless compactMode}}
       <p class="sta-talent-type-hint">{{localize "sta-officers-log.talents.type.hint"}}</p>
 

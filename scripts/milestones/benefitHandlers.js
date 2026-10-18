@@ -5,7 +5,7 @@
  * Used by both arc and non-arc milestone benefit flows.
  */
 
-import { t } from "../core/i18n.js";
+import { isKlingonModeEnabled, t } from "../core/i18n.js";
 import { escapeHTML } from "../core/utils.js";
 import { getGroupShipActorId, getGroupShipActor } from "../missions/mission.js";
 import { MODULE_ID } from "../core/constants.js";
@@ -26,13 +26,13 @@ import {
   _promptTwoSelect,
   _setStaSelectionFlag,
 } from "./dialogs.js";
+import { resolveCharacterHouse } from "../house/house-reputation-spends.js";
 
 import { promptFocusChoiceFromCompendium } from "./focusPickerDialog.js";
 import {
   promptTalentChoiceFromCompendium,
   promptShipTalentChoiceFromCompendium,
 } from "./talentPickerDialog.js";
-import { promptShipTalentSwapDialog } from "../ship/shipTalentSwapDialog.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared Helpers
@@ -531,6 +531,276 @@ export async function handleAttribute(actor) {
     flagPrefix: "attributes",
     actionName: "attr",
   });
+}
+
+const HOUSE_ATTRIBUTE_KEYS = ["influence", "might", "wealth"];
+const HOUSE_ATTRIBUTE_LABELS = {
+  influence: "Influence",
+  might: "Might",
+  wealth: "Wealth",
+};
+
+function _getHouseAttributeOptions(house, direction) {
+  return HOUSE_ATTRIBUTE_KEYS.filter((key) => {
+    const value = Number(house.system?.[key]);
+    return direction === "decrease" ? value > 6 : value < 12;
+  });
+}
+
+async function _promptHouseAttribute(house, direction, { excluded = [] } = {}) {
+  const options = _getHouseAttributeOptions(house, direction).filter(
+    (key) => !excluded.includes(key),
+  );
+  if (!options.length) return "";
+  return _promptSelect({
+    title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
+    label: t(
+      direction === "decrease"
+        ? "sta-officers-log.dialog.chooseMilestoneBenefit.houseAttributeDecrease"
+        : "sta-officers-log.dialog.chooseMilestoneBenefit.houseAttributeIncrease",
+    ),
+    name: "houseAttribute",
+    optionsHtml:
+      '<option value="" selected></option>' +
+      options
+        .map(
+          (key) =>
+            `<option value="${key}">${escapeHTML(
+              t(`sta-officers-log.house.${key}`) || HOUSE_ATTRIBUTE_LABELS[key],
+            )} (${Number(house.system[key])})</option>`,
+        )
+        .join(""),
+  });
+}
+
+function _warnNoHouseAttributeOptions(direction) {
+  ui.notifications?.warn?.(
+    t(
+      direction === "decrease"
+        ? "sta-officers-log.dialog.chooseMilestoneBenefit.noHouseAttributeToDecrease"
+        : "sta-officers-log.dialog.chooseMilestoneBenefit.noHouseAttributeToIncrease",
+    ),
+  );
+}
+
+export async function handleHouseAttributeTrade(actor) {
+  let house = await resolveCharacterHouse(actor);
+  if (
+    !isKlingonModeEnabled() ||
+    !actor?.system?.showklingon ||
+    !house ||
+    house.system?.dissolved
+  ) {
+    ui.notifications?.warn?.(
+      t("sta-officers-log.dialog.chooseMilestoneBenefit.houseUnavailable"),
+    );
+    return { applied: false };
+  }
+
+  while (true) {
+    if (!_getHouseAttributeOptions(house, "decrease").length) {
+      _warnNoHouseAttributeOptions("decrease");
+      return { applied: false };
+    }
+    const decreaseKey = await _promptHouseAttribute(house, "decrease");
+    if (!decreaseKey || decreaseKey === "cancel") return { applied: false };
+    if (
+      !_getHouseAttributeOptions(house, "increase").some(
+        (key) => key !== decreaseKey,
+      )
+    ) {
+      _warnNoHouseAttributeOptions("increase");
+      return { applied: false };
+    }
+    const increaseKey = await _promptHouseAttribute(house, "increase", {
+      excluded: [decreaseKey],
+    });
+    if (!increaseKey || increaseKey === "cancel") return { applied: false };
+
+    const assignedHouse = await resolveCharacterHouse(actor);
+    if (
+      !isKlingonModeEnabled() ||
+      !actor?.system?.showklingon ||
+      assignedHouse?.uuid !== house.uuid ||
+      assignedHouse.system?.dissolved
+    ) {
+      ui.notifications?.warn?.(
+        t("sta-officers-log.dialog.chooseMilestoneBenefit.houseUnavailable"),
+      );
+      return { applied: false };
+    }
+    house = assignedHouse;
+
+    if (
+      !HOUSE_ATTRIBUTE_KEYS.includes(decreaseKey) ||
+      !HOUSE_ATTRIBUTE_KEYS.includes(increaseKey)
+    ) {
+      ui.notifications?.warn?.(
+        t(
+          "sta-officers-log.dialog.chooseMilestoneBenefit.houseAttributeInvalid",
+        ),
+      );
+      continue;
+    }
+    const decreaseValue = Number(house.system?.[decreaseKey]);
+    const increaseValue = Number(house.system?.[increaseKey]);
+    if (
+      decreaseKey === increaseKey ||
+      decreaseValue <= 6 ||
+      increaseValue >= 12
+    ) {
+      ui.notifications?.warn?.(
+        t(
+          "sta-officers-log.dialog.chooseMilestoneBenefit.houseAttributeInvalid",
+        ),
+      );
+      continue;
+    }
+    if (!house.isOwner) {
+      const confirmed = await _promptManualMilestoneInstructions({
+        title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
+        html: `<p>${escapeHTML(
+          t("sta-officers-log.dialog.chooseMilestoneBenefit.houseAttributeManual")
+            .replace("{house}", house.name)
+            .replace(
+              "{decrease}",
+              t(`sta-officers-log.house.${decreaseKey}`) ||
+                HOUSE_ATTRIBUTE_LABELS[decreaseKey],
+            )
+            .replace(
+              "{increase}",
+              t(`sta-officers-log.house.${increaseKey}`) ||
+                HOUSE_ATTRIBUTE_LABELS[increaseKey],
+            ),
+        )}</p>`,
+      });
+      if (confirmed !== "confirm") return { applied: false };
+      return {
+        applied: true,
+        action: "houseAttributeTradeManual",
+        houseName: house.name,
+        decreaseKey,
+        increaseKey,
+      };
+    }
+
+    try {
+      await house.update({
+        [`system.${decreaseKey}`]: decreaseValue - 1,
+        [`system.${increaseKey}`]: increaseValue + 1,
+      });
+      return {
+        applied: true,
+        action: "houseAttributeTrade",
+        houseName: house.name,
+        decreaseKey,
+        increaseKey,
+      };
+    } catch (error) {
+      console.error(
+        "sta-officers-log | failed to trade House attributes",
+        error,
+      );
+      ui.notifications?.error?.(
+        t(
+          "sta-officers-log.dialog.chooseMilestoneBenefit.houseAttributeUpdateFailed",
+        ),
+      );
+      return { applied: false };
+    }
+  }
+}
+
+export async function handleArcHouseAttribute(actor) {
+  let house = await resolveCharacterHouse(actor);
+  if (
+    !isKlingonModeEnabled() ||
+    !actor?.system?.showklingon ||
+    !house ||
+    house.system?.dissolved
+  ) {
+    ui.notifications?.warn?.(
+      t("sta-officers-log.dialog.chooseMilestoneBenefit.houseUnavailable"),
+    );
+    return { applied: false };
+  }
+
+  if (!_getHouseAttributeOptions(house, "increase").length) {
+    _warnNoHouseAttributeOptions("increase");
+    return { applied: false };
+  }
+  const key = await _promptHouseAttribute(house, "increase");
+  if (!key || key === "cancel") return { applied: false };
+  const assignedHouse = await resolveCharacterHouse(actor);
+  if (
+    !isKlingonModeEnabled() ||
+    !actor?.system?.showklingon ||
+    assignedHouse?.uuid !== house.uuid ||
+    assignedHouse.system?.dissolved
+  ) {
+    ui.notifications?.warn?.(
+      t("sta-officers-log.dialog.chooseMilestoneBenefit.houseUnavailable"),
+    );
+    return { applied: false };
+  }
+  house = assignedHouse;
+  if (!HOUSE_ATTRIBUTE_KEYS.includes(key)) {
+    ui.notifications?.warn?.(
+      t(
+        "sta-officers-log.dialog.chooseMilestoneBenefit.houseAttributeInvalid",
+      ),
+    );
+    return { applied: false };
+  }
+
+  const value = Number(house.system?.[key]);
+  if (value >= 12) {
+    ui.notifications?.warn?.(
+      t("sta-officers-log.dialog.chooseMilestoneBenefit.alreadyMax"),
+    );
+    return { applied: false };
+  }
+  if (!house.isOwner) {
+    const confirmed = await _promptManualMilestoneInstructions({
+      title: t("sta-officers-log.dialog.chooseMilestoneBenefit.title"),
+      html: `<p>${escapeHTML(
+        t("sta-officers-log.dialog.chooseMilestoneBenefit.arcHouseAttributeManual")
+          .replace("{house}", house.name)
+          .replace(
+            "{attribute}",
+            t(`sta-officers-log.house.${key}`) || HOUSE_ATTRIBUTE_LABELS[key],
+          ),
+      )}</p>`,
+    });
+    if (confirmed !== "confirm") return { applied: false };
+    return {
+      applied: true,
+      action: "arcHouseAttributeManual",
+      houseName: house.name,
+      key,
+    };
+  }
+
+  try {
+    await house.update({ [`system.${key}`]: value + 1 });
+    return {
+      applied: true,
+      action: "arcHouseAttribute",
+      houseName: house.name,
+      key,
+    };
+  } catch (error) {
+    console.error(
+      "sta-officers-log | failed to increase House attribute",
+      error,
+    );
+    ui.notifications?.error?.(
+      t(
+        "sta-officers-log.dialog.chooseMilestoneBenefit.houseAttributeUpdateFailed",
+      ),
+    );
+    return { applied: false };
+  }
 }
 
 /**

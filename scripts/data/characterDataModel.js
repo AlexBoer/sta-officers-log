@@ -37,6 +37,7 @@ export function registerOfficersCharacterDataModel() {
           nullable: true,
           initial: null,
         }),
+        houseRole: new fields.StringField({ initial: "" }),
         usedCallbackThisMission: new fields.BooleanField({ initial: false }),
         pendingShipBenefits: new fields.ArrayField(new fields.ObjectField(), {
           initial: [],

@@ -11,11 +11,12 @@ import {
   SHIP_DEPARTMENT_KEYS,
   SHIP_SYSTEM_LABELS,
   SHIP_DEPARTMENT_LABELS,
+  _promptText,
   _promptTwoSelect,
 } from "../milestones/dialogs.js";
 
 import { localizeStaLabel } from "../milestones/benefitHandlers.js";
-import { promptShipTalentSwapDialog } from "./shipTalentSwapDialog.js";
+import { promptShipTalentChoiceFromCompendium } from "../milestones/talentPickerDialog.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Ship System Swap
@@ -213,31 +214,66 @@ export async function handleShipTalentSwap(ship) {
     return { applied: false, back: true };
   }
 
-  const swapResult = await promptShipTalentSwapDialog({ ship });
-  if (swapResult === "back") {
+  const chosen = await promptShipTalentChoiceFromCompendium({
+    actor: ship,
+    allowCustom: true,
+    selectionField: {
+      label: t("sta-officers-log.dialog.shipTalentSwap.removeSelectorLabel"),
+      options: talents
+        .slice()
+        .sort((left, right) =>
+          String(left.name ?? "").localeCompare(String(right.name ?? "")),
+        )
+        .map((item) => ({
+          value: item.id,
+          label: item.name,
+        })),
+    },
+    showBackButton: true,
+    backLabel: t("sta-officers-log.dialog.shipTalentSwap.back"),
+  });
+  if (chosen?.back) {
     return { applied: false, back: true };
   }
-  if (!swapResult) return { applied: false };
+  if (!chosen) return { applied: false };
 
-  const toRemove = ship.items?.get?.(swapResult.removeId);
-  if (!toRemove) {
+  const toRemove = ship.items?.get?.(String(chosen.replacementId ?? ""));
+  if (
+    !toRemove ||
+    (toRemove.type !== "talent" && toRemove.type !== "shipTalent")
+  ) {
     ui.notifications?.warn?.("That talent no longer exists.");
     return { applied: false, back: true };
   }
 
+  let newTalent = chosen;
+  if (chosen.custom) {
+    const name = await _promptText({
+      title: t("sta-officers-log.dialog.shipTalentSwap.title"),
+      label: t("sta-officers-log.dialog.shipTalentSwap.customLabel"),
+      name: "customShipTalentName",
+      placeholder: t(
+        "sta-officers-log.dialog.shipTalentSwap.customPlaceholder",
+      ),
+    });
+    if (!name || name === "cancel") return { applied: false };
+    newTalent = { name: String(name).trim(), img: null, uuid: null };
+  }
+  if (!String(newTalent.name ?? "").trim()) return { applied: false };
+
   try {
-    await ship.deleteEmbeddedDocuments("Item", [swapResult.removeId]);
+    await ship.deleteEmbeddedDocuments("Item", [toRemove.id]);
     const type = toRemove.type ?? "talent";
-    const sourceShipTalent = swapResult.newTalent?.item
-      ? foundry.utils.deepClone(swapResult.newTalent.item)
+    const sourceShipTalent = newTalent.item
+      ? foundry.utils.deepClone(newTalent.item)
       : {};
     delete sourceShipTalent._id;
     const shipTalentData = {
       ...sourceShipTalent,
       type,
-      name: swapResult.newTalent?.name ?? sourceShipTalent.name ?? "New Talent",
+      name: newTalent.name ?? sourceShipTalent.name ?? "New Talent",
       img:
-        swapResult.newTalent?.img ??
+        newTalent.img ??
         sourceShipTalent.img ??
         sourceShipTalent.image ??
         null,

@@ -13,6 +13,10 @@ import {
   getAcclaimNegativeQuestions,
 } from "./acclaimSurvey.js";
 import { t } from "../core/i18n.js";
+import {
+  getCharacterHouseReputationInfluence,
+  isHouseReputationSurveyEnabled,
+} from "../house/house-reputation-spends.js";
 
 const ACCLAIM_BUTTON_SELECTOR =
   '.check-button.acclaim[data-action="onReputationTest"]';
@@ -190,16 +194,17 @@ function _attachBroadcastListeners(html, actor) {
  * @returns {string} HTML string for the question rows.
  * @private
  */
-function _buildQuestionRows(questions, prefix) {
+function _buildQuestionRows(questions, prefix, preselectLast = false) {
   return questions
     .map((q, i) => {
       const escapedQ = foundry.utils.escapeHTML(q);
+      const checked = preselectLast && i === questions.length - 1;
       return `
         <div class="sta-acclaim-question" data-question-index="${i}" data-question-type="${prefix}">
           <div class="sta-acclaim-question-text">${escapedQ}</div>
           <div class="sta-acclaim-question-options">
             <label>
-              <input type="radio" name="${prefix}${i}" value="yes" />
+              <input type="radio" name="${prefix}${i}" value="yes" ${checked ? "checked" : ""} />
               ${t("sta-officers-log.acclaimSurvey.yes")}
             </label>
             <label>
@@ -225,7 +230,12 @@ function _buildQuestionRows(questions, prefix) {
  * @returns {string} HTML content for the dialog.
  * @private
  */
-function _buildSurveyContent(positiveQuestions, negativeQuestions, actorName) {
+function _buildSurveyContent(
+  positiveQuestions,
+  negativeQuestions,
+  actorName,
+  houseInfluenceType = null,
+) {
   const hasPositive = positiveQuestions.length > 0;
   const hasNegative = negativeQuestions.length > 0;
 
@@ -263,7 +273,11 @@ function _buildSurveyContent(positiveQuestions, negativeQuestions, actorName) {
           </span>
         </h3>
         <div class="sta-acclaim-questions">
-          ${_buildQuestionRows(positiveQuestions, "pos")}
+          ${_buildQuestionRows(
+            positiveQuestions,
+            "pos",
+            houseInfluenceType === "positive",
+          )}
         </div>
       </div>
     `;
@@ -284,7 +298,11 @@ function _buildSurveyContent(positiveQuestions, negativeQuestions, actorName) {
           </span>
         </h3>
         <div class="sta-acclaim-questions">
-          ${_buildQuestionRows(negativeQuestions, "neg")}
+          ${_buildQuestionRows(
+            negativeQuestions,
+            "neg",
+            houseInfluenceType === "negative",
+          )}
         </div>
       </div>
     `;
@@ -413,9 +431,7 @@ async function _performAcclaimRoll(
   // Roll logic — identical to STA system's _onReputationTest()
   const targetNumber = currentReputation + 7;
   const complicationThreshold = 20 - Math.min(currentReprimand, 5);
-  const roll = new Roll(
-    positiveInfluences > 0 ? `${positiveInfluences}d20` : "0",
-  );
+  const roll = new Roll(`${positiveInfluences}d20`);
   await roll.evaluate();
 
   let diceHtml = "";
@@ -487,25 +503,7 @@ export async function performAcclaimSurveyRoll(
   positiveInfluences,
   negativeInfluences,
 ) {
-  let positive = positiveInfluences;
-  let negative = negativeInfluences;
-  try {
-    const houseUuid = actor.system?.houseActorUuid;
-    const house = houseUuid ? await fromUuid(houseUuid) : null;
-    if (house?.type === "sta-officers-log.house" && !house.system?.dissolved) {
-      const characterReputation = Number(actor.system?.reputation ?? 0);
-      const houseReputation = Number(house.system?.reputation ?? 0);
-      if (characterReputation < houseReputation) negative += 1;
-      if (characterReputation > houseReputation) positive += 1;
-    }
-  } catch (err) {
-    console.warn(
-      "sta-officers-log | could not apply House Reputation modifier",
-      err,
-    );
-  }
-
-  return _performAcclaimRoll(actor, positive, negative);
+  return _performAcclaimRoll(actor, positiveInfluences, negativeInfluences);
 }
 
 /**
@@ -522,10 +520,24 @@ export async function performAcclaimSurveyRoll(
 async function _showAcclaimDialog(actor, options = {}) {
   const positiveQuestions = getAcclaimPositiveQuestions();
   const negativeQuestions = getAcclaimNegativeQuestions();
+  const hasHouseRelativeQuestions = isHouseReputationSurveyEnabled(actor);
+  const houseInfluence =
+    await getCharacterHouseReputationInfluence(actor);
+  if (hasHouseRelativeQuestions) {
+    positiveQuestions.push(
+      t("sta-officers-log.acclaimSurvey.houseElevates") ||
+        "Your Reputation exceeds your House's Reputation, elevating your House (+1 positive influence).",
+    );
+    negativeQuestions.push(
+      t("sta-officers-log.acclaimSurvey.houseDisgraces") ||
+        "Your Reputation is lower than your House's Reputation, disgracing your House (+1 negative influence).",
+    );
+  }
   const content = _buildSurveyContent(
     positiveQuestions,
     negativeQuestions,
     actor.name,
+    hasHouseRelativeQuestions ? houseInfluence?.type : null,
   );
 
   const result = await foundry.applications.api.DialogV2.wait({
@@ -565,23 +577,8 @@ async function _showAcclaimDialog(actor, options = {}) {
   // User closed dialog without rolling
   if (!result) return;
 
-  let positiveInfluences = result.positiveInfluences;
-  let negativeInfluences = result.negativeInfluences;
-  try {
-    const houseUuid = actor.system?.houseActorUuid;
-    const house = houseUuid ? await fromUuid(houseUuid) : null;
-    if (house?.type === "sta-officers-log.house" && !house.system?.dissolved) {
-      const characterReputation = Number(actor.system?.reputation ?? 0);
-      const houseReputation = Number(house.system?.reputation ?? 0);
-      if (characterReputation < houseReputation) negativeInfluences += 1;
-      if (characterReputation > houseReputation) positiveInfluences += 1;
-    }
-  } catch (err) {
-    console.warn(
-      "sta-officers-log | could not apply House Reputation modifier",
-      err,
-    );
-  }
+  const positiveInfluences = result.positiveInfluences;
+  const negativeInfluences = result.negativeInfluences;
 
   try {
     const { getModuleSocket } = await import("../core/socket.js");

@@ -210,51 +210,49 @@ function _summarizeEntry(entry) {
   return `${_labelForCategory(category)}: ${values}`;
 }
 
-function _summarizeAllRequirements(requirements) {
-  const parts = (Array.isArray(requirements) ? requirements : [])
-    .map((entry) => {
-      const category = normalizeRequirementString(entry?.category);
-      if (!category) return "";
-      const clauses = (Array.isArray(entry?.clauses) ? entry.clauses : [])
-        .map((clause) => _summarizeClause(category, clause))
-        .filter(Boolean);
-      if (!clauses.length) return "";
-      const joiner = normalizeOp(entry?.operator) === "AND" ? " and " : " or ";
-      return clauses.join(joiner);
-    })
-    .filter(Boolean);
-
-  if (!parts.length) return "No requirements.";
-  return `Requires ${parts.join(", ")}`;
-}
-
-// Conditions are long narrative strings; keep them out of the inline summary so
-// they can render on their own wrapping lines.
-function _splitRequirementSummary(requirements) {
-  const list = Array.isArray(requirements) ? requirements : [];
+function _getRequirementSummary(requirements) {
+  const parts = [];
   const conditions = [];
-  const inline = [];
-  for (const entry of list) {
-    if (normalizeRequirementString(entry?.category) === "condition") {
-      const text = String(entry?.clauses?.[0]?.value ?? "").trim();
-      if (text) conditions.push(text);
-    } else {
-      inline.push(entry);
-    }
+  for (const entry of Array.isArray(requirements) ? requirements : []) {
+    const category = normalizeRequirementString(entry?.category);
+    if (!category) continue;
+
+    const clauses = (Array.isArray(entry?.clauses) ? entry.clauses : [])
+      .map((clause) => _summarizeClause(category, clause))
+      .filter(Boolean);
+    if (!clauses.length) continue;
+
+    const joiner = normalizeOp(entry?.operator) === "AND" ? " and " : " or ";
+    const value = clauses.join(joiner);
+    if (category === "condition") {
+      conditions.push({ label: _labelForCategory(category), value });
+    } else parts.push(value);
   }
 
-  const conditionLabel = localize(
-    "sta-officers-log.talents.requirements.category.condition",
-    "Condition",
+  const prefix = localize(
+    "sta-officers-log.talents.sheet.requiresPrefix",
+    "Requires",
   );
-  let summary = "";
-  if (inline.length) summary = _summarizeAllRequirements(inline);
-  else if (!conditions.length) summary = _summarizeAllRequirements([]);
-
   return {
-    summary,
-    conditionSummaries: conditions.map((text) => `${conditionLabel}: ${text}`),
+    main: parts.length ? `${prefix} ${parts.join(", ")}` : "",
+    conditions,
+    empty: !parts.length && !conditions.length,
+    emptyText: localize(
+      "sta-officers-log.talents.sheet.noRequirements",
+      "No requirements.",
+    ),
   };
+}
+
+function _summarizeAllRequirements(requirements) {
+  const summary = _getRequirementSummary(requirements);
+  if (summary.empty) return summary.emptyText;
+  return [
+    summary.main,
+    ...summary.conditions.map(({ label, value }) => `${label}: ${value}`),
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function createEl(tag, className = "", text = "") {
@@ -398,9 +396,9 @@ function injectStyles(root) {
   style.dataset.staTalentReqEditor = "true";
   style.textContent = `
 .${ROOT_CLASS} { margin-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.6rem; }
-.${ROOT_CLASS} .sta-talent-req-compact { display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.6rem; }
-.${ROOT_CLASS} .sta-talent-req-compact-summary { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.${ROOT_CLASS} .sta-talent-req-condition-summary { font-weight:600; margin-top:0.3rem; white-space:normal; overflow-wrap:anywhere; }
+.${ROOT_CLASS} .sta-talent-req-compact { display:flex; align-items:flex-start; justify-content:space-between; gap:0.5rem; margin-bottom:0.6rem; }
+.${ROOT_CLASS} .sta-talent-req-compact-summary { flex:1 1 auto; min-width:0; font-weight:400; white-space:normal; line-height:1.2; overflow-wrap:anywhere; }
+.${ROOT_CLASS} .sta-talent-req-compact-summary strong { font-weight:700; }
 .${ROOT_CLASS} .sta-talent-req-edit-panel[hidden] { display:none !important; }
 .${ROOT_CLASS} .sta-talent-req-controls { display:flex; gap:0.4rem; align-items:center; margin-bottom:0.6rem; }
 .${ROOT_CLASS} .${ADD_SELECT_CLASS} { flex:1; }
@@ -449,16 +447,20 @@ function renderEditor(root, item) {
   if (!state) return;
 
   if (state.summaryEl instanceof HTMLElement) {
-    const { summary, conditionSummaries } = _splitRequirementSummary(
-      state.requirements,
-    );
-    state.summaryEl.textContent = summary;
-    if (state.conditionsEl instanceof HTMLElement) {
-      state.conditionsEl.replaceChildren(
-        ...conditionSummaries.map((text) =>
-          createEl("div", "sta-talent-req-condition-summary", text),
-        ),
-      );
+    const summary = _getRequirementSummary(state.requirements);
+    state.summaryEl.replaceChildren();
+    if (summary.main) {
+      const main = createEl("div", "", summary.main);
+      state.summaryEl.append(main);
+    }
+    for (const condition of summary.conditions) {
+      const line = createEl("div");
+      const label = createEl("strong", "", condition.label);
+      line.append(label, document.createTextNode(`: ${condition.value}`));
+      state.summaryEl.append(line);
+    }
+    if (summary.empty) {
+      state.summaryEl.textContent = summary.emptyText;
     }
   }
   if (state.editToggle instanceof HTMLButtonElement) {
@@ -710,8 +712,6 @@ export function installTalentRequirementsEditor(root, item, app = null) {
     compactToggle.dataset.action = "compact-toggle";
     compact.append(compactSummary, compactToggle);
 
-    const compactConditions = createEl("div", "sta-talent-req-conditions");
-
     const editPanel = createEl("div", "sta-talent-req-edit-panel");
 
     const controls = createEl("div", "sta-talent-req-controls");
@@ -726,7 +726,7 @@ export function installTalentRequirementsEditor(root, item, app = null) {
 
     const list = createEl("div", LIST_CLASS);
     editPanel.append(controls, list);
-    container.append(compact, compactConditions, editPanel);
+    container.append(compact, editPanel);
 
     typeRow.style.display = "none";
     typeRow.after(container);
@@ -745,7 +745,6 @@ export function installTalentRequirementsEditor(root, item, app = null) {
       addSelect,
       addButton,
       summaryEl: compactSummary,
-      conditionsEl: compactConditions,
       editToggle: compactToggle,
       editPanel,
       requirements,

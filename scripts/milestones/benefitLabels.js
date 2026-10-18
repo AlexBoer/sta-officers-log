@@ -11,6 +11,16 @@ import {
   SHIP_SYSTEM_LABELS,
   SHIP_DEPARTMENT_LABELS,
 } from "./dialogs.js";
+import { t } from "../core/i18n.js";
+
+function houseAttributeLabel(key) {
+  const fallbacks = {
+    influence: "Influence",
+    might: "Might",
+    wealth: "Wealth",
+  };
+  return t(`sta-officers-log.house.${key}`) || fallbacks[key] || key;
+}
 
 /**
  * Format a chosen benefit result into a human-readable label.
@@ -25,6 +35,14 @@ export function formatChosenBenefitLabel(applied) {
       return `+1 ${ATTRIBUTE_LABELS[applied.key] ?? applied.key}`;
     case "disc":
       return `+1 ${DISCIPLINE_LABELS[applied.key] ?? applied.key}`;
+    case "houseAttributeTrade":
+      return `${applied.houseName}: ${
+        houseAttributeLabel(applied.decreaseKey)
+      } -1, ${houseAttributeLabel(applied.increaseKey)} +1`;
+    case "houseAttributeTradeManual":
+      return `${applied.houseName}: House attributes ${
+        houseAttributeLabel(applied.decreaseKey)
+      } -1, ${houseAttributeLabel(applied.increaseKey)} +1 (ask GM to apply)`;
     case "focus":
       return applied.name ? `Focus: ${applied.name}` : "New Focus";
     case "talent":
@@ -58,6 +76,12 @@ export function formatChosenBenefitLabel(applied) {
       return `+1 ${ATTRIBUTE_LABELS[applied.key] ?? applied.key}`;
     case "arcDisc":
       return `+1 ${DISCIPLINE_LABELS[applied.key] ?? applied.key}`;
+    case "arcHouseAttribute":
+      return `${applied.houseName}: ${houseAttributeLabel(applied.key)} +1`;
+    case "arcHouseAttributeManual":
+      return `${applied.houseName}: House ${
+        houseAttributeLabel(applied.key)
+      } +1 (ask GM to apply)`;
     case "arcValue":
       return applied.name ? `Value: ${applied.name}` : "New Value";
     case "arcShipSystem":

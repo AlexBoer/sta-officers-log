@@ -235,63 +235,57 @@ function _summarizeClause(category, clause) {
   return label;
 }
 
-function _summarizeAllRequirements(requirements) {
-  const parts = (Array.isArray(requirements) ? requirements : [])
-    .map((entry) => {
-      const category = normalizeRequirementString(entry?.category);
-      if (!category) return "";
+function _getRequirementSummary(requirements) {
+  const parts = [];
+  const conditions = [];
+  for (const entry of Array.isArray(requirements) ? requirements : []) {
+    const category = normalizeRequirementString(entry?.category);
+    if (!category) continue;
 
-      const clauses = (Array.isArray(entry?.clauses) ? entry.clauses : [])
-        .map((clause) => _summarizeClause(category, clause))
-        .filter(Boolean);
-      if (!clauses.length) return "";
+    const clauses = (Array.isArray(entry?.clauses) ? entry.clauses : [])
+      .map((clause) => _summarizeClause(category, clause))
+      .filter(Boolean);
+    if (!clauses.length) continue;
 
-      const joiner = normalizeOp(entry?.operator) === "AND" ? " and " : " or ";
-      return clauses.join(joiner);
-    })
-    .filter(Boolean);
-
-  if (!parts.length) {
-    return localize(
-      "sta-officers-log.talents.sheet.noRequirements",
-      "No requirements.",
-    );
+    const joiner = normalizeOp(entry?.operator) === "AND" ? " and " : " or ";
+    const value = clauses.join(joiner);
+    if (category === "condition") {
+      conditions.push({
+        label: localize(
+          "sta-officers-log.talents.requirements.category.condition",
+          "Condition",
+        ),
+        value,
+      });
+    } else {
+      parts.push(value);
+    }
   }
 
   const prefix = localize(
     "sta-officers-log.talents.sheet.requiresPrefix",
     "Requires",
   );
-  return `${prefix} ${parts.join(", ")}`;
+  return {
+    main: parts.length ? `${prefix} ${parts.join(", ")}` : "",
+    conditions,
+    empty: !parts.length && !conditions.length,
+    emptyText: localize(
+      "sta-officers-log.talents.sheet.noRequirements",
+      "No requirements.",
+    ),
+  };
 }
 
-// Conditions are long narrative strings; keep them out of the inline summary so
-// they can render on their own wrapping lines.
-function _splitRequirementSummary(requirements) {
-  const list = Array.isArray(requirements) ? requirements : [];
-  const conditions = [];
-  const inline = [];
-  for (const entry of list) {
-    if (normalizeRequirementString(entry?.category) === "condition") {
-      const text = String(entry?.clauses?.[0]?.value ?? "").trim();
-      if (text) conditions.push(text);
-    } else {
-      inline.push(entry);
-    }
-  }
-
-  const conditionLabel = localize(
-    "sta-officers-log.talents.requirements.category.condition",
-    "Condition",
-  );
-  let summary = "";
-  if (inline.length) summary = _summarizeAllRequirements(inline);
-  else if (!conditions.length) summary = _summarizeAllRequirements([]);
-
-  return {
-    summary,
-    conditionSummaries: conditions.map((text) => `${conditionLabel}: ${text}`),
-  };
+function _summarizeAllRequirements(requirements) {
+  const summary = _getRequirementSummary(requirements);
+  if (summary.empty) return summary.emptyText;
+  return [
+    summary.main,
+    ...summary.conditions.map(({ label, value }) => `${label}: ${value}`),
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function _toEditableRequirements(requirements) {
@@ -414,6 +408,53 @@ export class OfficersTalentSheet extends api.HandlebarsApplicationMixin(
         // Handle the change ourselves; keep it out of submitOnChange.
         event.stopPropagation();
         this._onTalentTypeChange(String(event.currentTarget.value ?? ""));
+      });
+    }
+    const incrementalSpend = root.querySelector(
+      'input[name="flags.sta-officers-log.awardCost.incremental"]',
+    );
+    const minimumCost = root.querySelector(
+      '[name="flags.sta-officers-log.awardCost.min"]',
+    );
+    const totalTarget = root.querySelector(
+      '[name="flags.sta-officers-log.awardCost.max"]',
+    );
+    const hasValidIncrementalCosts = () => {
+      const minimum = Number(minimumCost?.value);
+      const target = Number(totalTarget?.value);
+      return (
+        Number.isInteger(minimum) &&
+        minimum > 0 &&
+        Number.isInteger(target) &&
+        target > minimum
+      );
+    };
+    const warnInvalidIncrementalCosts = () =>
+      ui.notifications?.warn?.(
+        "Set a positive minimum cost and a greater total target before enabling incremental spending.",
+      );
+    if (incrementalSpend instanceof HTMLInputElement) {
+      incrementalSpend.addEventListener("change", (event) => {
+        if (incrementalSpend.checked && !hasValidIncrementalCosts()) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          incrementalSpend.checked = false;
+          warnInvalidIncrementalCosts();
+        }
+      });
+    }
+    for (const input of [minimumCost, totalTarget]) {
+      input?.addEventListener("change", (event) => {
+        if (!incrementalSpend?.checked || hasValidIncrementalCosts()) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const isMinimum = input === minimumCost;
+        const savedValue = isMinimum
+          ? this.item.flags?.[MODULE_ID]?.awardCost?.min
+          : this.item.flags?.[MODULE_ID]?.awardCost?.max;
+        input.value =
+          savedValue == null ? "" : String(savedValue);
+        warnInvalidIncrementalCosts();
       });
     }
   }
@@ -609,8 +650,7 @@ export class OfficersTalentSheet extends api.HandlebarsApplicationMixin(
       selected: option.value === currentTypeenum,
     }));
 
-    const { summary, conditionSummaries } =
-      _splitRequirementSummary(requirements);
+    const summary = _getRequirementSummary(requirements);
 
     const awardCost = this.item?.flags?.[MODULE_ID]?.awardCost ?? {};
     const toCostValue = (n) =>
@@ -624,13 +664,13 @@ export class OfficersTalentSheet extends api.HandlebarsApplicationMixin(
       enrichedNotes,
       compactMode: state.compactMode,
       requirementSummary: summary,
-      conditionSummaries,
       requirementRows,
       availableCategories,
       talentTypeOptions,
       isAward: currentTypeenum === "award",
       awardCostMin: toCostValue(awardCost?.min),
       awardCostMax: toCostValue(awardCost?.max),
+      awardIncrementalSpend: awardCost?.incremental === true,
       talentSource: String(this.item?.flags?.[MODULE_ID]?.source ?? ""),
       hasRequirements: requirementRows.length > 0,
     };

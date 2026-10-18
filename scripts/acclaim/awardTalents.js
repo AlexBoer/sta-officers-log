@@ -73,7 +73,18 @@ function _awardCostFromItemData(itemData) {
     );
   }
 
-  return { min, max: Math.max(min, maxCandidate) };
+  const incrementalSpend = raw?.incremental === true;
+  if (incrementalSpend && (min <= 0 || maxCandidate <= min)) {
+    console.error(
+      `${MODULE_ID} | Award talent "${itemData?.name ?? "Unknown"}" has incremental spending enabled without a positive minimum and greater total target; treating it as non-incremental.`,
+    );
+  }
+
+  return {
+    min,
+    max: Math.max(min, maxCandidate),
+    incrementalSpend: incrementalSpend && min > 0 && maxCandidate > min,
+  };
 }
 
 function _descriptionFromItemData(itemData) {
@@ -123,7 +134,7 @@ async function _resolveAwardTalentEntry(uuid) {
   if (typeenum !== "award") return null;
 
   const itemData = doc.toObject();
-  const { min, max } = _awardCostFromItemData(itemData);
+  const { min, max, incrementalSpend } = _awardCostFromItemData(itemData);
   const condition = _formatAwardCondition(itemData);
 
   return {
@@ -134,6 +145,7 @@ async function _resolveAwardTalentEntry(uuid) {
     condition,
     costMin: min,
     costMax: max,
+    incrementalSpend,
   };
 }
 
@@ -205,6 +217,7 @@ export async function getEnabledAwardOptions() {
     cost: entry.costMin,
     costMin: entry.costMin,
     costMax: entry.costMax,
+    incrementalSpend: entry.incrementalSpend,
     isAward: true,
     uuid: entry.uuid,
     img: entry.img,

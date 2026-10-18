@@ -996,6 +996,24 @@
   gap: 0.8rem;
 }
 
+.sta-custom-spend-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sta-custom-spend-settings .form-group {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.sta-custom-spend-settings h3 {
+  margin: 0;
+}
+
 .sta-award-editor-toolbar {
   display: flex;
   justify-content: flex-start;
@@ -2269,6 +2287,21 @@
   gap: 0.35rem;
 }
 
+.sta-adjustment-supporting-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.sta-adjustment-supporting-heading img {
+  width: 2rem;
+  height: 2rem;
+  object-fit: cover;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+}
+
 /* =============================================================================
  * SHARED CONTROLS (used across multiple windows)
  * ============================================================================= */
@@ -2587,11 +2620,12 @@ div.section.character-log li.row.entry.sta-hide-log-used-toggle-gap a.value-used
   display: none !important;
 }
 
-/* Button order within .sta-log-inline-actions: Choose Arc → Write Log → Camera → Show Links */
+/* Button order within .sta-log-inline-actions: Choose Milestone → Adjustment → Write Log → Camera → Show Links */
 .sta-choose-milestone-btn { order: 1; }
-.sta-write-log-btn        { order: 2; }
-.sta-current-mission-indicator { order: 3; }
-.sta-show-source-btn      { order: 4; }
+.sta-adjustment-btn       { order: 2; }
+.sta-write-log-btn        { order: 3; }
+.sta-current-mission-indicator { order: 4; }
+.sta-show-source-btn      { order: 5; }
 
 .sta-inline-sheet-btn {
     /* reset <button> defaults */
@@ -2622,7 +2656,8 @@ div.section.character-log li.row.entry.sta-hide-log-used-toggle-gap a.value-used
   cursor: not-allowed;
 }
 
-.sta-choose-milestone-btn.sta-choose-btn-disabled {
+.sta-choose-milestone-btn.sta-choose-btn-disabled,
+.sta-adjustment-btn.sta-choose-btn-disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -2630,6 +2665,11 @@ div.section.character-log li.row.entry.sta-hide-log-used-toggle-gap a.value-used
 .sta-inline-sheet-btn:hover {
     border-color: goldenrod;
     color: goldenrod;
+}
+
+.sta-inline-sheet-btn:focus-visible {
+  outline: 2px solid goldenrod;
+  outline-offset: 2px;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -4354,6 +4394,8 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
 .sta-spend-btn-container {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
   padding: 6px 0 2px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   margin-top: 6px;
@@ -4504,6 +4546,12 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
   font-size: 0.8rem;
 }
 
+.sta-spend-option-progress {
+  margin: 2px 0 0 26px;
+  font-size: 0.76rem;
+  opacity: 0.8;
+}
+
 .sta-spend-option-desc {
   margin: 2px 0 0 26px;
   font-size: 0.8rem;
@@ -4516,6 +4564,32 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
   font-size: 0.76rem;
   font-style: italic;
   opacity: 0.65;
+}
+
+.sta-spend-adhoc-row {
+  display: grid;
+  gap: 6px;
+}
+
+.sta-spend-adhoc-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sta-spend-adhoc-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sta-spend-adhoc-cost-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sta-spend-adhoc-cost {
+  width: 5rem;
 }
 
 .sta-spend-unaffordable {
@@ -6729,23 +6803,34 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
 
 .officers-talent-sheet .sta-talent-req-compact {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 0.6rem;
 }
 
-.officers-talent-sheet .sta-talent-req-compact-summary {
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.officers-talent-sheet .ol-header-row {
+  align-items: center;
 }
 
-.officers-talent-sheet .sta-talent-req-condition-summary {
-  font-weight: 600;
-  margin-top: 0.3rem;
+.officers-talent-sheet .ol-header-fields {
+  justify-content: center;
+}
+
+.officers-talent-sheet .ol-header-fields input[type="text"] {
+  box-sizing: border-box;
+  height: 40px;
+  padding: 0 0.5rem;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.officers-talent-sheet .sta-talent-req-compact-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 400;
   white-space: normal;
+  line-height: 1.2;
   overflow-wrap: anywhere;
 }
 
@@ -6772,6 +6857,22 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
   margin-bottom: 0.35rem;
 }
 
+.sta-talent-cost-help {
+  display: inline-block;
+  margin-left: 0.2rem;
+  font-size: 1.15rem;
+  line-height: 1;
+  opacity: 0.75;
+  cursor: help;
+}
+
+.sta-talent-award-incremental {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+}
+
 .officers-talent-sheet .sta-talent-award-cost-row input[type="number"] {
   flex: 0 1 6rem;
   min-width: 0;
@@ -6780,6 +6881,40 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
 .officers-talent-sheet .sta-talent-award-cost-sep {
   flex: 0 0 auto;
   opacity: 0.7;
+}
+
+.talent-award-cost-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.talent-award-cost-row > .title {
+  flex: 0 0 auto;
+}
+
+.talent-award-cost-row .inline-container {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.talent-award-cost-row input[type="number"] {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.talent-uses-fields .talent-uses-toggle-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.talent-uses-fields .sta-talent-award-incremental {
+  margin: 0;
 }
 
 .officers-talent-sheet .sta-talent-req-controls {
@@ -6910,4 +7045,103 @@ div.section.character-log li.row.entry[data-item-type="log"] .item-name a {
     min-width: 0;
     width: 100%;
   }
+}
+
+.house-sheet .house-item-row {
+  cursor: grab;
+}
+
+.house-sheet .house-item-row:active {
+  cursor: grabbing;
+}
+
+.house-sheet .house-member-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.house-sheet .house-member-role {
+  opacity: 0.8;
+  font-size: 0.9em;
+}
+
+.house-sheet .house-succession-list {
+  padding-inline-start: 1.5rem;
+}
+
+.house-sheet .house-succession-row,
+.house-sheet .house-succession-add {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.house-sheet .house-succession-add select {
+  flex: 1;
+  min-width: 0;
+}
+
+.character-sheet .sta-character-profile-pair > .column {
+  flex: 0 0 50%;
+  width: 50%;
+}
+
+.character-sheet .sta-character-assignment-row > .column {
+  flex: 0 0 25%;
+  width: 25%;
+}
+
+.character-sheet .sta-character-assignment-row-three > .column {
+  flex-basis: 33.333%;
+  width: 33.333%;
+}
+
+.character-sheet .sta-character-assignment-row .division > .custom-division {
+  flex: 0 0 100%;
+  width: 100%;
+}
+
+.character-sheet .sta-klingon-house-row > .house,
+.character-sheet .sta-klingon-house-row > .house-role,
+.character-sheet .sta-klingon-house-row > .caste,
+.character-sheet .sta-klingon-house-row > .status,
+.character-sheet .sta-klingon-house-row > .legacy,
+.character-sheet .sta-klingon-house-row > .temperament {
+  flex: 0 0 33.333%;
+  width: 33.333%;
+}
+
+.character-sheet .sta-klingon-house-history-row > .househistory {
+  flex: 0 0 100%;
+  width: 100%;
+}
+
+.character-sheet .sta-klingon-house-section {
+  width: 100%;
+  min-width: 0;
+}
+
+.character-sheet.sta-lcars-sheet
+  .tab[data-tab="biography"]
+  .sta-klingon-house-section
+  > .sta-klingon-house-section-header {
+  background: var(--lcars-titlebar-talents, var(--lcars-lilac)) !important;
+  color: var(
+      --lcars-text-on-talents,
+      var(--lcars-text-on-primary, var(--lcars-text-title, var(--lcars-text-dark)))
+    )
+    !important;
+  font-family: var(--lcars-font-heading);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.8rem;
+  border-radius: 0 100px 100px 0;
+  padding: 2px 10px;
+}
+
+.character-sheet .sta-house-role-column input {
+  width: 100%;
+  min-width: 0;
 }

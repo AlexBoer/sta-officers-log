@@ -14,6 +14,8 @@
  *  - createdWithTrauma       BooleanField — whether the primary value was a trauma at creation
  *  - pendingMilestoneBenefit ObjectField — pending milestone/arc benefit payload
  *  - showMilestoneArcButton  BooleanField — show the Choose Benefit button for this log
+ *  - showAdjustmentButton    BooleanField — show the Adjustment button for this log
+ *  - adjustmentStatus       StringField — pending/applied/declined/expired adjustment state
  *  - primaryDirectiveKey     StringField — key of the selected directive
  *  - directiveLabels         ObjectField — map of directive key → display text
  *  - customDate              StringField (nullable) — user-set in-game date override (YYYY-MM-DD)
@@ -50,6 +52,8 @@ export function registerOfficersLogDataModel() {
           initial: null,
         }),
         showMilestoneArcButton: new fields.BooleanField({ initial: false }),
+        showAdjustmentButton: new fields.BooleanField({ initial: false }),
+        adjustmentStatus: new fields.StringField({ initial: "" }),
 
         // ── Directive metadata ───────────────────────────────────────────────
         primaryDirectiveKey: new fields.StringField({ initial: "" }),

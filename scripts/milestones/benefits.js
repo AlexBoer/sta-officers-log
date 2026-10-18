@@ -5,7 +5,7 @@
  * Delegates to handler functions in benefitHandlers.js for individual actions.
  */
 
-import { t } from "../core/i18n.js";
+import { isKlingonModeEnabled, t } from "../core/i18n.js";
 import { escapeHTML } from "../core/utils.js";
 import {
   _promptArcBenefitType,
@@ -16,9 +16,11 @@ import {
 import { formatChosenBenefitLabel } from "./benefitLabels.js";
 
 import { getGroupShipActor } from "../missions/mission.js";
+import { resolveCharacterHouse } from "../house/house-reputation-spends.js";
 import {
   canEditShip,
   handleArcRemoveTrauma,
+  handleArcHouseAttribute,
   handleArcAttribute,
   handleArcDiscipline,
   handleArcValue,
@@ -28,6 +30,7 @@ import {
   handleAttribute,
   handleDiscipline,
   handleFocus,
+  handleHouseAttributeTrade,
   handleTalent,
 } from "./benefitHandlers.js";
 
@@ -55,6 +58,30 @@ async function recordAppliedShipBenefit(character, shipId, result) {
   } catch (error) {
     console.warn("sta-officers-log | Unable to record ship advancement", error);
   }
+}
+
+export async function getHouseAttributeBenefitAvailability(actor) {
+  if (!isKlingonModeEnabled() || !actor?.system?.showklingon) {
+    return { milestone: false, arc: false };
+  }
+  const house = await resolveCharacterHouse(actor);
+  if (!house || house.system?.dissolved) {
+    return { milestone: false, arc: false };
+  }
+  const keys = ["influence", "might", "wealth"];
+  const values = Object.fromEntries(
+    keys.map((key) => [key, Number(house.system?.[key])]),
+  );
+  const canIncrease = keys.some((key) => values[key] < 12);
+  const canTrade = keys.some(
+    (decreaseKey) =>
+      values[decreaseKey] > 6 &&
+      keys.some(
+        (increaseKey) =>
+          increaseKey !== decreaseKey && values[increaseKey] < 12,
+      ),
+  );
+  return { milestone: canTrade, arc: canIncrease };
 }
 
 function _getEligibleSupportingCharacters() {
@@ -102,7 +129,14 @@ export async function applyArcMilestoneBenefit(
   let pendingAction = initialAction != null ? String(initialAction) : null;
 
   while (true) {
-    const action = pendingAction ?? (await _promptArcBenefitType());
+    const houseBenefits = pendingAction
+      ? null
+      : await getHouseAttributeBenefitAvailability(actor);
+    const action =
+      pendingAction ??
+      (await _promptArcBenefitType({
+        arcHouseAttribute: houseBenefits?.arc,
+      }));
     pendingAction = null;
     if (!action || action === "cancel") return { applied: false };
 
@@ -113,6 +147,10 @@ export async function applyArcMilestoneBenefit(
 
     if (action === "attr") {
       return handleArcAttribute(actor);
+    }
+
+    if (action === "houseAttribute") {
+      return handleArcHouseAttribute(actor);
     }
 
     if (action === "disc") {
@@ -167,7 +205,14 @@ export async function applyNonArcMilestoneBenefitInternal(
   let pendingAction = initialAction != null ? String(initialAction) : null;
 
   while (true) {
-    const action = pendingAction ?? (await _promptBenefitType());
+    const houseBenefits = pendingAction
+      ? null
+      : await getHouseAttributeBenefitAvailability(actor);
+    const action =
+      pendingAction ??
+      (await _promptBenefitType({
+        houseAttributeTrade: houseBenefits?.milestone,
+      }));
     pendingAction = null;
     if (!action || action === "cancel") return { applied: false };
 
@@ -429,6 +474,10 @@ export async function applyNonArcMilestoneBenefitInternal(
 
     if (action === "attr") {
       return handleAttribute(actor);
+    }
+
+    if (action === "houseAttribute") {
+      return handleHouseAttributeTrade(actor);
     }
 
     if (action === "disc") {

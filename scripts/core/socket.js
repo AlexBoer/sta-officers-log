@@ -584,9 +584,17 @@ export function initSocket({ CallbackRequestApp, pendingResponses }) {
 
     const { updateGMSurveyMonitor } =
       await import("../acclaim/gmSurveyMonitor.js");
+    const {
+      getCharacterHouseReputationInfluence,
+      isHouseReputationSurveyEnabled,
+    } =
+      await import("../house/house-reputation-spends.js");
+    const houseInfluence = await getCharacterHouseReputationInfluence(actor);
     const survey = updateGMSurveyMonitor({
       actorId: actor.id,
       actorName: actor.name,
+      houseRelativeEnabled: isHouseReputationSurveyEnabled(actor),
+      houseRelativeType: houseInfluence?.type ?? null,
     });
     await moduleSocket.executeForOthers("acclaimSurveyMonitorUpdate", survey);
     return survey;

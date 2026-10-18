@@ -7,6 +7,10 @@ import {
 } from "./acclaimSurvey.js";
 import { canCurrentUserChangeActor } from "../core/utils.js";
 import { t } from "../core/i18n.js";
+import {
+  getCharacterHouseReputationInfluence,
+  isHouseReputationSurveyEnabled,
+} from "../house/house-reputation-spends.js";
 
 let _monitorEl = null;
 const _surveys = new Map();
@@ -19,12 +23,29 @@ function _answerIcon(answer) {
   return '<span class="sta-gm-monitor-icon-none">—</span>';
 }
 
-function _emptyChoices(type) {
+function _emptyChoices(
+  type,
+  houseRelativeEnabled = false,
+  houseRelativeType = null,
+) {
   const questions =
     type === "pos"
       ? getAcclaimPositiveQuestions()
       : getAcclaimNegativeQuestions();
-  return questions.map((_question, index) => ({ index, answer: null }));
+  const choices = questions.map((_question, index) => ({
+    index,
+    answer: null,
+  }));
+  if (houseRelativeEnabled) {
+    const isRelativeChoice =
+      (type === "pos" && houseRelativeType === "positive") ||
+      (type === "neg" && houseRelativeType === "negative");
+    choices.push({
+      index: questions.length,
+      answer: isRelativeChoice ? "yes" : null,
+    });
+  }
+  return choices;
 }
 
 function _canEdit(actorId) {
@@ -35,12 +56,71 @@ function _normalize(data) {
   const actorId = String(data?.actorId ?? "");
   const current = _surveys.get(actorId) ?? {};
   const actor = game.actors?.get?.(actorId);
-  const positiveChoices = Array.isArray(data?.positiveChoices)
-    ? data.positiveChoices
-    : (current.positiveChoices ?? _emptyChoices("pos"));
-  const negativeChoices = Array.isArray(data?.negativeChoices)
-    ? data.negativeChoices
-    : (current.negativeChoices ?? _emptyChoices("neg"));
+  const hasHouseRelativeEnabled = Object.hasOwn(
+    data ?? {},
+    "houseRelativeEnabled",
+  );
+  const houseRelativeEnabled = hasHouseRelativeEnabled
+    ? data.houseRelativeEnabled === true
+    : (current.houseRelativeEnabled ?? false);
+  const hasHouseRelativeType = Object.hasOwn(data ?? {}, "houseRelativeType");
+  const houseRelativeType = hasHouseRelativeType
+    ? data.houseRelativeType
+    : (current.houseRelativeType ?? null);
+  const relativeTypeChanged =
+    hasHouseRelativeType && houseRelativeType !== current.houseRelativeType;
+  const resetRelativeChoices =
+    (hasHouseRelativeEnabled && !current.houseRelativeEnabled) ||
+    relativeTypeChanged;
+  let positiveChoices = Array.isArray(data?.positiveChoices)
+    ? [...data.positiveChoices]
+    : (current.positiveChoices ??
+      _emptyChoices("pos", houseRelativeEnabled, houseRelativeType));
+  let negativeChoices = Array.isArray(data?.negativeChoices)
+    ? [...data.negativeChoices]
+    : (current.negativeChoices ??
+      _emptyChoices("neg", houseRelativeEnabled, houseRelativeType));
+
+  const positiveQuestionCount = getAcclaimPositiveQuestions().length;
+  const negativeQuestionCount = getAcclaimNegativeQuestions().length;
+  positiveChoices = positiveChoices.filter(
+    (choice) =>
+      choice.index < positiveQuestionCount ||
+      (houseRelativeEnabled &&
+        choice.index === positiveQuestionCount),
+  );
+  negativeChoices = negativeChoices.filter(
+    (choice) =>
+      choice.index < negativeQuestionCount ||
+      (houseRelativeEnabled &&
+        choice.index === negativeQuestionCount),
+  );
+  if (houseRelativeEnabled) {
+    const ensureHouseRelativeChoice = (choices, index, expectedType) => {
+      const existing = choices.find((choice) => choice.index === index);
+      const answer = resetRelativeChoices
+        ? houseRelativeType === expectedType
+          ? "yes"
+          : null
+        : (existing?.answer ?? null);
+      if (existing) {
+        return choices.map((choice) =>
+          choice.index === index ? { ...choice, answer } : choice,
+        );
+      }
+      return [...choices, { index, answer }];
+    };
+    positiveChoices = ensureHouseRelativeChoice(
+      positiveChoices,
+      positiveQuestionCount,
+      "positive",
+    );
+    negativeChoices = ensureHouseRelativeChoice(
+      negativeChoices,
+      negativeQuestionCount,
+      "negative",
+    );
+  }
   const positiveModifier = Math.max(
     0,
     Number(data?.positiveModifier ?? current.positiveModifier ?? 0) || 0,
@@ -55,7 +135,9 @@ function _normalize(data) {
     ...current,
     ...data,
     actorId,
+    houseRelativeType,
     actorName: actor?.name ?? data?.actorName ?? current.actorName ?? "Unknown",
+    houseRelativeEnabled,
     positiveChoices,
     negativeChoices,
     positiveModifier,
@@ -81,9 +163,11 @@ function _header(survey) {
   </div>`;
 }
 
-function _cells(surveys, type, index) {
+function _cells(surveys, type, index, isHouseRelative = false) {
   return surveys
     .map((survey) => {
+      if (isHouseRelative && !survey.houseRelativeEnabled)
+        return '<span class="sta-gm-monitor-answer" data-answer="none" data-editable="false"><span class="sta-gm-monitor-icon-none">—</span></span>';
       const choices =
         type === "pos" ? survey.positiveChoices : survey.negativeChoices;
       const answer =
@@ -106,7 +190,10 @@ function _modifiers(surveys, type) {
 function _content() {
   const surveys = [..._surveys.values()];
   const section = (type, questions, key, icon) => {
-    if (!questions.length) return "";
+    const showHouseRelative = surveys.some(
+      (survey) => survey.houseRelativeEnabled,
+    );
+    if (!questions.length && !showHouseRelative) return "";
     const interactionHint =
       type === "pos"
         ? `<div class="sta-gm-monitor-interaction-hint"><span></span><span>${t("sta-officers-log.gmMonitor.interactionHint")}</span></div>`
@@ -114,6 +201,15 @@ function _content() {
     let html = `<div class="sta-gm-monitor-section sta-gm-monitor-${type === "pos" ? "positive" : "negative"}">${interactionHint}<h4><span class="sta-gm-monitor-section-label"><i class="fa-solid ${icon}"></i>${t(key)}</span>${_modifiers(surveys, type)}</h4>`;
     for (let index = 0; index < questions.length; index++)
       html += `<div class="sta-gm-monitor-row" data-q-type="${type}" data-q-index="${index}"><span class="sta-gm-monitor-question-text">${foundry.utils.escapeHTML(questions[index])}</span>${_cells(surveys, type, index)}</div>`;
+    if (showHouseRelative) {
+      const question =
+        type === "pos"
+          ? t("sta-officers-log.acclaimSurvey.houseElevates") ||
+            "Your Reputation exceeds your House's Reputation, elevating your House (+1 positive influence)."
+          : t("sta-officers-log.acclaimSurvey.houseDisgraces") ||
+            "Your Reputation is lower than your House's Reputation, disgracing your House (+1 negative influence).";
+      html += `<div class="sta-gm-monitor-row sta-gm-monitor-house-relative" data-q-type="${type}" data-q-index="${questions.length}"><span class="sta-gm-monitor-question-text">${foundry.utils.escapeHTML(question)}</span>${_cells(surveys, type, questions.length, true)}</div>`;
+    }
     return `${html}</div>`;
   };
   return `<div class="sta-gm-monitor"><div class="sta-gm-monitor-header"><div class="sta-gm-monitor-label-spacer"></div>${surveys.map(_header).join("")}</div>${section("pos", getAcclaimPositiveQuestions(), "sta-officers-log.acclaimSurvey.positiveInfluences", "fa-plus")}${section("neg", getAcclaimNegativeQuestions(), "sta-officers-log.acclaimSurvey.negativeInfluences", "fa-minus")}</div>`;
@@ -244,17 +340,23 @@ export async function openSurveyMonitorForActor(actor) {
   const { getModuleSocket } = await import("../core/socket.js");
   const socket = getModuleSocket();
   if (!socket) return;
+  const houseRelativeEnabled = isHouseReputationSurveyEnabled(actor);
+  const houseInfluence = await getCharacterHouseReputationInfluence(actor);
   let survey;
   if (game.user.isGM) {
     survey = updateGMSurveyMonitor({
       actorId: actor.id,
       actorName: actor.name,
+      houseRelativeEnabled,
+      houseRelativeType: houseInfluence?.type ?? null,
     });
     await socket.executeForOthers("acclaimSurveyMonitorUpdate", survey);
   } else {
     survey = await socket.executeAsGM("acclaimSurveyMonitorOpen", {
       actorId: actor.id,
       requestingUserId: game.user.id,
+      houseRelativeEnabled,
+      houseRelativeType: houseInfluence?.type ?? null,
     });
     if (survey?.actorId) updateGMSurveyMonitor(survey);
   }

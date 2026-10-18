@@ -71,6 +71,18 @@ export function registerHouseDataModel() {
         highCouncilSeat: new fields.BooleanField({ initial: false }),
         dissolved: new fields.BooleanField({ initial: false }),
         leaderUuid: new fields.StringField({ nullable: true, initial: null }),
+        highCouncilSeatHolder: new fields.StringField({
+          nullable: true,
+          initial: null,
+        }),
+        dummyMembers: new fields.ArrayField(
+          new fields.SchemaField({
+            id: new fields.StringField({ blank: false }),
+            name: new fields.StringField({ blank: false }),
+            role: new fields.StringField({ initial: "" }),
+          }),
+          { initial: [] },
+        ),
         successionOrder: new fields.ArrayField(new fields.StringField(), {
           initial: [],
         }),

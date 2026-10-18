@@ -3,10 +3,12 @@
  */
 
 import { MODULE_ID } from "../core/constants.js";
+import { t } from "../core/i18n.js";
 import { STAActors } from "/systems/sta/module/actors/sta-actors.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
+const creatingMemberActors = new WeakMap();
 
 function _getStaActorsClass() {
   if (CONFIG?.Actor?.sheetClasses) {
@@ -24,6 +26,27 @@ function _getStaActorsClass() {
   return STAActors;
 }
 
+function _warnHouseEditPermission() {
+  ui.notifications?.warn?.(
+    game.i18n.localize("sta-officers-log.house.editMembersNoPermission") ||
+      "You do not have permission to edit this House.",
+  );
+}
+
+async function _updateHouse(sheet, changes) {
+  try {
+    await sheet.actor.update(changes);
+    return true;
+  } catch (error) {
+    console.error(`${MODULE_ID} | failed to update House`, error);
+    ui.notifications?.error?.(
+      game.i18n.localize("sta-officers-log.house.updateFailed") ||
+        "Could not update this House.",
+    );
+    return false;
+  }
+}
+
 export class HouseSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   _activeHouseTab = "details";
 
@@ -37,6 +60,13 @@ export class HouseSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       openHouseTalentPicker: HouseSheet._onOpenHouseTalentPicker,
       editHouseItem: HouseSheet._onEditHouseItem,
       deleteHouseItem: HouseSheet._onDeleteHouseItem,
+      addMember: HouseSheet._onAddMember,
+      editDummyMember: HouseSheet._onEditDummyMember,
+      removeDummyMember: HouseSheet._onRemoveDummyMember,
+      createMemberActor: HouseSheet._onCreateMemberActor,
+      addToSuccession: HouseSheet._onAddToSuccession,
+      moveSuccession: HouseSheet._onMoveSuccession,
+      removeFromSuccession: HouseSheet._onRemoveFromSuccession,
       onColourPalette: function (ev) {
         return this._onColourPalette(ev);
       },
@@ -52,7 +82,9 @@ export class HouseSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     window: {
       resizable: true,
     },
-    dragDrop: [{ dragSelector: null, dropSelector: ".house-sheet" }],
+    dragDrop: [
+      { dragSelector: ".house-item-row", dropSelector: ".house-sheet" },
+    ],
   };
 
   static PARTS = {
@@ -95,25 +127,45 @@ export class HouseSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     }));
     const houseUuid = String(this.actor.uuid ?? "");
     const houseId = String(this.actor.id ?? "");
-    const members = (game.actors ?? [])
+    const linkedMembers = (game.actors ?? [])
       .filter((actor) => {
         if (actor.type !== "character") return false;
         const assigned = String(actor.system?.houseActorUuid ?? "");
         return assigned === houseUuid || assigned === houseId;
       })
-      .sort((left, right) => left.name.localeCompare(right.name))
       .map((actor) => ({
+        ref: actor.uuid,
         id: actor.id,
         name: actor.name,
         img: actor.img,
         uuid: actor.uuid,
+        role: actor.system?.showklingon
+          ? String(actor.system?.houseRole ?? "").trim()
+          : "",
+        isDummy: false,
       }));
-    const characters = members.map((member) => ({
-      uuid: member.uuid,
-      name: member.name,
-      selected:
-        member.uuid === system.leaderUuid || member.id === system.leaderUuid,
+    const dummyMembers = (system.dummyMembers ?? []).map((member) => ({
+      ref: `dummy:${member.id}`,
+      id: member.id,
+      name: String(member.name ?? ""),
+      img: "icons/svg/mystery-man.svg",
+      uuid: null,
+      role: String(member.role ?? "").trim(),
+      isDummy: true,
     }));
+    const members = [...linkedMembers, ...dummyMembers].sort((left, right) =>
+      left.name.localeCompare(right.name),
+    );
+    const characters = members.map((member) => ({
+      ref: member.ref,
+      name: member.name,
+      selected: member.ref === system.leaderUuid || member.id === system.leaderUuid,
+      selectedSeatHolder: member.ref === system.highCouncilSeatHolder,
+    }));
+    const membersByRef = new Map(members.map((member) => [member.ref, member]));
+    const succession = (system.successionOrder ?? [])
+      .map((ref) => membersByRef.get(ref))
+      .filter(Boolean);
 
     return {
       actor: this.actor,
@@ -136,6 +188,13 @@ export class HouseSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
       members,
       memberCount: members.length,
       characters,
+      succession,
+      hasUnscheduledMembers: members.some(
+        (member) => !(system.successionOrder ?? []).includes(member.ref),
+      ),
+      unscheduledMembers: members.filter(
+        (member) => !(system.successionOrder ?? []).includes(member.ref),
+      ),
       status: system.status ?? {},
       legacy: system.legacy ?? {},
       temperament: system.temperament ?? {},
@@ -196,12 +255,14 @@ export class HouseSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
 
     if (!this._houseDragDrop) {
       this._houseDragDrop = new foundry.applications.ux.DragDrop({
-        dragSelector: null,
+        dragSelector: ".house-item-row",
         dropSelector: ".house-sheet",
         permissions: {
+          dragstart: () => this.actor.isOwner,
           drop: () => this.actor.isOwner,
         },
         callbacks: {
+          dragstart: this._onDragStart.bind(this),
           drop: this._onDrop.bind(this),
         },
       });
@@ -268,6 +329,253 @@ export class HouseSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     if (member) await member.sheet?.render(true);
   }
 
+  static async _onAddMember() {
+    await this._editDummyMember();
+  }
+
+  static async _onEditDummyMember(_event, target) {
+    const memberId = String(target.dataset.memberId ?? "");
+    const member = (this.actor.system?.dummyMembers ?? []).find(
+      (entry) => entry.id === memberId,
+    );
+    if (!member) return;
+    await this._editDummyMember(member);
+  }
+
+  async _editDummyMember(existing = null) {
+    if (!this.actor.isOwner) {
+      _warnHouseEditPermission();
+      return;
+    }
+    const title = existing
+      ? t("sta-officers-log.house.editMemberTitle") || "Edit House Member"
+      : t("sta-officers-log.house.addMemberTitle") || "Add House Member";
+    const result = await foundry.applications.api.DialogV2.wait({
+      classes: ["sta-officers-log"],
+      window: { title },
+      content: `<form>
+        <div class="form-group">
+          <label>${t("sta-officers-log.house.memberName") || "Name"}</label>
+          <input name="memberName" type="text" value="${foundry.utils.escapeHTML(existing?.name ?? "")}" required autofocus />
+        </div>
+        <div class="form-group">
+          <label>${t("sta-officers-log.house.role") || "House Role"}</label>
+          <input name="memberRole" type="text" value="${foundry.utils.escapeHTML(existing?.role ?? "")}" />
+        </div>
+      </form>`,
+      buttons: [
+        {
+          action: "save",
+          label: t("sta-officers-log.house.saveMember") || "Save",
+          default: true,
+          callback: (_event, _button, dialog) => ({
+            name: String(dialog.element.querySelector('[name="memberName"]')?.value ?? "").trim(),
+            role: String(dialog.element.querySelector('[name="memberRole"]')?.value ?? "").trim(),
+          }),
+        },
+        {
+          action: "cancel",
+          label: t("sta-officers-log.house.cancelMember") || "Cancel",
+        },
+      ],
+      close: () => null,
+    });
+    if (!result) return;
+    if (!result.name) {
+      ui.notifications?.warn?.(
+        t("sta-officers-log.house.memberNameRequired") ||
+          "A House member name is required.",
+      );
+      return;
+    }
+
+    const members = [...(this.actor.system?.dummyMembers ?? [])];
+    if (existing) {
+      const index = members.findIndex((entry) => entry.id === existing.id);
+      if (index < 0) return;
+      members[index] = { ...members[index], ...result };
+    } else {
+      members.push({ id: foundry.utils.randomID(), ...result });
+    }
+    if (!(await _updateHouse(this, { "system.dummyMembers": members }))) return;
+    this.render(true);
+  }
+
+  static async _onRemoveDummyMember(_event, target) {
+    if (!this.actor.isOwner) {
+      _warnHouseEditPermission();
+      return;
+    }
+    const memberId = String(target.dataset.memberId ?? "");
+    const member = (this.actor.system?.dummyMembers ?? []).find(
+      (entry) => entry.id === memberId,
+    );
+    if (!member) return;
+    const confirmed = await foundry.applications.api.DialogV2.confirm({
+      window: {
+        title: t("sta-officers-log.house.removeMemberTitle") || "Remove House Member",
+      },
+      content: `<p>${t("sta-officers-log.house.removeMemberConfirm") || "Remove"} ${foundry.utils.escapeHTML(member.name)}?</p>`,
+    });
+    if (!confirmed) return;
+    const ref = `dummy:${memberId}`;
+    const update = {
+      "system.dummyMembers": (this.actor.system?.dummyMembers ?? []).filter(
+        (entry) => entry.id !== memberId,
+      ),
+      "system.successionOrder": (this.actor.system?.successionOrder ?? []).filter(
+        (entry) => entry !== ref,
+      ),
+    };
+    if (this.actor.system?.leaderUuid === ref) update["system.leaderUuid"] = null;
+    if (this.actor.system?.highCouncilSeatHolder === ref)
+      update["system.highCouncilSeatHolder"] = null;
+    if (!(await _updateHouse(this, update))) return;
+    this.render(true);
+  }
+
+  static async _onCreateMemberActor(_event, target) {
+    if (!this.actor.isOwner) {
+      _warnHouseEditPermission();
+      return;
+    }
+    const memberId = String(target.dataset.memberId ?? "");
+    const member = (this.actor.system?.dummyMembers ?? []).find(
+      (entry) => entry.id === memberId,
+    );
+    if (!member) return;
+    let inFlight = creatingMemberActors.get(this);
+    if (!inFlight) {
+      inFlight = new Set();
+      creatingMemberActors.set(this, inFlight);
+    }
+    if (inFlight.has(memberId)) {
+      ui.notifications?.info?.(
+        t("sta-officers-log.house.memberCreateInProgress") ||
+          "A character is already being created from this House member.",
+      );
+      return;
+    }
+    inFlight.add(memberId);
+    let createdActor = null;
+    try {
+      createdActor = await Actor.create({
+        name: member.name,
+        type: "character",
+        ownership: {
+          default: CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE,
+          [game.user.id]: CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER,
+        },
+        system: {
+          showklingon: true,
+          houseActorUuid: this.actor.uuid,
+          houseRole: member.role ?? "",
+          house: this.actor.name,
+        },
+      });
+      if (!createdActor) {
+        throw new Error("Actor.create returned no character document.");
+      }
+
+      const dummyRef = `dummy:${memberId}`;
+      const update = {
+        "system.dummyMembers": (this.actor.system?.dummyMembers ?? []).filter(
+          (entry) => entry.id !== memberId,
+        ),
+      };
+      if (this.actor.system?.leaderUuid === dummyRef)
+        update["system.leaderUuid"] = createdActor.uuid;
+      if ((this.actor.system?.successionOrder ?? []).includes(dummyRef)) {
+        update["system.successionOrder"] = this.actor.system.successionOrder.map(
+          (ref) => (ref === dummyRef ? createdActor.uuid : ref),
+        );
+      }
+      if (this.actor.system?.highCouncilSeatHolder === dummyRef)
+        update["system.highCouncilSeatHolder"] = createdActor.uuid;
+      await this.actor.update(update);
+      this.render(true);
+      await createdActor.sheet?.render(true);
+    } catch (error) {
+      console.error(`${MODULE_ID} | failed to create character from House member`, error);
+      if (createdActor) {
+        try {
+          await createdActor.delete();
+        } catch (rollbackError) {
+          console.error(`${MODULE_ID} | failed to roll back created House member`, rollbackError);
+          ui.notifications?.error?.(
+            t("sta-officers-log.house.memberCreateRollbackFailed") ||
+              "The character was created, but could not be linked or rolled back. The dummy member is still listed.",
+          );
+          this.render(true);
+          return;
+        }
+      }
+      ui.notifications?.error?.(
+        t("sta-officers-log.house.memberCreateFailed") ||
+          "Could not create and link a character from this House member.",
+      );
+    } finally {
+      inFlight.delete(memberId);
+    }
+  }
+
+  static async _onAddToSuccession(_event, target) {
+    if (!this.actor.isOwner) {
+      _warnHouseEditPermission();
+      return;
+    }
+    const ref = String(
+      target.dataset.memberRef ??
+        target.closest(".house-succession-add")?.querySelector(
+          ".house-succession-select",
+        )?.value ??
+        "",
+    );
+    const order = [...(this.actor.system?.successionOrder ?? [])];
+    if (!ref || order.includes(ref)) return;
+    if (
+      !(await _updateHouse(this, {
+        "system.successionOrder": [...order, ref],
+      }))
+    )
+      return;
+    this.render(true);
+  }
+
+  static async _onMoveSuccession(_event, target) {
+    if (!this.actor.isOwner) {
+      _warnHouseEditPermission();
+      return;
+    }
+    const ref = String(target.dataset.memberRef ?? "");
+    const order = [...(this.actor.system?.successionOrder ?? [])];
+    const index = order.indexOf(ref);
+    const direction = target.dataset.direction === "up" ? -1 : 1;
+    const next = index + direction;
+    if (index < 0 || next < 0 || next >= order.length) return;
+    [order[index], order[next]] = [order[next], order[index]];
+    if (!(await _updateHouse(this, { "system.successionOrder": order })))
+      return;
+    this.render(true);
+  }
+
+  static async _onRemoveFromSuccession(_event, target) {
+    if (!this.actor.isOwner) {
+      _warnHouseEditPermission();
+      return;
+    }
+    const ref = String(target.dataset.memberRef ?? "");
+    if (
+      !(await _updateHouse(this, {
+        "system.successionOrder": (
+          this.actor.system?.successionOrder ?? []
+        ).filter((entry) => entry !== ref),
+      }))
+    )
+      return;
+    this.render(true);
+  }
+
   static async _onCreateHouseItem(_event, target) {
     const nameByType = {
       focus: "New Focus",
@@ -304,6 +612,21 @@ export class HouseSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     await this.actor.createEmbeddedDocuments("Item", [itemData]);
     this.render(true);
     return true;
+  }
+
+  _onDragStart(event) {
+    const row = event.currentTarget?.closest?.("[data-item-id]");
+    const itemId = row?.dataset.itemId;
+    const item = itemId && this.actor.items.get(itemId);
+    if (!item || !this.actor.isOwner) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.setData(
+      "text/plain",
+      JSON.stringify(item.toDragData()),
+    );
   }
 
   static async _onOpenHouseFocusPicker() {
@@ -380,76 +703,21 @@ export class HouseSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
     }
   }
 
-  async _onColourPalette(event, _target) {
+  // Delegate to the STA system's own palette dialog/application so House
+  // sheets stay in lockstep with whatever picker STA ships (new presets,
+  // the custom 5-color picker introduced in STA 2.8.2, etc). Both methods
+  // only touch `this.document`/`this.element`, so calling them against a
+  // House sheet instance works even though House isn't an STAActors sheet.
+  async _onColourPalette(event, target) {
     const staCls = _getStaActorsClass();
-    const palettes = staCls?.PALETTES ?? STAActors?.PALETTES ?? [];
-    const defaults = staCls?.DEFAULT_COLORS ?? STAActors?.DEFAULT_COLORS ?? {};
-    const current = this.document.system?.palette || "klingon";
-
-    const rows = palettes
-      .map((p) => {
-        const c = { ...defaults, ...p.colors };
-        return `
-        <label class="palette-row">
-          <input type="radio" name="palette" value="${p.id}" ${p.id === current ? "checked" : ""}>
-          <span class="palette-swatch">
-            <i style="background:${c.borderblue}"></i>
-            <i style="background:${c.borderbluedark}"></i>
-            <i style="background:${c.darkestblue}"></i>
-            <i style="background:${c.palestbluedark}"></i>
-          </span>
-          <span class="palette-name">${p.label}</span>
-        </label>`;
-      })
-      .join("");
-
-    const choice = await foundry.applications.api.DialogV2.wait({
-      window: { title: game.i18n.localize("sta.actor.character.palette") },
-      classes: ["dialogue"],
-      position: { left: event.clientX, top: event.clientY, width: 320 },
-      rejectClose: false,
-      content: `<div class="palette-list">${rows}</div>`,
-      buttons: [
-        {
-          action: "apply",
-          label: game.i18n.localize("sta.apps.apply"),
-          icon: "fa-solid fa-check",
-          default: true,
-          callback: (event, button) => button.form.elements.palette.value,
-        },
-      ],
-    });
-    if (choice) await this.document.update({ "system.palette": choice });
+    const impl = staCls?.prototype?._onColourPalette ?? STAActors.prototype._onColourPalette;
+    return impl.call(this, event, target);
   }
 
   _applyPalette() {
     const staCls = _getStaActorsClass();
-    const palettes = staCls?.PALETTES ?? STAActors?.PALETTES;
-    if (!Array.isArray(palettes) || !this.element) return;
-    const id = this.document.system?.palette || "klingon";
-    const palette =
-      palettes.find((p) => p.id === id) ??
-      palettes.find((p) => p.id === "klingon") ??
-      palettes[0];
-    const style = this.element.style;
-
-    for (const p of palettes) {
-      for (const key of Object.keys(p.colors)) {
-        style.removeProperty(`--sta-${key}`);
-      }
-    }
-    for (const [key, value] of Object.entries(palette.colors)) {
-      style.setProperty(`--sta-${key}`, value);
-    }
-
-    this.element.dataset.palette = id;
-    const shortId = id.replace(/^sta-utils-lcars-/, "");
-    this.element.dataset.paletteShort = shortId;
-    for (const cls of [...this.element.classList]) {
-      if (cls.startsWith("palette-")) this.element.classList.remove(cls);
-    }
-    this.element.classList.add(`palette-${id}`);
-    if (shortId !== id) this.element.classList.add(`palette-${shortId}`);
+    const impl = staCls?.prototype?._applyPalette ?? STAActors.prototype._applyPalette;
+    impl.call(this);
   }
 
   static async _onEditHouseItem(_event, target) {

@@ -293,6 +293,18 @@ export function prepareTalentPickerContext(
       "Only show talents I qualify for",
     emptyLabel:
       t("sta-officers-log.dialog.talentPicker.none") ?? "No talents found.",
+    selectionField: options.selectionField
+      ? {
+          label: options.selectionField.label,
+          options: options.selectionField.options.map((option, index) => ({
+            value: String(option.value),
+            label: String(option.label),
+            selected: index === 0,
+          })),
+        }
+      : null,
+    showBackButton: options.showBackButton === true,
+    backLabel: options.backLabel ?? "",
     groups,
     showCustomButton,
   };
@@ -301,7 +313,13 @@ export function prepareTalentPickerContext(
 export function bindTalentPickerInteractions(
   root,
   talents = [],
-  { onChoose = null, onPreview = null, onCancel = null, onCustom = null } = {},
+  {
+    onChoose = null,
+    onPreview = null,
+    onCancel = null,
+    onCustom = null,
+    onBack = null,
+  } = {},
 ) {
   if (!root) return { applyFilter: () => {} };
   if (root.dataset.staTalentPickerBound === "1") {
@@ -448,6 +466,10 @@ export function bindTalentPickerInteractions(
 
     if (action === "cancel") {
       if (onCancel) onCancel();
+      return;
+    }
+    if (action === "back") {
+      if (onBack) onBack();
       return;
     }
 
@@ -1123,6 +1145,9 @@ class TalentPickerApp extends Base {
       resolve = null,
       actor = null,
       pickerKind = "character",
+      selectionField = null,
+      showBackButton = false,
+      backLabel = "",
     } = {},
     options = {},
   ) {
@@ -1132,6 +1157,9 @@ class TalentPickerApp extends Base {
     this._resolved = false;
     this._actor = actor ?? null;
     this._pickerKind = pickerKind;
+    this._selectionField = selectionField;
+    this._showBackButton = showBackButton === true;
+    this._backLabel = String(backLabel ?? "");
   }
 
   static DEFAULT_OPTIONS = {
@@ -1155,6 +1183,9 @@ class TalentPickerApp extends Base {
   async _prepareContext(_options) {
     return prepareTalentPickerContext(this._talents, this._actor, {
       pickerKind: this._pickerKind,
+      selectionField: this._selectionField,
+      showBackButton: this._showBackButton,
+      backLabel: this._backLabel,
     });
   }
 
@@ -1202,11 +1233,35 @@ class TalentPickerApp extends Base {
           uuid: uuid || null,
           item: talentItem,
           talenttype: talentType ?? null,
+          ...(this._selectionField
+            ? {
+                replacementId: String(
+                  root
+                    .querySelector('[name="replacementTalentId"]')
+                    ?.value ?? "",
+                ),
+              }
+            : {}),
         });
         await super.close();
       },
       onCustom: async () => {
-        this._resolveOnce({ custom: true });
+        this._resolveOnce({
+          custom: true,
+          ...(this._selectionField
+            ? {
+                replacementId: String(
+                  root
+                    .querySelector('[name="replacementTalentId"]')
+                    ?.value ?? "",
+                ),
+              }
+            : {}),
+        });
+        await super.close();
+      },
+      onBack: async () => {
+        this._resolveOnce({ back: true });
         await super.close();
       },
       onCancel: async () => {
@@ -1274,9 +1329,19 @@ async function _promptTalentPickerFromPackList(options = {}) {
       pickerKind,
       talents,
       allowCustom: options.allowCustom !== false,
+      selectionField: options.selectionField ?? null,
+      showBackButton: options.showBackButton === true,
+      backLabel: options.backLabel ?? "",
     });
     if (!bridged.fallback) {
-      return bridged.chosen;
+      return bridged.chosen
+        ? {
+            ...bridged.chosen,
+            ...(options.selectionField
+              ? { replacementId: bridged.selectionValue }
+              : {}),
+          }
+        : null;
     }
   } catch (err) {
     console.error(
@@ -1291,6 +1356,9 @@ async function _promptTalentPickerFromPackList(options = {}) {
       resolve,
       actor: options.actor ?? null,
       pickerKind,
+      selectionField: options.selectionField ?? null,
+      showBackButton: options.showBackButton === true,
+      backLabel: options.backLabel ?? "",
     });
     app.render(true);
   });
@@ -1300,11 +1368,13 @@ export async function promptTalentChoiceFromCompendium({
   actor = null,
   packKey = "",
   allowCustom = true,
+  selectionField = null,
 } = {}) {
   return _promptTalentPickerFromPackList({
     actor,
     packKey,
     allowCustom,
+    selectionField,
     basePackKeys: TALENT_BASE_PACKS,
     extraPackKeys: [TALENT_CREW_PACK],
     priorityEntries: TALENT_BASE_PACKS.map((key, idx) => [key, idx + 1]),
@@ -1317,11 +1387,17 @@ export async function promptShipTalentChoiceFromCompendium({
   actor = null,
   packKey = "",
   allowCustom = true,
+  selectionField = null,
+  showBackButton = false,
+  backLabel = "",
 } = {}) {
   return _promptTalentPickerFromPackList({
     actor,
     packKey,
     allowCustom,
+    selectionField,
+    showBackButton,
+    backLabel,
     basePackKeys: SHIP_TALENT_BASE_PACKS,
     priorityEntries: SHIP_TALENT_BASE_PACKS.map((key, idx) => [key, idx + 1]),
     folderKind: "starship",
@@ -1520,6 +1596,8 @@ const formatRequirementClauseLabel = (category, clause) => {
     if (norm === "character") return "Character";
     if (norm === "starship") return "Starship";
   }
+
+  if (category === "condition") return rawValue;
 
   if (category === "systems") {
     const label = humanizeRequirementValue(rawValue) || rawValue;

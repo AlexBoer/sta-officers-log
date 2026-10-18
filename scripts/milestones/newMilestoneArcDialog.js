@@ -4,6 +4,7 @@ import {
   applyArcMilestoneBenefit,
   applyNonArcMilestoneBenefit,
   formatChosenBenefitLabel,
+  getHouseAttributeBenefitAvailability,
 } from "./benefits.js";
 
 const Base = foundry.applications.api.HandlebarsApplicationMixin(
@@ -62,6 +63,9 @@ class NewMilestoneArcApp extends Base {
   };
 
   async _prepareContext(_options) {
+    const houseBenefits = await getHouseAttributeBenefitAvailability(
+      this._actor,
+    );
     return {
       milestoneTabTitle: "New Milestone",
       arcTabTitle: "New Arc",
@@ -84,6 +88,16 @@ class NewMilestoneArcApp extends Base {
             "sta-officers-log.dialog.chooseMilestoneBenefit.increaseDiscipline",
           ),
         },
+        ...(houseBenefits.milestone
+          ? [
+              {
+                action: "houseAttribute",
+                label: t(
+                  "sta-officers-log.dialog.chooseMilestoneBenefit.houseAttributeTrade",
+                ),
+              },
+            ]
+          : []),
         {
           action: "focus",
           label: t("sta-officers-log.dialog.chooseMilestoneBenefit.addFocus"),
@@ -122,6 +136,16 @@ class NewMilestoneArcApp extends Base {
             "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseDiscipline",
           ),
         },
+        ...(houseBenefits.arc
+          ? [
+              {
+                action: "houseAttribute",
+                label: t(
+                  "sta-officers-log.dialog.chooseMilestoneBenefit.arcHouseAttributeIncrease",
+                ),
+              },
+            ]
+          : []),
         {
           action: "value",
           label: t(

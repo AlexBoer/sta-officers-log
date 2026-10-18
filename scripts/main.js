@@ -53,6 +53,7 @@ import {
 } from "./acclaim/customSpendOptions.js";
 import { registerAwardTalentSettings } from "./acclaim/awardTalents.js";
 import { registerHouseSettings } from "./house/house-settings.js";
+import { registerAdjustmentSettings } from "./adjustments/adjustmentSettings.js";
 import { warnMissingHouseOwnership } from "./house/house-assignment.js";
 import { useValue } from "./values/useValue.js";
 import { promptShipTalentChoiceFromCompendium } from "./milestones/talentPickerDialog.js";
@@ -317,6 +318,12 @@ function safeRegisterSettings() {
     registerHouseSettings();
   } catch (err) {
     console.error(`${MODULE_ID} | failed to register House settings`, err);
+  }
+
+  try {
+    registerAdjustmentSettings();
+  } catch (err) {
+    console.error(`${MODULE_ID} | failed to register Adjustment settings`, err);
   }
 
   try {

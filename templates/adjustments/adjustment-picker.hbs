@@ -1,0 +1,19 @@
+<form class="sta-adjustment-picker" autocomplete="off">
+  <section class="content">
+    <div class="tab active" role="tabpanel">
+      {{#if supportingCharacter}}
+        <div class="sta-adjustment-supporting-heading">
+          <span>{{supportingHeading}}</span>
+          <img src="{{supportingCharacter.img}}" alt="{{supportingCharacter.name}}">
+          <strong>{{supportingCharacter.name}}</strong>
+        </div>
+      {{/if}}
+      <p>{{prompt}}</p>
+      <div class="sta-callbacks-vertical-footer sta-benefit-buttons">
+        {{#each options}}
+          <button type="button" class="dialog-button" data-action="{{action}}">{{label}}</button>
+        {{/each}}
+      </div>
+    </div>
+  </section>
+</form>

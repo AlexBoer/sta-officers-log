@@ -15,6 +15,199 @@ function rerenderHouse(uuid) {
   });
 }
 
+function organizeCharacterFields(root) {
+  const biography = root.querySelector('.tab[data-tab="biography"]');
+  if (!biography || biography.querySelector(".sta-character-profile-pair")) return;
+
+  const selectors = {
+    pronouns: ".column.pronouns",
+    species: ".column.species",
+    career: ".column.careerpath",
+    experience: ".column.experience",
+    assignment: ".column.assignment",
+    division: ".column.division",
+    rank: ".column.rank",
+    role: ".column.characterrole",
+    environment: ".column.environment",
+    upbringing: ".column.upbringing",
+    pastimes: ".column.pastimes",
+    careerEvents: ".column.careerevents",
+  };
+  const fields = Object.fromEntries(
+    Object.entries(selectors).map(([key, selector]) => [
+      key,
+      biography.querySelector(selector),
+    ]),
+  );
+  const anchor = fields.pronouns?.closest(".row");
+  if (!anchor) return;
+
+  const originalRows = [
+    ...new Set(
+      Object.values(fields)
+        .filter(Boolean)
+        .map((field) => field.closest(".row"))
+        .filter((row) => row && row !== anchor),
+    ),
+  ];
+
+  const divisionCustom = fields.division?.querySelector(".custom-division");
+  if (divisionCustom) fields.division.append(divisionCustom);
+
+  const rows = [
+    {
+      className: "sta-character-profile-pair",
+      fields: [fields.pronouns, fields.species],
+    },
+    {
+      className: "sta-character-profile-pair",
+      fields: [fields.career, fields.experience],
+    },
+    {
+      className: "sta-character-assignment-row",
+      fields: [
+        fields.assignment,
+        fields.division,
+        fields.rank,
+        fields.role,
+      ],
+    },
+    {
+      className: "sta-character-profile-pair",
+      fields: [fields.environment, fields.upbringing],
+    },
+    {
+      className: "sta-character-profile-pair",
+      fields: [fields.pastimes, fields.careerEvents],
+    },
+  ].filter((row) =>
+    row.className === "sta-character-assignment-row"
+      ? Boolean(fields.assignment && fields.rank && fields.role)
+      : row.fields.every(Boolean),
+  );
+
+  if (fields.assignment && fields.division && fields.rank && fields.role) {
+    fields.division.classList.add("sta-character-division-field");
+  }
+
+  const reference = anchor.nextSibling;
+  rows.forEach(({ className, fields: rowFields }) => {
+    const row = document.createElement("div");
+    row.className = `row ${className}`;
+    const visibleFields = rowFields.filter(Boolean);
+    if (
+      className === "sta-character-assignment-row" &&
+      visibleFields.length === 3
+    ) {
+      row.classList.add("sta-character-assignment-row-three");
+    }
+    row.append(...visibleFields);
+    anchor.parentElement.insertBefore(row, reference);
+  });
+
+  originalRows.forEach((row) => {
+    if (!row.children.length) row.remove();
+  });
+  if (!anchor.children.length) anchor.remove();
+}
+
+function organizeKlingonHouseFields(root, actor) {
+  const house = root.querySelector(".column.house");
+  const caste = root.querySelector(".column.caste");
+  const status = root.querySelector(".column.status");
+  const legacy = root.querySelector(".column.legacy");
+  const temperament = root.querySelector(".column.temperament");
+  const history = root.querySelector(".column.househistory");
+  const houseRow = house?.closest(".row");
+  const originalFieldRows = [
+    status?.closest(".row"),
+    legacy?.closest(".row"),
+    temperament?.closest(".row"),
+    history?.closest(".row"),
+  ].filter((row, index, rows) => row && row !== houseRow && rows.indexOf(row) === index);
+  if (
+    !houseRow ||
+    !caste ||
+    !status ||
+    !legacy ||
+    !temperament ||
+    !history ||
+    root.querySelector(".sta-house-role-column")
+  ) {
+    return;
+  }
+
+  const roleColumn = document.createElement("div");
+  roleColumn.className = "column house-role sta-house-role-column";
+  const roleHeader = document.createElement("div");
+  roleHeader.className = "title";
+  roleHeader.textContent = t("sta-officers-log.house.role") || "House Role";
+  const roleInput = document.createElement("input");
+  roleInput.type = "text";
+  roleInput.className = "text-entry";
+  roleInput.dataset.houseRoleInput = "true";
+  roleInput.value = String(actor.system?.houseRole ?? "");
+  roleInput.placeholder =
+    t("sta-officers-log.house.rolePlaceholder") || "House Role";
+  roleInput.readOnly = !actor.isOwner;
+  roleInput.addEventListener("change", async () => {
+    if (!actor.isOwner) return;
+    try {
+      await actor.update({ "system.houseRole": roleInput.value.trim() });
+    } catch (error) {
+      console.error("sta-officers-log | failed to update House role", error);
+      ui.notifications?.error?.(
+        t("sta-officers-log.house.roleUpdateFailed") ||
+          "Could not update House role.",
+      );
+    }
+  });
+  roleColumn.append(roleHeader, roleInput);
+
+  const houseSection = document.createElement("div");
+  houseSection.className = "section sta-klingon-house-section";
+  const sectionHeader = document.createElement("div");
+  sectionHeader.className =
+    "title sta-klingon-house-section-header";
+  sectionHeader.textContent =
+    t("sta-officers-log.house.sectionHeader") || "Klingon House";
+
+  const statusRow = document.createElement("div");
+  statusRow.className = "row sta-klingon-house-row";
+  statusRow.append(status, legacy, temperament);
+  const historyRow = document.createElement("div");
+  historyRow.className = "row sta-klingon-house-history-row";
+  historyRow.append(history);
+
+  houseRow.classList.add("sta-klingon-house-row");
+  houseRow.replaceChildren(house, roleColumn, caste);
+  houseRow.before(houseSection);
+  houseSection.append(sectionHeader, houseRow, statusRow, historyRow);
+  originalFieldRows.forEach((row) => {
+    if (!row.children.length) row.remove();
+  });
+
+  const klingonCheckbox = root.querySelector('[name="system.showklingon"]');
+  houseSection.classList.toggle(
+    "hidden",
+    !(klingonCheckbox?.checked ?? actor.system?.showklingon),
+  );
+  for (const column of [
+    house,
+    roleColumn,
+    caste,
+    status,
+    legacy,
+    temperament,
+    history,
+  ]) {
+    column.classList.toggle(
+      "hidden",
+      !(klingonCheckbox?.checked ?? actor.system?.showklingon),
+    );
+  }
+}
+
 export async function warnMissingHouseOwnership(users = game.users ?? []) {
   if (!game.user?.isGM) return;
 
@@ -69,13 +262,15 @@ async function applyAssignedHouseFields(root, actor) {
     input.title = "Inherited from assigned House";
   };
 
-  setReadonlyValue("system.influence", house.system?.influence);
-  setReadonlyValue("system.might", house.system?.might);
-  setReadonlyValue("system.wealth", house.system?.wealth);
-  setReadonlyValue("system.status", house.system?.status?.value);
-  setReadonlyValue("system.legacy", house.system?.legacy?.value);
-  setReadonlyValue("system.temperament", house.system?.temperament?.value);
-  setReadonlyValue("system.house", house.name);
+  if (!house.system?.dissolved) {
+    setReadonlyValue("system.influence", house.system?.influence);
+    setReadonlyValue("system.might", house.system?.might);
+    setReadonlyValue("system.wealth", house.system?.wealth);
+    setReadonlyValue("system.status", house.system?.status?.value);
+    setReadonlyValue("system.legacy", house.system?.legacy?.value);
+    setReadonlyValue("system.temperament", house.system?.temperament?.value);
+    setReadonlyValue("system.house", house.name);
+  }
 
   const row = root.querySelector(".sta-house-assignment-row");
   if (row && !row.querySelector(".sta-open-house-button")) {
@@ -96,10 +291,25 @@ export function installHouseAssignmentControl(root, actor) {
   const klingonCheckbox = root.querySelector('[name="system.showklingon"]');
   if (!houseContainer) return;
 
+  organizeCharacterFields(root);
+  organizeKlingonHouseFields(root, actor);
+  const roleColumn = root.querySelector(".sta-house-role-column");
+
   if (klingonCheckbox?.dataset.houseAssignmentWired !== "1") {
     klingonCheckbox.dataset.houseAssignmentWired = "1";
     klingonCheckbox.addEventListener("change", () => {
       houseContainer.classList.toggle("hidden", !klingonCheckbox.checked);
+      root
+        .querySelector(".sta-klingon-house-section")
+        ?.classList.toggle("hidden", !klingonCheckbox.checked);
+      roleColumn?.classList.toggle("hidden", !klingonCheckbox.checked);
+      root
+        .querySelectorAll(
+          ".sta-klingon-house-row .column, .sta-klingon-house-history-row .column",
+        )
+        .forEach((column) =>
+          column.classList.toggle("hidden", !klingonCheckbox.checked),
+        );
     });
   }
 

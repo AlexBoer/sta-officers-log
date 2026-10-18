@@ -9,7 +9,7 @@
 
 import { MODULE_ID } from "../core/constants.js";
 import { applyKlingonMode, isKlingonModeEnabled, t } from "../core/i18n.js";
-import { isAcclaimSurveyEnabled } from "./acclaimSurvey.js";
+import { isAcclaimSurveyEnabled, isAcclaimSavingAllowed } from "./acclaimSurvey.js";
 import {
   getCustomAcclaimOptions,
   getCustomReprimandOptions,
@@ -28,6 +28,44 @@ import {
 // Reputation is capped at 5 (STA core rules); "Increase Reputation" is
 // hidden once the actor is already at the cap.
 const MAX_REPUTATION = 5;
+const INCREMENTAL_SPEND_PROGRESS_FLAG = "incrementalSpendProgress";
+
+function _incrementalSpendKey(type, option) {
+  return encodeURIComponent(`${type}:${option.uuid ?? option.action}`).replace(
+    /\./g,
+    "%2E",
+  );
+}
+
+function _getIncrementalSpendProgress(actor, type, option) {
+  const allProgress =
+    actor.getFlag?.(MODULE_ID, INCREMENTAL_SPEND_PROGRESS_FLAG) ?? {};
+  const currentKey = _incrementalSpendKey(type, option);
+  const legacyKey = encodeURIComponent(
+    `${type}:${option.uuid ?? option.action}`,
+  );
+  const legacyStored = legacyKey
+    .split(".")
+    .reduce((value, part) => value?.[part], allProgress);
+  const stored =
+    allProgress[currentKey] ??
+    allProgress[legacyKey] ??
+    legacyStored ??
+    {};
+  return {
+    progress: Math.max(0, parseInt(stored.progress, 10) || 0),
+    completed: Math.max(0, parseInt(stored.completed, 10) || 0),
+    totalSpent: Math.max(0, parseInt(stored.totalSpent, 10) || 0),
+  };
+}
+
+async function _setIncrementalSpendProgress(actor, type, option, progress) {
+  const allProgress = {
+    ...(actor.getFlag?.(MODULE_ID, INCREMENTAL_SPEND_PROGRESS_FLAG) ?? {}),
+  };
+  allProgress[_incrementalSpendKey(type, option)] = progress;
+  await actor.setFlag(MODULE_ID, INCREMENTAL_SPEND_PROGRESS_FLAG, allProgress);
+}
 
 function _filterReputationSpendOptions(options) {
   if (isHouseReputationSpendsEnabled()) return options;
@@ -196,9 +234,33 @@ function _buildSpendContent(
   let houseHeaderInserted = false;
   for (const opt of options) {
     const effCost = effectiveCosts[opt.action];
+    const isIncremental = opt.incrementalSpend === true;
+    const incrementalProgress = isIncremental
+      ? _getIncrementalSpendProgress(actor, type, opt)
+      : null;
+    const incrementalTarget = isIncremental ? opt.costMax : null;
+    const remainingTarget = isIncremental
+      ? Math.max(0, incrementalTarget - incrementalProgress.progress)
+      : null;
 
-    // Only show options the player can afford (base/minimum cost ≤ budget)
-    if (effCost > totalBudget) continue;
+    // Only allow a below-minimum contribution when it exactly completes the
+    // incremental target.
+    if (
+      (!isIncremental && effCost > totalBudget) ||
+      (isIncremental &&
+        totalBudget < effCost &&
+        !(remainingTarget < effCost && totalBudget >= remainingTarget))
+    )
+      continue;
+    if (
+      isIncremental &&
+      (!Number.isInteger(effCost) ||
+        effCost <= 0 ||
+        !Number.isInteger(incrementalTarget) ||
+        incrementalTarget <= effCost ||
+        remainingTarget <= 0)
+    )
+      continue;
 
     if (opt.isHouseReputationSpend && !houseHeaderInserted) {
       houseHeaderInserted = true;
@@ -246,22 +308,38 @@ function _buildSpendContent(
     // Bounded cost ranges (min–max, from awards or custom acclaim/reprimand
     // options) and open-ended variable costs ("1+") both let the player type
     // an amount; only bounded ranges cap the maximum.
-    const hasCostRange = Number.isFinite(opt.costMax) && opt.costMax > effCost;
+    const hasCostRange =
+      !isIncremental &&
+      Number.isFinite(opt.costMax) &&
+      opt.costMax > effCost;
     const isVariable =
+      isIncremental ||
       hasCostRange ||
       opt.action === "gainFavor" ||
       opt.action === "gainAntipathy" ||
-      opt.action === "strippedOfAward";
-    const costDisplay = hasCostRange
+      opt.action === "strippedOfAward" ||
+      opt.action === "houseForgeAlliance" ||
+      opt.action === "houseInciteDivision";
+    const costDisplay = isIncremental
+      ? `${effCost} min / ${incrementalTarget} total`
+      : hasCostRange
       ? `${effCost}\u2013${opt.costMax}`
       : isVariable
         ? `${effCost}+`
         : String(effCost);
+    const inputMin = isIncremental
+      ? Math.min(effCost, remainingTarget)
+      : effCost;
+    const inputMax = isIncremental ? remainingTarget : opt.costMax;
     const variableInput = isVariable
-      ? `<input type="number" class="sta-spend-variable-input" min="${effCost}" ${hasCostRange ? `max="${opt.costMax}" data-max-cost="${opt.costMax}"` : ""} value="${effCost}" data-base-cost="${effCost}" />`
+      ? `<input type="number" class="sta-spend-variable-input" min="${inputMin}" ${isIncremental || hasCostRange ? `max="${inputMax}" data-max-cost="${inputMax}"` : ""} value="${inputMin}" data-base-cost="${inputMin}" ${isIncremental ? `data-incremental-min="${effCost}" data-incremental="true"` : ""} />`
+      : "";
+    const initialCost = isIncremental ? inputMin : effCost;
+    const incrementalProgressText = isIncremental
+      ? `<p class="sta-spend-option-progress">Progress: ${incrementalProgress.progress} / ${incrementalTarget} (${incrementalProgress.totalSpent} total spent${incrementalProgress.completed ? `; ${incrementalProgress.completed} completed` : ""})</p>`
       : "";
     rows += `
-      <div class="sta-spend-option" data-action="${opt.action}" data-cost="${effCost}"${isVariable ? ' data-variable="true"' : ""}>
+      <div class="sta-spend-option" data-action="${opt.action}" data-cost="${initialCost}"${isVariable ? ' data-variable="true"' : ""}>
         <label>
           <input type="checkbox" value="${opt.action}" />
           <span class="sta-spend-option-label">${label}</span>
@@ -269,6 +347,7 @@ function _buildSpendContent(
           ${variableInput}
         </label>
         ${conditionDisplay ? `<p class="sta-spend-option-condition">${conditionLabel}: ${conditionDisplay}</p>` : ""}
+        ${incrementalProgressText}
         <p class="sta-spend-option-desc">${desc}</p>
       </div>`;
   }
@@ -308,11 +387,13 @@ function _buildSpendContent(
       <div class="sta-spend-adhoc-custom">
         <h4 class="sta-spend-subheader">${t("sta-officers-log.reputationSpend.adhocCustomHeader") || "Custom Entry"}</h4>
         <div class="sta-spend-adhoc-row">
-          <label>
+          <label class="sta-spend-adhoc-name-row">
             <input type="checkbox" class="sta-spend-adhoc-cb" />
             <input type="text" class="sta-spend-adhoc-name" placeholder="${t("sta-officers-log.reputationSpend.adhocNamePlaceholder") || "Name"}" />
-            <span class="sta-spend-option-cost">(${t("sta-officers-log.reputationSpend.cost") || "Cost"}:</span>
-            <input type="number" class="sta-spend-adhoc-cost" min="0" value="1" /><span class="sta-spend-option-cost">)</span>
+          </label>
+          <label class="sta-spend-adhoc-cost-row">
+            <span class="sta-spend-option-cost">${t("sta-officers-log.reputationSpend.cost") || "Cost"}:</span>
+            <input type="number" class="sta-spend-adhoc-cost" min="0" value="1" />
           </label>
         </div>
       </div>
@@ -351,7 +432,7 @@ export async function openSpendDialog(type, amount, actor) {
     actor,
     isAcclaim ? "acclaim" : "reprimand",
   );
-  const options = _filterReputationSpendOptions(
+  const allOptions = _filterReputationSpendOptions(
     isAcclaim
       ? [
           ...getCustomAcclaimOptions(),
@@ -359,6 +440,26 @@ export async function openSpendDialog(type, amount, actor) {
           ...houseOptions,
         ]
       : [...getCustomReprimandOptions(), ...houseOptions],
+  );
+  const invalidIncrementalOptions = allOptions.filter(
+    (option) =>
+      option.incrementalSpend === true &&
+      (!Number.isInteger(option.cost) ||
+        option.cost <= 0 ||
+        !Number.isInteger(option.costMax) ||
+        option.costMax <= option.cost),
+  );
+  if (invalidIncrementalOptions.length) {
+    console.error(
+      `${MODULE_ID} | incremental spend options require a positive minimum and a greater total target`,
+      invalidIncrementalOptions.map((option) => option.label),
+    );
+    ui.notifications?.warn?.(
+      "Some incremental spend options are unavailable because their minimum cost or total target is invalid.",
+    );
+  }
+  const options = allOptions.filter(
+    (option) => !invalidIncrementalOptions.includes(option),
   );
 
   const content = _buildSpendContent(
@@ -400,15 +501,30 @@ export async function openSpendDialog(type, amount, actor) {
       /** Recalculate total cost of all checked options and update UI. */
       const updateTotal = () => {
         let total = 0;
+        let checkedCount = 0;
+        let validTargets = true;
         for (const cb of el.querySelectorAll(
           '.sta-spend-option input[type="checkbox"]:checked',
         )) {
           const optEl = cb.closest(".sta-spend-option");
           total += getEffectiveCost(optEl);
+          checkedCount++;
+          const variableInput = optEl?.querySelector(
+            ".sta-spend-variable-input",
+          );
+          if (
+            variableInput?.dataset.incremental === "true" &&
+            (getEffectiveCost(optEl) <
+              Number.parseInt(variableInput.min ?? "1", 10) ||
+              getEffectiveCost(optEl) >
+                Number.parseInt(variableInput.dataset.maxCost ?? "0", 10))
+          )
+            validTargets = false;
         }
         // Include ad-hoc custom cost when checked
         if (adhocCb?.checked) {
           total += Math.max(0, parseInt(adhocCost?.value, 10) || 0);
+          if ((adhocName?.value ?? "").trim()) checkedCount++;
         }
         if (totalAmountEl) totalAmountEl.textContent = String(total);
         if (totalBar) {
@@ -418,7 +534,8 @@ export async function openSpendDialog(type, amount, actor) {
           );
         }
         if (confirmBtn) {
-          confirmBtn.disabled = total === 0 || total > totalBudget;
+          confirmBtn.disabled =
+            checkedCount === 0 || total > totalBudget || !validTargets;
         }
       };
 
@@ -430,8 +547,9 @@ export async function openSpendDialog(type, amount, actor) {
           const maxCost = numInput.dataset.maxCost
             ? parseInt(numInput.dataset.maxCost, 10)
             : null;
+          const minCost = parseInt(numInput.min ?? "0", 10);
           let val = Math.max(
-            baseCost,
+            minCost,
             parseInt(numInput.value, 10) || baseCost,
           );
           if (Number.isFinite(maxCost)) val = Math.min(val, maxCost);
@@ -481,7 +599,10 @@ export async function openSpendDialog(type, amount, actor) {
           )) {
             const optEl = cb.closest(".sta-spend-option");
             const effCost = parseInt(optEl?.dataset?.cost ?? "0", 10);
-            selections.push({ action: cb.value, cost: effCost });
+            selections.push({
+              action: cb.value,
+              cost: effCost,
+            });
           }
           // Include ad-hoc custom entry if checked and has a name
           const adhocCbEl = el.querySelector(".sta-spend-adhoc-cb");
@@ -516,12 +637,97 @@ export async function openSpendDialog(type, amount, actor) {
     t("sta-officers-log.reputationSpend.awardImportFailed") ||
     "Could not add {name} to the character sheet automatically. Please add it manually.";
 
-  // Selecting an Award option copies the talent item straight from the
-  // compendium onto the actor, rather than leaving it as a freeform note.
+  const incrementalOutcomes = new Map();
+  for (const selection of result) {
+    const opt = options.find((option) => option.action === selection.action);
+    if (!opt?.incrementalSpend) continue;
+
+    const previous = _getIncrementalSpendProgress(actor, type, opt);
+    const minimum = Number(opt.cost);
+    const target = Number(opt.costMax);
+    const contribution = Number(selection.cost);
+    if (
+      !Number.isInteger(contribution) ||
+      (contribution < minimum &&
+        previous.progress + contribution !== target) ||
+      !Number.isInteger(target) ||
+      target <= minimum ||
+      previous.progress >= target ||
+      contribution > totalBudget ||
+      previous.progress + contribution > target
+    ) {
+      incrementalOutcomes.set(selection.action, {
+        ok: false,
+        progress: previous.progress,
+        target,
+        completed: previous.completed,
+        totalSpent: previous.totalSpent,
+        isAward: opt.isAward === true,
+      });
+      continue;
+    }
+
+    const combinedProgress = previous.progress + contribution;
+    const completedThisTime = combinedProgress === target;
+    const next = {
+      progress: completedThisTime ? 0 : combinedProgress,
+      completed: previous.completed + (completedThisTime ? 1 : 0),
+      totalSpent: previous.totalSpent + contribution,
+    };
+    let progressSaved = false;
+    try {
+      await _setIncrementalSpendProgress(actor, type, opt, next);
+      progressSaved = true;
+
+      if (opt.isAward && completedThisTime) {
+        const doc = await fromUuid(opt.uuid);
+        if (!doc) throw new Error(`Award talent not found: ${opt.uuid}`);
+        const itemData = doc.toObject();
+        delete itemData._id;
+        await actor.createEmbeddedDocuments("Item", [itemData]);
+      }
+
+      incrementalOutcomes.set(selection.action, {
+        ok: true,
+        progress: next.progress,
+        target,
+        completed: next.completed,
+        totalSpent: next.totalSpent,
+        completedThisTime,
+        isAward: opt.isAward === true,
+      });
+    } catch (err) {
+      console.error(
+        `${MODULE_ID} | failed to apply incremental Reputation spend`,
+        err,
+      );
+      if (progressSaved) {
+        try {
+          await _setIncrementalSpendProgress(actor, type, opt, previous);
+        } catch (rollbackError) {
+          console.error(
+            `${MODULE_ID} | failed to roll back incremental spend progress`,
+            rollbackError,
+          );
+        }
+      }
+      incrementalOutcomes.set(selection.action, {
+        ok: false,
+        progress: previous.progress,
+        target,
+        completed: previous.completed,
+        totalSpent: previous.totalSpent,
+        isAward: opt.isAward === true,
+      });
+    }
+  }
+
+  // Selecting a non-incremental Award option copies its talent item straight
+  // from the compendium onto the actor, rather than leaving it as a note.
   const awardOutcomes = new Map();
   for (const r of result) {
     const opt = options.find((o) => o.action === r.action);
-    if (!opt?.isAward || !opt?.uuid) continue;
+    if (!opt?.isAward || !opt?.uuid || opt.incrementalSpend) continue;
 
     try {
       const doc = await fromUuid(opt.uuid);
@@ -539,10 +745,15 @@ export async function openSpendDialog(type, amount, actor) {
   const houseOutcomes = new Map();
   for (const r of result) {
     const opt = options.find((o) => o.action === r.action);
-    if (!opt?.isHouseReputationSpend || opt.isHouseManualSpend) continue;
+    if (!opt?.isHouseReputationSpend) continue;
 
     try {
-      const applied = await applyHouseReputationSpend(opt);
+      const applied = await applyHouseReputationSpend({
+        ...opt,
+        ...r,
+        spendType: type,
+        spentBy: actor.name,
+      });
       houseOutcomes.set(r.action, { ok: applied });
     } catch (err) {
       console.error(
@@ -554,7 +765,7 @@ export async function openSpendDialog(type, amount, actor) {
   }
 
   const failedAutomaticActions = new Set(
-    [...awardOutcomes, ...houseOutcomes]
+    [...awardOutcomes, ...houseOutcomes, ...incrementalOutcomes]
       .filter(([, outcome]) => !outcome.ok)
       .map(([action]) => action),
   );
@@ -576,7 +787,7 @@ export async function openSpendDialog(type, amount, actor) {
 
   if (failedAutomaticActions.size) {
     ui.notifications?.error?.(
-      "One or more automatic Reputation spends failed. Their cost was not spent and has been saved so you can try again.",
+      "One or more automatic Reputation spends or House Development records failed. Their cost was not spent and has been saved so you can try again.",
     );
   }
 
@@ -594,8 +805,12 @@ export async function openSpendDialog(type, amount, actor) {
     const desc = opt?.desc || "";
     const outcome = awardOutcomes.get(r.action);
     const houseOutcome = houseOutcomes.get(r.action);
+    const incrementalOutcome = incrementalOutcomes.get(r.action);
     const manualHouseSpend = opt?.isHouseManualSpend === true;
-    if (!outcome && !houseOutcome && !manualHouseSpend)
+    const escalationNote = r.action === "houseInciteDivision"
+      ? " If this House was already a rival, escalate its hostility; the GM determines whether this becomes a lasting feud or war."
+      : "";
+    if (!outcome && !houseOutcome && !incrementalOutcome?.isAward)
       hasNonAwardSelection = true;
     const outcomeNote = outcome
       ? `<br/><em class="${outcome.ok ? "sta-spend-chat-award-ok" : "sta-spend-chat-award-failed"}">${
@@ -603,12 +818,28 @@ export async function openSpendDialog(type, amount, actor) {
             ? awardAddedNote
             : awardImportFailedTemplate.replace("{name}", lbl)
         }</em>`
-      : houseOutcome
+      : incrementalOutcome
+        ? `<br/><em class="${incrementalOutcome.ok ? "sta-spend-chat-award-ok" : "sta-spend-chat-award-failed"}">${
+            !incrementalOutcome.ok
+              ? "Could not record incremental progress; the spend was not charged."
+              : incrementalOutcome.completedThisTime && incrementalOutcome.isAward
+                ? `${awardAddedNote} Total target ${incrementalOutcome.target} reached (${incrementalOutcome.completed} completed); progress reset for another purchase.`
+                : incrementalOutcome.completedThisTime
+                  ? `Incremental target reached. Apply the effect manually. Progress reset for another purchase (${incrementalOutcome.completed} completed).`
+                  : `Progress: ${incrementalOutcome.progress} / ${incrementalOutcome.target} (${incrementalOutcome.totalSpent} total spent).`
+          }</em>`
+        : houseOutcome
         ? `<br/><em class="${houseOutcome.ok ? "sta-spend-chat-award-ok" : "sta-spend-chat-award-failed"}">${
-            houseOutcome.ok ? "Applied to House." : "Could not apply to House."
+            houseOutcome.ok
+              ? manualHouseSpend
+                ? `Recorded in House Development. Apply the effect manually and record any target or outcome in your notes.${escalationNote}`
+                : `Applied to House.${r.action === "houseHighestStatus" ? " Record the seat holder in your notes." : ""}${escalationNote}`
+              : manualHouseSpend
+                ? "Could not record House Development; the spend was not charged."
+                : "Could not apply to House."
           }</em>`
         : manualHouseSpend
-          ? `<br/><em class="sta-spend-chat-manual">Recorded for GM adjudication.</em>`
+          ? `<br/><em class="sta-spend-chat-manual">Record the target House and outcome in your notes; these details are not stored by the module.</em>`
           : "";
     return `<li><strong>${lbl}</strong> (${r.cost})${desc ? `<br/><em>${desc}</em>` : ""}${outcomeNote}</li>`;
   });
@@ -619,8 +850,18 @@ export async function openSpendDialog(type, amount, actor) {
 
   let remainingNote = "";
   if (isAcclaim) {
-    const wastedAmount = Math.max(0, remaining - failedAutomaticCost);
-    await actor.update({ "system.acclaim": failedAutomaticCost });
+    const unspent = Math.max(0, remaining - failedAutomaticCost);
+    const saveAcclaim = isAcclaimSavingAllowed();
+    const wastedAmount = saveAcclaim ? 0 : unspent;
+    await actor.update({
+      "system.acclaim": failedAutomaticCost + (saveAcclaim ? unspent : 0),
+    });
+    if (saveAcclaim && unspent > 0) {
+      const savedText =
+        t("sta-officers-log.reputationSpend.acclaimSaved") ||
+        "{amount} acclaim saved to character.";
+      remainingNote = `<p class="sta-spend-chat-remaining sta-spend-chat-saved">${savedText.replace("{amount}", String(unspent))}</p>`;
+    }
     if (wastedAmount > 0) {
       const wastedText =
         t("sta-officers-log.reputationSpend.acclaimWasted") ||
@@ -969,6 +1210,26 @@ export function installReputationSpendHook() {
     });
 
     btnContainer.appendChild(btn);
+
+    // Allow spending saved Shame even when the roll earned Glory
+    const savedShame = parseInt(actor.system?.reprimand ?? 0, 10) || 0;
+    if (isAcclaim && savedShame > 0) {
+      const shameLabel = (
+        t("sta-officers-log.reputationSpend.spendSavedShameBtn") ||
+        applyKlingonMode("Spend Saved {amount} Reprimands")
+      ).replace("{amount}", String(savedShame));
+      const shameBtn = document.createElement("button");
+      shameBtn.type = "button";
+      shameBtn.className = "sta-spend-btn sta-spend-reprimand-btn";
+      shameBtn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${shameLabel}`;
+      shameBtn.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        await openSpendDialog("reprimand", 0, actor);
+      });
+      btnContainer.appendChild(shameBtn);
+    }
+
     card.appendChild(btnContainer);
   });
 }

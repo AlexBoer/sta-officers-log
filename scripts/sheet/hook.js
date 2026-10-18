@@ -43,6 +43,7 @@ import { installUseDirectiveButton } from "../directives/useDirectiveButton.js";
 import { installUseScarButtons } from "../scars/traitButtons.js";
 import { installUseValueButtons } from "../values/useValue.js";
 import { installChooseMilestoneBenefitButtons } from "../milestones/chooseMilestoneBenefit.js";
+import { installAdjustmentButtons } from "../adjustments/adjustmentPicker.js";
 import { installItemUpdateHooks } from "./itemUpdateHooks.js";
 import { installFlowchartButton } from "../flowchart/flowchartButton.js";
 import { installAcclaimButtonOverride } from "../acclaim/acclaimButton.js";
@@ -256,6 +257,9 @@ function handleCharacterSheetRender(app, root) {
 
   // Add a per-Log "Choose Benefit" button for logs which have a pending milestone.
   installChooseMilestoneBenefitButtons(root, actor, app);
+
+  // Add a per-Log Adjustment button for completed adventures with value use.
+  installAdjustmentButtons(root, actor, app);
 
   // Replace Roll Acclaim button with custom dialog (main characters only).
   if (!isSupportingCharacterSheet(actor)) {

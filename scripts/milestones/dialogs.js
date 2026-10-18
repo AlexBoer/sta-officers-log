@@ -52,9 +52,9 @@ export async function _promptSelect({ title, label, name, optionsHtml }) {
     window: { title },
     content: `
       <div class="form-group">
-        <label>${escapeHTML(label)}</label>
+        <label for="${escapeHTML(name)}">${escapeHTML(label)}</label>
         <div class="form-fields">
-          <select name="${escapeHTML(name)}">
+          <select id="${escapeHTML(name)}" name="${escapeHTML(name)}">
             ${optionsHtml}
           </select>
         </div>
@@ -83,9 +83,9 @@ export async function _promptText({ title, label, name, placeholder = "" }) {
     window: { title },
     content: `
       <div class="form-group">
-        <label>${escapeHTML(label)}</label>
+        <label for="${escapeHTML(name)}">${escapeHTML(label)}</label>
         <div class="form-fields">
-          <input type="text" name="${escapeHTML(
+          <input type="text" id="${escapeHTML(name)}" name="${escapeHTML(
             name,
           )}" placeholder="${escapeHTML(placeholder)}" />
         </div>
@@ -122,17 +122,17 @@ export async function _promptTwoSelect({
     window: { title },
     content: `
       <div class="form-group">
-        <label>${escapeHTML(label1)}</label>
+        <label for="${escapeHTML(name1)}">${escapeHTML(label1)}</label>
         <div class="form-fields">
-          <select name="${escapeHTML(name1)}">
+          <select id="${escapeHTML(name1)}" name="${escapeHTML(name1)}">
             ${options1Html}
           </select>
         </div>
       </div>
       <div class="form-group">
-        <label>${escapeHTML(label2)}</label>
+        <label for="${escapeHTML(name2)}">${escapeHTML(label2)}</label>
         <div class="form-fields">
-          <select name="${escapeHTML(name2)}">
+          <select id="${escapeHTML(name2)}" name="${escapeHTML(name2)}">
             ${options2Html}
           </select>
         </div>
@@ -208,7 +208,52 @@ export async function _promptSelectAndText({
   });
 }
 
-export async function _promptBenefitType() {
+export async function _promptBenefitType({ houseAttributeTrade = false } = {}) {
+  const buttons = [
+    {
+      action: "attr",
+      label: t("sta-officers-log.dialog.chooseMilestoneBenefit.increaseAttribute"),
+      default: true,
+    },
+    {
+      action: "disc",
+      label: t(
+        "sta-officers-log.dialog.chooseMilestoneBenefit.increaseDiscipline",
+      ),
+    },
+    {
+      action: "focus",
+      label: t("sta-officers-log.dialog.chooseMilestoneBenefit.addFocus"),
+    },
+    {
+      action: "talent",
+      label: t("sta-officers-log.dialog.chooseMilestoneBenefit.addTalent"),
+    },
+    {
+      action: "supporting",
+      label: t(
+        "sta-officers-log.dialog.chooseMilestoneBenefit.giveToSupportingCharacter",
+      ),
+    },
+    {
+      action: "ship",
+      label: t(
+        "sta-officers-log.dialog.chooseMilestoneBenefit.changeShipStats",
+      ),
+    },
+    {
+      action: "cancel",
+      label: t("sta-officers-log.dialog.chooseMilestoneBenefit.cancel"),
+    },
+  ];
+  if (houseAttributeTrade) {
+    buttons.splice(2, 0, {
+      action: "houseAttribute",
+      label: t(
+        "sta-officers-log.dialog.chooseMilestoneBenefit.houseAttributeTrade",
+      ),
+    });
+  }
   return foundry.applications.api.DialogV2.wait({
     classes: ["sta-officers-log", "choose-benefit"],
     window: {
@@ -218,45 +263,7 @@ export async function _promptBenefitType() {
       <div data-sta-callbacks-dialog="choose-benefit"></div>
       <p>${t("sta-officers-log.dialog.chooseMilestoneBenefit.chooseType")}</p>
     `,
-    buttons: [
-      {
-        action: "attr",
-        label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.increaseAttribute",
-        ),
-        default: true,
-      },
-      {
-        action: "disc",
-        label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.increaseDiscipline",
-        ),
-      },
-      {
-        action: "focus",
-        label: t("sta-officers-log.dialog.chooseMilestoneBenefit.addFocus"),
-      },
-      {
-        action: "talent",
-        label: t("sta-officers-log.dialog.chooseMilestoneBenefit.addTalent"),
-      },
-      {
-        action: "supporting",
-        label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.giveToSupportingCharacter",
-        ),
-      },
-      {
-        action: "ship",
-        label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.changeShipStats",
-        ),
-      },
-      {
-        action: "cancel",
-        label: t("sta-officers-log.dialog.chooseMilestoneBenefit.cancel"),
-      },
-    ],
+    buttons,
     rejectClose: false,
     modal: false,
   });
@@ -287,7 +294,56 @@ export async function _promptManualMilestoneInstructions({ title, html }) {
   });
 }
 
-export async function _promptArcBenefitType() {
+export async function _promptArcBenefitType({
+  arcHouseAttribute = false,
+} = {}) {
+  const buttons = [
+    {
+      action: "attr",
+      label: t(
+        "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseAttribute",
+      ),
+      default: true,
+    },
+    {
+      action: "disc",
+      label: t(
+        "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseDiscipline",
+      ),
+    },
+    {
+      action: "value",
+      label: t("sta-officers-log.dialog.chooseMilestoneBenefit.arcAddValue"),
+    },
+    {
+      action: "shipSystem",
+      label: t(
+        "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseShipSystem",
+      ),
+    },
+    {
+      action: "shipDepartment",
+      label: t(
+        "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseShipDepartment",
+      ),
+    },
+    {
+      action: "shipTalent",
+      label: t("sta-officers-log.dialog.chooseMilestoneBenefit.arcAddShipTalent"),
+    },
+    {
+      action: "cancel",
+      label: t("sta-officers-log.dialog.chooseMilestoneBenefit.cancel"),
+    },
+  ];
+  if (arcHouseAttribute) {
+    buttons.splice(2, 0, {
+      action: "houseAttribute",
+      label: t(
+        "sta-officers-log.dialog.chooseMilestoneBenefit.arcHouseAttributeIncrease",
+      ),
+    });
+  }
   return foundry.applications.api.DialogV2.wait({
     classes: ["sta-officers-log", "choose-benefit"],
     window: {
@@ -299,47 +355,7 @@ export async function _promptArcBenefitType() {
         "sta-officers-log.dialog.chooseMilestoneBenefit.arcChooseType",
       )}</p>
     `,
-    buttons: [
-      {
-        action: "attr",
-        label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseAttribute",
-        ),
-        default: true,
-      },
-      {
-        action: "disc",
-        label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseDiscipline",
-        ),
-      },
-      {
-        action: "value",
-        label: t("sta-officers-log.dialog.chooseMilestoneBenefit.arcAddValue"),
-      },
-      {
-        action: "shipSystem",
-        label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseShipSystem",
-        ),
-      },
-      {
-        action: "shipDepartment",
-        label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.arcIncreaseShipDepartment",
-        ),
-      },
-      {
-        action: "shipTalent",
-        label: t(
-          "sta-officers-log.dialog.chooseMilestoneBenefit.arcAddShipTalent",
-        ),
-      },
-      {
-        action: "cancel",
-        label: t("sta-officers-log.dialog.chooseMilestoneBenefit.cancel"),
-      },
-    ],
+    buttons,
     rejectClose: false,
     modal: false,
   });

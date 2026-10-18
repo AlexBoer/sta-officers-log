@@ -32,6 +32,8 @@ function _truncateText(value, maxLength = 160) {
 }
 
 function _formatCost(entry) {
+  if (entry.incrementalSpend)
+    return `${entry.costMin} min / ${entry.costMax} total`;
   return entry.costMin === entry.costMax
     ? String(entry.costMin)
     : `${entry.costMin}–${entry.costMax}`;

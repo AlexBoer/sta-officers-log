@@ -62,6 +62,14 @@ export function isAcclaimSurveyEnabled() {
  *
  * @returns {boolean} Whether player access to the monitor is enabled.
  */
+export function isAcclaimSavingAllowed() {
+  try {
+    return game.settings.get(MODULE_ID, "allowSavingAcclaim") === true;
+  } catch (_) {
+    return false;
+  }
+}
+
 export function canPlayersUseAcclaimSurveyMonitor() {
   try {
     return Boolean(
@@ -221,6 +229,16 @@ export class AcclaimSurveySettingsApp extends HandlebarsApplicationMixin(
  * Register the acclaim survey world setting and settings menu.
  */
 export function registerAcclaimSurveySettings() {
+  game.settings.register(MODULE_ID, "allowSavingAcclaim", {
+    name: t("sta-officers-log.settings.allowSavingAcclaim.name"),
+    hint: t("sta-officers-log.settings.allowSavingAcclaim.hint"),
+    scope: "world",
+    config: true,
+    restricted: true,
+    type: Boolean,
+    default: false,
+  });
+
   // World setting: Enable/disable acclaim survey
   game.settings.register(MODULE_ID, ACCLAIM_SURVEY_ENABLED_SETTING, {
     name: t("sta-officers-log.settings.acclaimSurvey.enabledName"),

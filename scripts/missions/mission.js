@@ -11,6 +11,11 @@ import {
 } from "../directives/directives.js";
 import { resetAllTraumaPositiveUseCounts } from "../values/trauma/trauma.js";
 import { getValueStateArray, isValueInvokedState } from "../values/values.js";
+import {
+  captureAdjustmentStates,
+  finalizeAdjustmentOffers,
+  restoreAdjustmentStates,
+} from "../adjustments/adjustments.js";
 
 /**
  * Checks if any user-assigned characters have unlinked prototype tokens.
@@ -1967,6 +1972,39 @@ export async function endCurrentMission() {
     const _lid = _readCurrentMissionLogIdFromActor(_a);
     if (_lid) _undoSnapshot.actorLogMap[_a.id] = String(_lid);
   }
+  for (const actor of game.actors ?? []) {
+    if (actor.type !== "character") continue;
+    const logId = getCurrentMissionLogForActor(actor);
+    if (logId) _undoSnapshot.actorLogMap[actor.id] = String(logId);
+  }
+  _undoSnapshot.adjustmentStates = captureAdjustmentStates(
+    game.actors,
+    _undoSnapshot.actorLogMap,
+  );
+  try {
+    await finalizeAdjustmentOffers(
+      game.actors,
+      _undoSnapshot.actorLogMap,
+    );
+  } catch (error) {
+    console.error(
+      `${MODULE_ID} | Failed to prepare mission Adjustment offers`,
+      error,
+    );
+    try {
+      await restoreAdjustmentStates(_undoSnapshot.adjustmentStates);
+    } catch (rollbackError) {
+      console.error(
+        `${MODULE_ID} | Failed to restore Adjustment offers after mission completion error`,
+        rollbackError,
+      );
+    }
+    ui.notifications.error(
+      t("sta-officers-log.adjustments.missionIssueFailed") ??
+        "The mission could not issue Adjustment offers. The mission remains active.",
+    );
+    return;
+  }
   try {
     await game.settings.set(MODULE_ID, "lastEndedMission", _undoSnapshot);
   } catch (_err) {
@@ -2323,6 +2361,8 @@ async function _restoreFromSnapshot(snapshot, { notify = true } = {}) {
     });
     await Promise.allSettled(ops);
   }
+
+  await restoreAdjustmentStates(snapshot.adjustmentStates);
 
   if (notify) {
     ui.notifications.info(

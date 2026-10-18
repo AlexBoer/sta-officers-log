@@ -322,6 +322,9 @@ export async function runTalentBrowserPicker({
   pickerKind = "character",
   talents = [],
   allowCustom = true,
+  selectionField = null,
+  showBackButton = false,
+  backLabel = "",
 } = {}) {
   const talentPicker = _staUtilsTalentPicker();
   if (!talentPicker) return { fallback: true };
@@ -395,6 +398,9 @@ export async function runTalentBrowserPicker({
     actorName: actor?.name ?? "",
     talents: prepared,
     allowCustom: allowCustom !== false,
+    selectionField,
+    showBackButton,
+    backLabel,
     toggles,
     onIneligibleChosen: (data) => _postGmNotice(actor, data),
     onFlaggedChosen: (data, group) =>
@@ -402,6 +408,15 @@ export async function runTalentBrowserPicker({
   });
 
   if (!result) return { chosen: null };
-  if (result.custom) return { chosen: { custom: true } };
-  return { chosen: result.talent ?? null };
+  if (result.back) return { chosen: { back: true } };
+  if (result.custom) {
+    return {
+      chosen: { custom: true },
+      selectionValue: result.selectionValue ?? null,
+    };
+  }
+  return {
+    chosen: result.talent ?? null,
+    selectionValue: result.selectionValue ?? null,
+  };
 }

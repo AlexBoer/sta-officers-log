@@ -19,7 +19,7 @@
  */
 
 import { MODULE_ID } from "../core/constants.js";
-import { t } from "../core/i18n.js";
+import { applyKlingonMode, t } from "../core/i18n.js";
 import { openAwardTalentSelector } from "./awardTalentSelectorApp.js";
 
 /* ------------------------------------------------------------------ */
@@ -40,7 +40,7 @@ export const DISABLED_HOUSE_SHAME_DEFAULTS_SETTING =
   "disabledHouseShameActions";
 export const CUSTOM_SPEND_OPTIONS_VERSION_SETTING = "customSpendOptionsVersion";
 
-const CURRENT_SPEND_OPTIONS_VERSION = 5;
+const CURRENT_SPEND_OPTIONS_VERSION = 6;
 
 const DEFAULT_ACCLAIM_ACTIONS = [
   "commendAnother",
@@ -73,23 +73,12 @@ function _withActions(rows, actions, extra = {}) {
 export function getDefaultHouseGloryOptions() {
   return [
     {
-      action: "houseForgeAllianceLesser",
-      name: "Forge Alliance (Lesser House)",
+      action: "houseForgeAlliance",
+      name: "Forge Alliance",
       cost: 2,
-      description: "Spend Glory to secure a lesser House as an ally.",
-    },
-    {
-      action: "houseForgeAllianceGreat",
-      name: "Forge Alliance (Great House)",
-      cost: 3,
-      description: "Spend Glory to secure another Great House as an ally.",
-    },
-    {
-      action: "houseForgeAllianceCouncil",
-      name: "Forge Alliance (High Council House)",
-      cost: 4,
-      description:
-        "Spend Glory to secure a House with a High Council seat as an ally.",
+      description: applyKlingonMode(
+        "Spend Acclaim to secure another House as an ally. Cost: 2 for a lesser House, 3 for a Great House, or 4 for a House with a High Council seat. Record the target House and alliance in your notes.",
+      ),
     },
   ];
 }
@@ -97,30 +86,20 @@ export function getDefaultHouseGloryOptions() {
 export function getDefaultHouseShameOptions() {
   return [
     {
-      action: "houseInciteDivisionLesser",
-      name: "Incite Division (Lesser House)",
+      action: "houseInciteDivision",
+      name: "Incite Division",
       cost: 2,
-      description: "Spend Shame to incite enmity with a lesser House.",
-    },
-    {
-      action: "houseInciteDivisionGreat",
-      name: "Incite Division (Great House)",
-      cost: 3,
-      description: "Spend Shame to incite enmity with another Great House.",
-    },
-    {
-      action: "houseInciteDivisionCouncil",
-      name: "Incite Division (High Council House)",
-      cost: 4,
-      description:
-        "Spend Shame to incite enmity with a House with a High Council seat.",
+      description: applyKlingonMode(
+        "Spend Reprimands to incite enmity with another House. Cost: 2 for a lesser House, 3 for a Great House, or 4 for a House with a High Council seat. Record the target House and outcome in your notes. If the House is already a rival or enemy, escalate its actions; the GM determines whether this becomes a lasting feud or war.",
+      ),
     },
     {
       action: "houseDisgraceByAssociation",
       name: "Disgrace by Association",
       cost: 2,
-      description:
-        "Spend Shame to impose one additional negative influence on another House member's Reputation roll.",
+      description: applyKlingonMode(
+        "Spend Reprimands before another player character of your House rolls Reputation. The chat message reminds the table to apply one additional negative influence manually; no target or future effect is tracked.",
+      ),
     },
   ];
 }
@@ -147,6 +126,7 @@ function _sanitizeOption(option) {
     name: String(option?.name ?? "").trim(),
     cost,
     costMax,
+    incrementalSpend: option?.incrementalSpend === true,
     description: String(option?.description ?? "").trim(),
     enabled: option?.enabled !== false,
   };
@@ -453,6 +433,37 @@ export async function migrateCustomSpendOptions() {
     "houseShame",
   );
 
+  for (const [category, settingKey, oldActions, newAction] of [
+    [
+      "houseGlory",
+      DISABLED_HOUSE_GLORY_DEFAULTS_SETTING,
+      [
+        "houseForgeAllianceLesser",
+        "houseForgeAllianceGreat",
+        "houseForgeAllianceCouncil",
+      ],
+      "houseForgeAlliance",
+    ],
+    [
+      "houseShame",
+      DISABLED_HOUSE_SHAME_DEFAULTS_SETTING,
+      [
+        "houseInciteDivisionLesser",
+        "houseInciteDivisionGreat",
+        "houseInciteDivisionCouncil",
+      ],
+      "houseInciteDivision",
+    ],
+  ]) {
+    const disabled = _getDisabledDefaultActions(category);
+    const oldDisabledCount = oldActions.filter((action) =>
+      disabled.has(action),
+    ).length;
+    for (const action of oldActions) disabled.delete(action);
+    if (oldDisabledCount === oldActions.length) disabled.add(newAction);
+    await game.settings.set(MODULE_ID, settingKey, Array.from(disabled));
+  }
+
   await game.settings.set(
     MODULE_ID,
     CUSTOM_SPEND_OPTIONS_VERSION_SETTING,
@@ -597,6 +608,13 @@ function _openAwardEditorDialog(category, { title, award }) {
         <input type="number" name="costMax" min="0" value="${_escapeHtml(award?.costMax != null ? String(award.costMax) : "")}" placeholder="${config.fieldMaxCostPlaceholder}" />
       </div>
       <div class="form-group">
+        <label>
+          <input type="checkbox" name="incrementalSpend" ${award?.incrementalSpend ? "checked" : ""} />
+          ${config.fieldIncrementalSpendLabel}
+        </label>
+        <p class="hint">${config.fieldIncrementalSpendHint}</p>
+      </div>
+      <div class="form-group">
         <label>${config.fieldDescriptionLabel}</label>
         <textarea name="description" rows="8" spellcheck="true">${_escapeHtml(award?.description ?? "")}</textarea>
       </div>
@@ -627,16 +645,19 @@ function _getSpendOptionCategoryConfig(category) {
         disabledDefaultsKey: DISABLED_HOUSE_GLORY_DEFAULTS_SETTING,
         defaultsFn: getDefaultHouseGloryOptions,
         prefix: "houseGlory",
-        title: "House Glory Spend Editor",
-        createLabel: "Create House Glory Option",
-        emptyLabel: "No House Glory options have been created yet.",
-        saveLabel: "House Glory option saved.",
-        removedLabel: "House Glory option removed.",
-        removeConfirm: "Remove this House Glory option?",
+        title: applyKlingonMode("House Acclaim Spend Editor"),
+        createLabel: applyKlingonMode("Create House Acclaim Option"),
+        emptyLabel: applyKlingonMode("No House Acclaim options have been created yet."),
+        saveLabel: applyKlingonMode("House Acclaim option saved."),
+        removedLabel: applyKlingonMode("House Acclaim option removed."),
+        removeConfirm: applyKlingonMode("Remove this House Acclaim option?"),
         fieldNameLabel: "Option Name",
         fieldCostLabel: "Cost",
         fieldMaxCostLabel: "Max Cost (optional)",
         fieldMaxCostPlaceholder: "Same as Cost",
+        fieldIncrementalSpendLabel: "Allow incremental spending",
+        fieldIncrementalSpendHint:
+          "Requires a total target in Max Cost. Characters can contribute across multiple adventures.",
         fieldDescriptionLabel: "Description",
         saveOptionLabel: "Save Option",
       };
@@ -646,16 +667,19 @@ function _getSpendOptionCategoryConfig(category) {
         disabledDefaultsKey: DISABLED_HOUSE_SHAME_DEFAULTS_SETTING,
         defaultsFn: getDefaultHouseShameOptions,
         prefix: "houseShame",
-        title: "House Shame Spend Editor",
-        createLabel: "Create House Shame Option",
-        emptyLabel: "No House Shame options have been created yet.",
-        saveLabel: "House Shame option saved.",
-        removedLabel: "House Shame option removed.",
-        removeConfirm: "Remove this House Shame option?",
+        title: applyKlingonMode("House Reprimand Spend Editor"),
+        createLabel: applyKlingonMode("Create House Reprimand Option"),
+        emptyLabel: applyKlingonMode("No House Reprimand options have been created yet."),
+        saveLabel: applyKlingonMode("House Reprimand option saved."),
+        removedLabel: applyKlingonMode("House Reprimand option removed."),
+        removeConfirm: applyKlingonMode("Remove this House Reprimand option?"),
         fieldNameLabel: "Option Name",
         fieldCostLabel: "Cost",
         fieldMaxCostLabel: "Max Cost (optional)",
         fieldMaxCostPlaceholder: "Same as Cost",
+        fieldIncrementalSpendLabel: "Allow incremental spending",
+        fieldIncrementalSpendHint:
+          "Requires a total target in Max Cost. Characters can contribute across multiple adventures.",
         fieldDescriptionLabel: "Description",
         saveOptionLabel: "Save Option",
       };
@@ -675,6 +699,9 @@ function _getSpendOptionCategoryConfig(category) {
         fieldCostLabel: "Cost",
         fieldMaxCostLabel: "Max Cost (optional)",
         fieldMaxCostPlaceholder: "Same as Cost",
+        fieldIncrementalSpendLabel: "Allow incremental spending",
+        fieldIncrementalSpendHint:
+          "Requires a total target in Max Cost. Characters can contribute across multiple adventures.",
         fieldDescriptionLabel: "Description",
         saveOptionLabel: "Save Option",
       };
@@ -695,6 +722,9 @@ function _getSpendOptionCategoryConfig(category) {
         fieldCostLabel: "Cost",
         fieldMaxCostLabel: "Max Cost (optional)",
         fieldMaxCostPlaceholder: "Same as Cost",
+        fieldIncrementalSpendLabel: "Allow incremental spending",
+        fieldIncrementalSpendHint:
+          "Requires a total target in Max Cost. Characters can contribute across multiple adventures.",
         fieldDescriptionLabel: "Description",
         saveOptionLabel: "Save Option",
       };
@@ -715,6 +745,7 @@ function _getEnabledSpendOptions(category) {
       desc: option.description ?? "",
       cost: option.cost ?? 1,
       costMax: Number.isFinite(option.costMax) ? option.costMax : null,
+      incrementalSpend: option.incrementalSpend === true,
       isCustom: !option.isBuiltIn,
     }));
 }
@@ -798,7 +829,9 @@ export class AwardEditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
         name: row.name,
         cost: row.cost ?? 1,
         costLabel:
-          row.action === "increaseReputation" ||
+          row.incrementalSpend
+            ? `Min ${row.cost ?? 1} / Total ${row.costMax}`
+            : row.action === "increaseReputation" ||
           row.action === "reduceReputation"
             ? "Cost X"
             : Number.isFinite(row.costMax) && row.costMax > (row.cost ?? 0)
@@ -957,9 +990,23 @@ export class AwardEditorApp extends HandlebarsApplicationMixin(ApplicationV2) {
         String(result.costMax ?? "").trim() === ""
           ? null
           : Math.max(0, parseInt(result.costMax, 10) || 0),
+      incrementalSpend: result.incrementalSpend === true,
       description: String(result.description ?? "").trim(),
       enabled: award?.enabled ?? true,
     };
+
+    if (
+      nextAward.incrementalSpend &&
+      (!Number.isInteger(nextAward.cost) ||
+        nextAward.cost <= 0 ||
+        !Number.isInteger(nextAward.costMax) ||
+        nextAward.costMax <= nextAward.cost)
+    ) {
+      ui.notifications?.warn?.(
+        "Incremental spending requires a positive minimum cost and a greater total target in Max Cost.",
+      );
+      return;
+    }
 
     if (index >= 0) {
       custom[index] = nextAward;
@@ -1018,10 +1065,12 @@ export class CustomSpendOptionsSettingsApp extends HandlebarsApplicationMixin(
       reprimandEditorHint:
         t("sta-officers-log.settings.customSpendOptions.reprimandEditorHint") ||
         "Open the Reprimand Spend Editor to add, edit, or remove options.",
-      houseGloryEditorHint:
-        "Configure the House options shown when spending Glory.",
-      houseShameEditorHint:
-        "Configure the House options shown when spending Shame.",
+      houseGloryEditorHint: applyKlingonMode(
+        "Configure the House options shown when spending Acclaim.",
+      ),
+      houseShameEditorHint: applyKlingonMode(
+        "Configure the House options shown when spending Reprimands.",
+      ),
     };
   }
 

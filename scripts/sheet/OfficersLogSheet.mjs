@@ -244,6 +244,7 @@ export class OfficersLogSheet extends api.HandlebarsApplicationMixin(
       showTraumaCheckbox,
       createdWithTrauma,
       showMilestoneArcButton: item.system.showMilestoneArcButton === true,
+      showAdjustmentButton: item.system.showAdjustmentButton === true,
       customDate: item.system.customDate ?? "",
     };
   }
@@ -558,7 +559,7 @@ export class OfficersLogSheet extends api.HandlebarsApplicationMixin(
     });
   }
 
-  /** Open the log options dialog (trauma, showMilestoneArcButton, customDate, customIrlDate). */
+  /** Open the log options dialog (trauma, milestone/adjustment buttons, dates). */
   static async _onLogOptions(event, target) {
     const item = this.item;
     const showTrauma = areTraumaRulesEnabled();
@@ -566,6 +567,7 @@ export class OfficersLogSheet extends api.HandlebarsApplicationMixin(
       ? wasLogCreatedWithTrauma(item)
       : false;
     const showMilestoneArcButton = item.system.showMilestoneArcButton === true;
+    const showAdjustmentButton = item.system.showAdjustmentButton === true;
     const customDate = item.system.customDate ?? "";
     const customIrlDate = item.system.customIrlDate ?? "";
     // Pre-fill date input only if stored value is ISO format; ignore legacy stardates
@@ -600,6 +602,12 @@ export class OfficersLogSheet extends api.HandlebarsApplicationMixin(
           </label>
         </div>
         <div class="form-group">
+          <label class="checkbox">
+            <input type="checkbox" name="showAdjustmentButton"${showAdjustmentButton ? " checked" : ""}>
+            ${t("sta-officers-log.logSheet.showAdjustmentButton") ?? "Show Adjustment Button"}
+          </label>
+        </div>
+        <div class="form-group">
           <label>${t("sta-officers-log.logSheet.customDate") ?? "In-Game Date"}</label>
           <input type="date" name="customDate" value="${isoDate}"
             oninput="const d=new Date(this.value+'T12:00:00');const y=d.getFullYear();const s=new Date(y,0,0);const day=Math.floor((d-s)/86400000);this.closest('.form-group').querySelector('.ol-stardate-calc').textContent=this.value?'Stardate: '+y+'.'+String(day).padStart(3,'0'):''">
@@ -618,6 +626,8 @@ export class OfficersLogSheet extends api.HandlebarsApplicationMixin(
             createdWithTrauma: f?.elements?.createdWithTrauma?.checked ?? false,
             showMilestoneArcButton:
               f?.elements?.showMilestoneArcButton?.checked ?? false,
+            showAdjustmentButton:
+              f?.elements?.showAdjustmentButton?.checked ?? false,
             customDate: f?.elements?.customDate?.value?.trim() ?? "",
             customIrlDate: f?.elements?.customIrlDate?.value?.trim() ?? "",
           };
@@ -630,6 +640,7 @@ export class OfficersLogSheet extends api.HandlebarsApplicationMixin(
 
     const updates = {
       "system.showMilestoneArcButton": result.showMilestoneArcButton,
+      "system.showAdjustmentButton": result.showAdjustmentButton,
       "system.customDate": result.customDate || null,
       "system.customIrlDate": result.customIrlDate || null,
     };
