@@ -1859,6 +1859,12 @@
   border-bottom: 1px solid rgba(255, 193, 7, 0.5);
 }
 
+/* Hide when the window is collapsed so the title bar stays visible */
+.minimized > .sta-unlinked-token-banner,
+.minimized .sta-unlinked-token-banner {
+  display: none;
+}
+
 .sta-unlinked-token-banner i {
   color: #ffc107;
   flex-shrink: 0;
