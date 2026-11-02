@@ -74,7 +74,9 @@ function _sourceLabelFromUuid(uuid) {
   if (parts.length < 2) return "";
   const collection = `${parts[0]}.${parts[1]}`;
   const pack = game.packs?.get?.(collection);
-  return String(pack?.title ?? pack?.metadata?.label ?? collection);
+  const label = String(pack?.title ?? pack?.metadata?.label ?? collection);
+  const folderName = pack?.folder?.name;
+  return folderName ? `${folderName} - ${label}` : label;
 }
 
 function _descriptionText(item) {

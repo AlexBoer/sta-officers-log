@@ -15,6 +15,7 @@ import {
   getCustomReprimandOptions,
 } from "./customSpendOptions.js";
 import { getEnabledAwardOptions } from "./awardTalents.js";
+import { withCompendiumLoading } from "../core/loadingDialog.js";
 import { isHouseReputationSpendsEnabled } from "../house/house-settings.js";
 import {
   applyHouseReputationSpend,
@@ -436,7 +437,9 @@ export async function openSpendDialog(type, amount, actor) {
     isAcclaim
       ? [
           ...getCustomAcclaimOptions(),
-          ...(await getEnabledAwardOptions()),
+          ...(await withCompendiumLoading("award talents", () =>
+            getEnabledAwardOptions(),
+          )),
           ...houseOptions,
         ]
       : [...getCustomReprimandOptions(), ...houseOptions],

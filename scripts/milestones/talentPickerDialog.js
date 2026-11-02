@@ -1,6 +1,12 @@
 import { MODULE_ID } from "../core/constants.js";
 import { t, tf } from "../core/i18n.js";
 import { escapeHTML, isPlainObject } from "../core/utils.js";
+import { withCompendiumLoading } from "../core/loadingDialog.js";
+import {
+  batchLoadPackDocuments,
+  hydrateIndexedChoice,
+  indexRowToItem,
+} from "./packDocBatch.js";
 import {
   getNormalizedTalentRequirements,
   humanizeRequirementValue,
@@ -519,8 +525,12 @@ async function _getTalentIndexEntries({ packKey = "" } = {}) {
   const pack = game.packs?.get?.(key) ?? null;
   if (!pack) return { entries: [], error: `Missing compendium pack: ${key}` };
 
+  let sharedRows = null;
   try {
-    if (typeof pack.getIndex === "function") {
+    const shared = game.staUtils?.packIndex;
+    if (shared?.getRows) {
+      sharedRows = await shared.getRows(pack, "Item", "talent");
+    } else if (typeof pack.getIndex === "function") {
       // Include folder so we can filter Crew vs Starship in consolidated packs.
       await pack.getIndex({
         fields: ["name", "img", "type", "uuid", "folder"],
@@ -549,6 +559,15 @@ async function _getTalentIndexEntries({ packKey = "" } = {}) {
     }
   } catch (_) {
     // ignore - folder classification will gracefully handle missing folders
+  }
+
+  // Rows from the shared sta-utils index already carry the system/flag data the
+  // picker needs; flag them so full documents are only loaded on selection.
+  if (sharedRows?.length && sharedRows.some((row) => row?.system)) {
+    return {
+      entries: sharedRows.map((row) => ({ ...row, _fromSharedIndex: true })),
+      error: null,
+    };
   }
 
   const entries = _normalizeIndexEntries(pack.index);
@@ -1068,18 +1087,26 @@ async function _collectTalentPickerEntries({
           img: entry?.img ?? null,
           uuid: _resolveEntryUuid(entry, batch.key),
           folder: entry?.folder ?? null,
+          row: entry?._fromSharedIndex ? entry : null,
         },
       });
     }
   }
 
   let talents = Array.from(byName.values()).map((item) => item.value);
+  const preloaded = await batchLoadPackDocuments(
+    talents.filter((t) => !t.row).map((t) => t.uuid),
+  );
   talents = await Promise.all(
-    talents.map(async (talent) => {
+    talents.map(async (talentWithRow) => {
+      const { row, ...talent } = talentWithRow;
       const packKey = _packKeyFromUuid(talent.uuid);
       const isConsolidated = _isConsolidatedTalentPackKey(packKey);
       const shouldFilterByFolder = isConsolidated;
-      const doc = await _getTalentDocumentByUuid(talent.uuid);
+      const doc =
+        row ??
+        preloaded.get(talent.uuid) ??
+        (await _getTalentDocumentByUuid(talent.uuid));
       if (wantedKind === "crew" && _isHouseTalent(doc)) {
         return null;
       }
@@ -1114,7 +1141,7 @@ async function _collectTalentPickerEntries({
       return {
         ...talent,
         talenttype: doc?.system?.talenttype ?? null,
-        item: _extractTalentItemData(doc),
+        item: row ? indexRowToItem(row) : _extractTalentItemData(doc),
       };
     }),
   );
@@ -1335,12 +1362,12 @@ async function _promptTalentPickerFromPackList(options = {}) {
     });
     if (!bridged.fallback) {
       return bridged.chosen
-        ? {
+        ? await hydrateIndexedChoice({
             ...bridged.chosen,
             ...(options.selectionField
               ? { replacementId: bridged.selectionValue }
               : {}),
-          }
+          })
         : null;
     }
   } catch (err) {
@@ -1353,7 +1380,7 @@ async function _promptTalentPickerFromPackList(options = {}) {
   return new Promise((resolve) => {
     const app = new TalentPickerApp({
       talents,
-      resolve,
+      resolve: async (choice) => resolve(await hydrateIndexedChoice(choice)),
       actor: options.actor ?? null,
       pickerKind,
       selectionField: options.selectionField ?? null,
@@ -1381,6 +1408,40 @@ export async function promptTalentChoiceFromCompendium({
     extraPriorityEntries: [[TALENT_CREW_PACK, 5]],
     folderKind: "crew",
   });
+}
+
+let _randomTalentCache = null;
+let _randomTalentCache_loaded = false;
+
+/** Pick a random crew talent the actor qualifies for, without opening the picker. */
+export async function pickRandomTalentFromCompendium({ actor = null, exclude = [] } = {}) {
+  _randomTalentCache ??= loadTalentPickerTalents({
+    actor: null,
+    basePackKeys: TALENT_BASE_PACKS,
+    extraPackKeys: [TALENT_CREW_PACK],
+    priorityEntries: TALENT_BASE_PACKS.map((key, idx) => [key, idx + 1]),
+    extraPriorityEntries: [[TALENT_CREW_PACK, 5]],
+    folderKind: "crew",
+  });
+  const { talents } = await (_randomTalentCache_loaded
+    ? _randomTalentCache
+    : withCompendiumLoading("talents", () => _randomTalentCache));
+  _randomTalentCache_loaded = true;
+  const usable = talents.filter((t) => {
+    const reqs = t?.item?.flags?.[MODULE_ID]?.requirements ?? t?.flags?.[MODULE_ID]?.requirements ?? [];
+    if (reqs.some((r) => normalizeRequirementString(r?.category) === "condition")) return false;
+    const text = String(t?.item?.system?.description ?? t?.description ?? "");
+    return !/supporting character|npc only|starship/i.test(text.slice(0, 400));
+  });
+  const ctx = prepareTalentPickerContext(usable, actor, { showCustomButton: false });
+  const skip = new Set(exclude.map((n) => String(n).toLowerCase()));
+  const pool = (ctx.groups ?? [])
+    .flatMap((g) => g.items ?? [])
+    .filter((i) => i.meetsRequirements && i.uuid && !skip.has(String(i.name).toLowerCase()));
+  if (!pool.length) return null;
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  const src = talents.find((t) => String(t?.uuid ?? "") === pick.uuid);
+  return hydrateIndexedChoice({ name: pick.name, img: pick.img ?? "", uuid: pick.uuid, item: src?.item ?? null });
 }
 
 export async function promptShipTalentChoiceFromCompendium({

@@ -10,6 +10,7 @@
 
 import { MODULE_ID } from "../core/constants.js";
 import { t } from "../core/i18n.js";
+import { withCompendiumLoading } from "../core/loadingDialog.js";
 import {
   getEnabledAwardTalentUuids,
   loadAwardTalentEntries,
@@ -76,7 +77,9 @@ export class AwardTalentSelectorApp extends HandlebarsApplicationMixin(
     if (this._loaded) return;
     this._enabled = new Set(getEnabledAwardTalentUuids());
     try {
-      this._entries = await loadAwardTalentEntries();
+      this._entries = await withCompendiumLoading("award talents", () =>
+        loadAwardTalentEntries(),
+      );
       this._loadError = false;
     } catch (err) {
       console.error(`${MODULE_ID} | failed to load award talents`, err);

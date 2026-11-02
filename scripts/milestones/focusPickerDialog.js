@@ -1,6 +1,12 @@
 import { MODULE_ID } from "../core/constants.js";
 import { t, tf } from "../core/i18n.js";
 import { escapeHTML, isPlainObject } from "../core/utils.js";
+import { withCompendiumLoading } from "../core/loadingDialog.js";
+import {
+  batchLoadPackDocuments,
+  hydrateIndexedChoice,
+  indexRowToItem,
+} from "./packDocBatch.js";
 import { getFocusPickerCustomCompendiumKeys } from "../settings/pickerSettings.js";
 
 const Base = foundry.applications.api.HandlebarsApplicationMixin(
@@ -49,6 +55,21 @@ async function _getFocusIndexEntries({ packKey }) {
   const key = String(packKey ?? "sta.items-2e");
   const pack = game.packs?.get?.(key) ?? null;
   if (!pack) return { entries: [], error: `Missing compendium pack: ${key}` };
+
+  try {
+    const shared = game.staUtils?.packIndex;
+    if (shared?.getRows) {
+      const rows = await shared.getRows(pack, "Item", "focus");
+      if (rows.length) {
+        return {
+          entries: rows.map((row) => ({ ...row, _fromSharedIndex: true })),
+          error: null,
+        };
+      }
+    }
+  } catch (_) {
+    // fall back to the pack's own index below
+  }
 
   try {
     // getIndex exists on CompendiumCollection in newer Foundry; pack.index may already be populated.
@@ -456,6 +477,35 @@ class FocusPickerApp extends Base {
 }
 
 export async function promptFocusChoiceFromCompendium({ packKey = "" } = {}) {
+  const loaded = await withCompendiumLoading("focuses", () =>
+    _loadFocusesFromCompendiums({ packKey }),
+  );
+  if (!loaded) return null;
+  const focusesWithData = loaded;
+
+  // Prefer the browser-styled picker from sta-utils; fall back to the built-in
+  // list picker when sta-utils is inactive or the delegation fails.
+  try {
+    const { runFocusBrowserPicker } = await import("./focusPickerBridge.js");
+    const bridged = await runFocusBrowserPicker({ focuses: focusesWithData });
+    if (!bridged.fallback) return hydrateIndexedChoice(bridged.chosen);
+  } catch (err) {
+    console.error(
+      `${MODULE_ID} | focus browser picker failed; using fallback`,
+      err,
+    );
+  }
+
+  return new Promise((resolve) => {
+    const app = new FocusPickerApp({
+      focuses: focusesWithData,
+      resolve: async (choice) => resolve(await hydrateIndexedChoice(choice)),
+    });
+    app.render(true);
+  });
+}
+
+async function _loadFocusesFromCompendiums({ packKey = "" } = {}) {
   // STA v2.4.6+: focuses are stored in sta.items-1e / sta.items-2e.
   // Backward-compat (STA v2.4.5): focuses were stored in sta.focuses-core / sta.focuses.
   // Always include the STA defaults, plus:
@@ -520,6 +570,7 @@ export async function promptFocusChoiceFromCompendium({ packKey = "" } = {}) {
       name,
       img: e?.img ?? null,
       uuid: e?.uuid ?? null,
+      row: e?._fromSharedIndex ? e : null,
     });
   }
 
@@ -530,10 +581,16 @@ export async function promptFocusChoiceFromCompendium({ packKey = "" } = {}) {
     return null;
   }
 
+  const preloaded = await batchLoadPackDocuments(
+    focuses.filter((f) => !f.row).map((f) => f.uuid),
+  );
   const focusesWithData = await Promise.all(
-    focuses.map(async (focus) => {
+    focuses.map(async ({ row, ...focus }) => {
       if (!focus?.uuid) return focus;
-      const doc = await _getFocusDocumentByUuid(focus.uuid);
+      if (row) return { ...focus, item: indexRowToItem(row) };
+      const doc =
+        preloaded.get(focus.uuid) ??
+        (await _getFocusDocumentByUuid(focus.uuid));
       return {
         ...focus,
         item: _extractFocusItemData(doc),
@@ -541,21 +598,5 @@ export async function promptFocusChoiceFromCompendium({ packKey = "" } = {}) {
     }),
   );
 
-  // Prefer the browser-styled picker from sta-utils; fall back to the built-in
-  // list picker when sta-utils is inactive or the delegation fails.
-  try {
-    const { runFocusBrowserPicker } = await import("./focusPickerBridge.js");
-    const bridged = await runFocusBrowserPicker({ focuses: focusesWithData });
-    if (!bridged.fallback) return bridged.chosen;
-  } catch (err) {
-    console.error(
-      `${MODULE_ID} | focus browser picker failed; using fallback`,
-      err,
-    );
-  }
-
-  return new Promise((resolve) => {
-    const app = new FocusPickerApp({ focuses: focusesWithData, resolve });
-    app.render(true);
-  });
+  return focusesWithData;
 }

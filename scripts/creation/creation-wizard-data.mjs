@@ -123,7 +123,7 @@ export const EQUIPMENT_ITEMS = {
  * @param {{ name: string, uuid: string|null, type: string }} entry
  * @returns {Promise<object>} Item data ready for createEmbeddedDocuments
  */
-async function _fetchOrBuildItem(entry) {
+export async function _fetchOrBuildItem(entry) {
   if (entry.uuid) {
     try {
       const doc = await fromUuid(entry.uuid);
