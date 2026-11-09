@@ -10,6 +10,22 @@
 import { MODULE_ID } from "../core/constants.js";
 import { getTalentPickerCustomCompendiumKeys } from "../settings/pickerSettings.js";
 
+// Try to load homebrew species from sta-utils if available
+let _getAllSpecies = null;
+try {
+  const staUtilsModule = game.modules.get("sta-utils");
+  if (staUtilsModule?.active) {
+    const homebrewSpecies = import("../../../sta-utils/scripts/homebrew-species/index.mjs");
+    homebrewSpecies.then(m => {
+      _getAllSpecies = m.getAllSpecies;
+    }).catch(() => {
+      // Fallback if import fails
+    });
+  }
+} catch (e) {
+  // Silently fail if sta-utils not available
+}
+
 export const ATTRIBUTE_KEYS = [
   "control",
   "daring",
@@ -162,6 +178,21 @@ export async function loadRoleBenefits() {
 
 export async function loadSpeciesCatalog() {
   if (_speciesCatalogCache) return _speciesCatalogCache;
+  
+  // Try to use homebrew species from sta-utils first
+  if (_getAllSpecies) {
+    try {
+      _speciesCatalogCache = await _getAllSpecies();
+      return _speciesCatalogCache;
+    } catch (e) {
+      console.warn(
+        `${MODULE_ID} | Creation Wizard: could not load homebrew species from sta-utils`,
+        e,
+      );
+    }
+  }
+  
+  // Fall back to local species-catalog.json
   try {
     const res = await fetch(
       `/modules/${MODULE_ID}/scripts/creation/species-catalog.json`,

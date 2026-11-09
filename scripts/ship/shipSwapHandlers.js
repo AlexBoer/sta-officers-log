@@ -5,6 +5,7 @@
  */
 
 import { t } from "../core/i18n.js";
+import { isSpecialRuleTalent } from "./specialRuleTalent.js";
 import { escapeHTML } from "../core/utils.js";
 import {
   SHIP_SYSTEM_KEYS,
@@ -180,9 +181,10 @@ export async function handleShipDepartmentSwap(ship) {
  * @returns {Promise<{applied: boolean, back?: boolean, action?: string, shipId?: string, removed?: string, added?: string}>}
  */
 export async function handleShipTalentSwap(ship) {
-  const talents = (ship.items ?? []).filter(
+  const allTalents = (ship.items ?? []).filter(
     (i) => i?.type === "talent" || i?.type === "shipTalent",
   );
+  const talents = allTalents.filter((i) => !isSpecialRuleTalent(i));
 
   if (!talents.length) {
     const again = await foundry.applications.api.DialogV2.wait({
@@ -240,7 +242,8 @@ export async function handleShipTalentSwap(ship) {
   const toRemove = ship.items?.get?.(String(chosen.replacementId ?? ""));
   if (
     !toRemove ||
-    (toRemove.type !== "talent" && toRemove.type !== "shipTalent")
+    (toRemove.type !== "talent" && toRemove.type !== "shipTalent") ||
+    isSpecialRuleTalent(toRemove)
   ) {
     ui.notifications?.warn?.("That talent no longer exists.");
     return { applied: false, back: true };

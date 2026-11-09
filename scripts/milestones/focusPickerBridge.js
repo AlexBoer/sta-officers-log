@@ -67,7 +67,7 @@ function _deriveFocusCategory(img, name) {
   return { key, label: label || "Miscellaneous" };
 }
 
-function _sourceLabelFromUuid(uuid) {
+function _compendiumLabelFromUuid(uuid) {
   const raw = String(uuid ?? "");
   if (!raw.startsWith("Compendium.")) return "";
   const parts = raw.slice("Compendium.".length).split(".");
@@ -122,7 +122,13 @@ export async function runFocusBrowserPicker({
       uuid: focus?.uuid ?? null,
       name: focus?.name ?? "",
       img: focus?.img ?? null,
-      source: _sourceLabelFromUuid(focus?.uuid),
+      source: String(
+        focus?.item?.flags?.["sta-utils"]?.source ??
+          focus?.item?.system?.source?.value ??
+          focus?.item?.system?.source ??
+          "",
+      ).trim(),
+      compendium: _compendiumLabelFromUuid(focus?.uuid),
       descriptionText: _descriptionText(focus?.item),
       group,
       tag: group.label,

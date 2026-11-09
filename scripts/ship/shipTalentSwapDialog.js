@@ -1,5 +1,6 @@
 import { MODULE_ID } from "../core/constants.js";
 import { t } from "../core/i18n.js";
+import { isSpecialRuleTalent } from "./specialRuleTalent.js";
 import { promptShipTalentChoiceFromCompendium } from "../milestones/talentPickerDialog.js";
 
 const Base = foundry.applications.api.HandlebarsApplicationMixin(
@@ -252,7 +253,11 @@ export async function promptShipTalentSwapDialog({ ship = null } = {}) {
 
   return new Promise((resolve) => {
     const shipTalents = (ship.items ?? [])
-      .filter((item) => item?.type === "talent" || item?.type === "shipTalent")
+      .filter(
+        (item) =>
+          (item?.type === "talent" || item?.type === "shipTalent") &&
+          !isSpecialRuleTalent(item),
+      )
       .map((item) => {
         const itemType = String(item?.type ?? "talent").toLowerCase();
         return {
