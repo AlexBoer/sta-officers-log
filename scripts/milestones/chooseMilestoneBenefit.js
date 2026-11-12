@@ -273,6 +273,12 @@ export function installChooseMilestoneBenefitButtons(root, actor, app) {
           if (!valueId) {
             valueId = getPrimaryValueIdForLog(actor, logItem) || null;
           }
+          if (!valueId && chosenLogId) {
+            const sourceLog = actor.items.get(String(chosenLogId));
+            if (sourceLog) {
+              valueId = getPrimaryValueIdForLog(actor, sourceLog) || null;
+            }
+          }
 
           const valueImg =
             pending?.valueImg ??

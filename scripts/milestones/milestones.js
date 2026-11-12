@@ -6,7 +6,7 @@ import { MODULE_ID } from "../core/constants.js";
  * @param {*} chosenLogId   the item ID of the log which the user chose when asked if they would make a callback. It is the previous log item being called back to.
  * @param {*} currentLogId  the item ID of the log representing the current mission, set up by the GM at the mission's start.
  * @param {*} valueImg      the image URL for the milestone item to be created.
- * @param {*} valueId       the callback value ID being used for this callback.
+ * @param {*} valueId       optional callback value ID being used for this callback.
  * @param {*} arc           an object representing the arc info, with properties isArc (boolean) and chainLogIds (array of log item IDs in the arc chain)
  * @param {*} benefitLabel  optional label to use as the milestone item name instead of the default.
  * @returns a Promise resolving to the created milestone item, or null on failure.
@@ -15,7 +15,9 @@ export async function createMilestoneItem(
   actor,
   { chosenLogId, currentLogId, valueImg, valueId, arc, benefitLabel, benefit },
 ) {
-  if (!actor || !chosenLogId || !currentLogId || !valueId) return null;
+  // valueId is optional: logs without a recorded primary value can still earn a milestone,
+  // and syncCallbackLinksFromMilestone tolerates an empty callbackValueId.
+  if (!actor || !chosenLogId || !currentLogId) return null;
 
   const chosenLog = actor.items.get(chosenLogId);
   const currentLog = actor.items.get(currentLogId);
@@ -57,7 +59,7 @@ export async function createMilestoneItem(
       type: "milestone",
       flags: {
         [MODULE_ID]: {
-          callbackValueId: valueId,
+          ...(valueId ? { callbackValueId: valueId } : {}),
           ...(benefitCreatedItemId
             ? {
                 milestoneBenefit: {
